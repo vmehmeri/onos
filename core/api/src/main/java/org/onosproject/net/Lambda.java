@@ -32,4 +32,18 @@ public interface Lambda {
                             int spacingMultiplier, int slotGranularity) {
         return new OchSignal(gridType, channelSpacing, spacingMultiplier, slotGranularity);
     }
+
+    /**
+     * Create an Lambda instance with the specified wavelength index number.
+     *
+     * @param lambda index number
+     * @return an instance
+     *
+     * deprecated in Emu (1.4.0)
+     */
+
+    static Lambda indexedLambda(long lambda) {
+        return new IndexedLambda(lambda);
+    }
+
 }

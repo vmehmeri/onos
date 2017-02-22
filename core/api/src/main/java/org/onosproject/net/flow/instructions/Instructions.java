@@ -25,10 +25,13 @@ import org.onlab.packet.VlanId;
 import org.onosproject.core.GroupId;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Lambda;
+import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OduSignalId;
 import org.onosproject.net.PortNumber;
 import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModOchSignalInstruction;
+import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModLambdaInstruction;
+import org.onosproject.net.flow.instructions.L0ModificationInstruction.L0SubType;
 import org.onosproject.net.flow.instructions.L1ModificationInstruction.ModOduSignalIdInstruction;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.L3SubType;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.ModIPInstruction;
@@ -120,7 +123,9 @@ public final class Instructions {
     public static L0ModificationInstruction modL0Lambda(Lambda lambda) {
         checkNotNull(lambda, "L0 OCh signal cannot be null");
 
-        if (lambda instanceof OchSignal) {
+        if (lambda instanceof IndexedLambda) {
+            return new ModLambdaInstruction(L0SubType.LAMBDA, (short) ((IndexedLambda) lambda).index());
+        } else if (lambda instanceof OchSignal) {
             return new ModOchSignalInstruction((OchSignal) lambda);
         } else {
             throw new UnsupportedOperationException(String.format("Unsupported type: %s", lambda));

@@ -23,6 +23,7 @@ import org.onlab.packet.VlanId;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OduSignalId;
+import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.driver.DefaultDriverData;
 import org.onosproject.net.driver.DefaultDriverHandler;
 import org.onosproject.net.driver.Driver;
@@ -49,6 +50,7 @@ import org.onosproject.net.flow.criteria.IcmpCodeCriterion;
 import org.onosproject.net.flow.criteria.IcmpTypeCriterion;
 import org.onosproject.net.flow.criteria.Icmpv6CodeCriterion;
 import org.onosproject.net.flow.criteria.Icmpv6TypeCriterion;
+import org.onosproject.net.flow.criteria.IndexedLambdaCriterion;
 import org.onosproject.net.flow.criteria.MetadataCriterion;
 import org.onosproject.net.flow.criteria.MplsBosCriterion;
 import org.onosproject.net.flow.criteria.MplsCriterion;
@@ -419,16 +421,23 @@ public abstract class FlowModBuilder {
                                   U16.of(exthdrFlagsCriterion.exthdrFlags()));
                 break;
             case OCH_SIGID:
-                try {
-                    OchSignalCriterion ochSignalCriterion = (OchSignalCriterion) c;
-                    OchSignal signal = ochSignalCriterion.lambda();
-                    byte gridType = OpenFlowValueMapper.lookupGridType(signal.gridType());
-                    byte channelSpacing = OpenFlowValueMapper.lookupChannelSpacing(signal.channelSpacing());
-                    mBuilder.setExact(MatchField.EXP_OCH_SIG_ID,
-                            new CircuitSignalID(gridType, channelSpacing,
-                                    (short) signal.spacingMultiplier(), (short) signal.slotGranularity()));
-                } catch (NoMappingFoundException e) {
-                    log.warn(e.getMessage());
+                if (c instanceof IndexedLambdaCriterion) {
+                    IndexedLambdaCriterion indexedLambdaCriterion = (IndexedLambdaCriterion) c;
+                    IndexedLambda lambda = indexedLambdaCriterion.lambda();
+                    mBuilder.setExact(MatchField.EXP_OCH_SIG_ID, new CircuitSignalID((byte) 1, (byte) 2, (short) lambda.index(), (short) 1));
+
+                } else {
+                    try {
+                        OchSignalCriterion ochSignalCriterion = (OchSignalCriterion) c;
+                        OchSignal signal = ochSignalCriterion.lambda();
+                        byte gridType = OpenFlowValueMapper.lookupGridType(signal.gridType());
+                        byte channelSpacing = OpenFlowValueMapper.lookupChannelSpacing(signal.channelSpacing());
+                        mBuilder.setExact(MatchField.EXP_OCH_SIG_ID,
+                                          new CircuitSignalID(gridType, channelSpacing,
+                                                              (short) signal.spacingMultiplier(), (short) signal.slotGranularity()));
+                    } catch (NoMappingFoundException e) {
+                        log.warn(e.getMessage());
+                    }
                 }
                 break;
             case OCH_SIGTYPE:

@@ -34,6 +34,7 @@ import org.onosproject.net.ChannelSpacing;
 import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.GridType;
+import org.onosproject.net.Lambda;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OduSignalId;
 import org.onosproject.net.PortNumber;
@@ -172,7 +173,11 @@ public final class DecodeInstructionCodecHelper {
         String subType = nullIsIllegal(json.get(InstructionCodec.SUBTYPE),
                 InstructionCodec.SUBTYPE + InstructionCodec.ERROR_MESSAGE).asText();
 
-        if (subType.equals(L0ModificationInstruction.L0SubType.OCH.name())) {
+            if (subType.equals(L0ModificationInstruction.L0SubType.LAMBDA.name())) {
+                int lambda = nullIsIllegal(json.get(InstructionCodec.LAMBDA),
+                    InstructionCodec.LAMBDA + InstructionCodec.MISSING_MEMBER_MESSAGE).asInt();
+                return Instructions.modL0Lambda(Lambda.indexedLambda(lambda));
+            } else if (subType.equals(L0ModificationInstruction.L0SubType.OCH.name())) {
             String gridTypeString = nullIsIllegal(json.get(InstructionCodec.GRID_TYPE),
                     InstructionCodec.GRID_TYPE + InstructionCodec.MISSING_MEMBER_MESSAGE).asText();
             GridType gridType = GridType.valueOf(gridTypeString);
