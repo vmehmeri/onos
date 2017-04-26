@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@ import org.onosproject.net.config.NetworkConfigService;
 import org.onosproject.net.edge.EdgePortService;
 import org.onosproject.net.key.DeviceKeyAdminService;
 import org.onosproject.net.key.DeviceKeyService;
-import org.onosproject.net.resource.ResourceAdminService;
-import org.onosproject.net.resource.ResourceService;
+import org.onosproject.net.newresource.ResourceAdminService;
+import org.onosproject.net.newresource.ResourceService;
 import org.onosproject.net.region.RegionAdminService;
 import org.onosproject.net.region.RegionService;
 import org.onosproject.net.statistic.FlowStatisticService;
@@ -59,7 +59,7 @@ import org.onosproject.net.host.HostService;
 import org.onosproject.net.intent.IntentService;
 import org.onosproject.net.intent.IntentExtensionService;
 import org.onosproject.net.intent.IntentClockService;
-import org.onosproject.net.intent.WorkPartitionService;
+import org.onosproject.net.intent.IntentPartitionService;
 import org.onosproject.net.link.LinkAdminService;
 import org.onosproject.net.link.LinkService;
 import org.onosproject.net.packet.PacketService;
@@ -73,6 +73,7 @@ import org.onosproject.store.cluster.messaging.MessagingService;
 import org.onosproject.store.primitives.PartitionAdminService;
 import org.onosproject.store.primitives.PartitionService;
 import org.onosproject.store.service.LogicalClockService;
+import org.onosproject.store.service.MutexExecutionService;
 import org.onosproject.store.service.StorageAdminService;
 import org.onosproject.store.service.StorageService;
 import org.onosproject.ui.UiExtensionService;
@@ -227,7 +228,7 @@ public final class DefaultPolicyBuilder {
         permSet.add(new ServicePermission(IntentService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(IntentClockService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(IntentExtensionService.class.getName(), ServicePermission.GET));
-        permSet.add(new ServicePermission(WorkPartitionService.class.getName(), ServicePermission.GET));
+        permSet.add(new ServicePermission(IntentPartitionService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(DeviceKeyService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(LinkService.class.getName(), ServicePermission.GET));
 //        permSet.add(new ServicePermission(MulticastRouteService.class.getName(), ServicePermission.GET));
@@ -247,6 +248,7 @@ public final class DefaultPolicyBuilder {
         permSet.add(new ServicePermission(MessagingService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(PartitionService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(LogicalClockService.class.getName(), ServicePermission.GET));
+        permSet.add(new ServicePermission(MutexExecutionService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(StorageService.class.getName(), ServicePermission.GET));
         permSet.add(new ServicePermission(UiExtensionService.class.getName(), ServicePermission.GET));
 
@@ -314,12 +316,12 @@ public final class DefaultPolicyBuilder {
         serviceDirectory.put(HOST_EVENT, ImmutableSet.of(
                 HostService.class.getName()));
         serviceDirectory.put(INTENT_READ, ImmutableSet.of(
-                IntentService.class.getName(), WorkPartitionService.class.getName(),
+                IntentService.class.getName(), IntentPartitionService.class.getName(),
                 IntentClockService.class.getName(), IntentExtensionService.class.getName()));
         serviceDirectory.put(INTENT_WRITE, ImmutableSet.of(
                 IntentService.class.getName(), IntentExtensionService.class.getName()));
         serviceDirectory.put(INTENT_EVENT, ImmutableSet.of(
-                IntentService.class.getName(), WorkPartitionService.class.getName()));
+                IntentService.class.getName(), IntentPartitionService.class.getName()));
 //        serviceDirectory.put(LINK_READ, ImmutableSet.of(
 //                LinkService.class.getName(), LinkResourceService.class.getName(),
 //                LabelResourceService.class.getName()));
@@ -374,6 +376,8 @@ public final class DefaultPolicyBuilder {
                 PartitionService.class.getName()));
         serviceDirectory.put(CLOCK_WRITE, ImmutableSet.of(
                 LogicalClockService.class.getName()));
+        serviceDirectory.put(MUTEX_WRITE, ImmutableSet.of(
+                MutexExecutionService.class.getName()));
 
         return serviceDirectory;
     }

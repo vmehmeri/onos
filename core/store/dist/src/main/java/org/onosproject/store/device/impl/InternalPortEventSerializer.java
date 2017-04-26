@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 package org.onosproject.store.device.impl;
-
-import static org.onosproject.store.serializers.DeviceIdSerializer.deviceIdSerializer;
 
 import java.util.List;
 
@@ -45,7 +43,7 @@ public class InternalPortEventSerializer extends Serializer<InternalPortEvent> {
     @Override
     public void write(Kryo kryo, Output output, InternalPortEvent event) {
         kryo.writeClassAndObject(output, event.providerId());
-        kryo.writeObject(output, event.deviceId(), deviceIdSerializer());
+        kryo.writeClassAndObject(output, event.deviceId());
         kryo.writeClassAndObject(output, event.portDescriptions());
     }
 
@@ -53,7 +51,7 @@ public class InternalPortEventSerializer extends Serializer<InternalPortEvent> {
     public InternalPortEvent read(Kryo kryo, Input input,
                                Class<InternalPortEvent> type) {
         ProviderId providerId = (ProviderId) kryo.readClassAndObject(input);
-        DeviceId deviceId = kryo.readObject(input, DeviceId.class, deviceIdSerializer());
+        DeviceId deviceId = (DeviceId) kryo.readClassAndObject(input);
 
         @SuppressWarnings("unchecked")
         Timestamped<List<PortDescription>> portDescriptions

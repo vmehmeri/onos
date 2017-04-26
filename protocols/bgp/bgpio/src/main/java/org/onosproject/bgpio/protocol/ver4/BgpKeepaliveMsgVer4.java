@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -124,13 +124,13 @@ public class BgpKeepaliveMsgVer4 implements BgpKeepaliveMsg {
         @Override
         public void write(ChannelBuffer cb, BgpKeepaliveMsgVer4 message) {
 
-            log.debug("Write marker");
+            // write marker
             cb.writeBytes(marker, 0, MARKER_LENGTH);
 
-            log.debug("Write length of header");
+            // write length of header
             cb.writeShort(PACKET_MINIMUM_LENGTH);
 
-            log.debug("Write the type of message");
+            // write the type of message
             cb.writeByte(MSG_TYPE.getType());
         }
     }

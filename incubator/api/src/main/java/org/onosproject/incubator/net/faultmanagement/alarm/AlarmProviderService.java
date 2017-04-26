@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package org.onosproject.incubator.net.faultmanagement.alarm;
 
 
+import com.google.common.annotations.Beta;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.provider.ProviderService;
 
@@ -24,7 +25,7 @@ import java.util.Collection;
 /**
  * The interface Alarm provider service.
  */
-
+@Beta
 public interface AlarmProviderService extends ProviderService<AlarmProvider> {
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,50 @@
  */
 package org.onosproject.incubator.net.faultmanagement.alarm;
 
+import java.util.Set;
 import org.onosproject.event.AbstractEvent;
+import org.onosproject.net.DeviceId;
 
 /**
- * Entity that represents Alarm events. Note: although the event will itself have a time,
- * consumers may be more interested in the times embedded in the alarms themselves.
+ * Entity that represents Alarm events. Note: although the event will itself have a time, consumers may be more
+ * interested in the times embedded in the alarms themselves.
+ *
  */
-public class AlarmEvent extends AbstractEvent<AlarmEvent.Type, Alarm> {
+public class AlarmEvent extends AbstractEvent<AlarmEvent.Type, Set<Alarm>> {
+
+    private final DeviceId deviceRefreshed;
+
+    /**
+     * Creates an event due to one or more notification.
+     *
+     * @param alarms the set one or more of alarms.
+     */
+    public AlarmEvent(Set<Alarm> alarms) {
+        super(Type.NOTIFICATION, alarms);
+        deviceRefreshed = null;
+    }
+
+    /**
+     * Creates an event due to alarm discovery for a device.
+     *
+     * @param alarms the set of alarms.
+     * @param deviceRefreshed if of refreshed device, populated after a de-discovery
+     */
+    public AlarmEvent(Set<Alarm> alarms,
+            DeviceId deviceRefreshed) {
+        super(Type.DEVICE_DISCOVERY, alarms);
+        this.deviceRefreshed = deviceRefreshed;
+
+    }
+
+    /**
+     * Gets which device was refreshed.
+     *
+     * @return the refreshed device, or null if event related to a asynchronous notification(s)
+     */
+    public DeviceId getDeviceRefreshed() {
+        return deviceRefreshed;
+    }
 
     /**
      * Type of alarm event.
@@ -29,23 +66,13 @@ public class AlarmEvent extends AbstractEvent<AlarmEvent.Type, Alarm> {
     public enum Type {
 
         /**
-         * Individual alarm updated.
+         * Individual alarm(s) updated.
          */
-        CREATED,
+        NOTIFICATION,
         /**
          * Alarm set updated for a given device.
          */
-        REMOVED,
-    }
-
-    /**
-     * Creates an event due to one alarm.
-     *
-     * @param type alarm type
-     * @param alarm the alarm related to the event.
-     */
-    public AlarmEvent(AlarmEvent.Type type, Alarm alarm) {
-        super(type, alarm);
+        DEVICE_DISCOVERY,
     }
 
 }

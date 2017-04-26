@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,7 @@ package org.onosproject.cli.net;
 
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
-import org.onlab.packet.IpAddress;
 import org.onosproject.cli.AbstractShellCommand;
-import org.onosproject.net.Annotations;
-import org.onosproject.net.DefaultAnnotations;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.behaviour.ControllerConfig;
 import org.onosproject.net.behaviour.ControllerInfo;
@@ -55,7 +52,7 @@ public class DeviceSetControllersCommand extends AbstractShellCommand {
     protected void execute() {
 
         Arrays.asList(controllersListStrings).forEach(
-                cInfoString -> newControllers.add(parseCInfoString(cInfoString)));
+                cInfoString -> newControllers.add(new ControllerInfo(cInfoString)));
         DriverService service = get(DriverService.class);
         deviceId = DeviceId.deviceId(uri);
         DriverHandler h = service.createHandler(deviceId);
@@ -72,31 +69,4 @@ public class DeviceSetControllersCommand extends AbstractShellCommand {
         print("size %d", config.getControllers().size());
     }
 
-
-    private ControllerInfo parseCInfoString(String cInfoString) {
-        Annotations annotation;
-
-        String[] config = cInfoString.split(",");
-        if (config.length == 2) {
-            String[] pair = config[1].split("=");
-
-            if (pair.length == 2) {
-                annotation = DefaultAnnotations.builder()
-                        .set(pair[0], pair[1]).build();
-            } else {
-                print("Wrong format {}", config[1]);
-                return null;
-            }
-
-            String[] data = config[0].split(":");
-            String type = data[0];
-            IpAddress ip = IpAddress.valueOf(data[1]);
-            int port = Integer.parseInt(data[2]);
-
-            return new ControllerInfo(ip, port, type, annotation);
-        } else {
-            print(config[0]);
-            return new ControllerInfo(config[0]);
-        }
-    }
 }

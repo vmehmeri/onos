@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-
 import org.onlab.packet.ChassisId;
 import org.onlab.packet.EthType;
 import org.onlab.packet.Ip4Address;
@@ -32,9 +31,7 @@ import org.onlab.packet.MacAddress;
 import org.onlab.packet.TpPort;
 import org.onlab.packet.VlanId;
 import org.onlab.util.Bandwidth;
-import org.onlab.util.ClosedOpenRange;
 import org.onlab.util.Frequency;
-import org.onlab.util.ImmutableByteSequence;
 import org.onlab.util.KryoNamespace;
 import org.onlab.util.Match;
 import org.onosproject.app.ApplicationState;
@@ -67,14 +64,12 @@ import org.onosproject.net.DefaultPort;
 import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Element;
-import org.onosproject.net.EncapsulationType;
-import org.onosproject.net.FilteredConnectPoint;
 import org.onosproject.net.GridType;
 import org.onosproject.net.HostId;
 import org.onosproject.net.HostLocation;
+import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.Link;
 import org.onosproject.net.LinkKey;
-import org.onosproject.net.MarkerResource;
 import org.onosproject.net.OchPort;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OchSignalType;
@@ -86,9 +81,7 @@ import org.onosproject.net.OtuPort;
 import org.onosproject.net.OtuSignalType;
 import org.onosproject.net.Port;
 import org.onosproject.net.PortNumber;
-import org.onosproject.net.ResourceGroup;
 import org.onosproject.net.TributarySlot;
-import org.onosproject.net.behaviour.protection.ProtectedTransportEndpointDescription;
 import org.onosproject.net.device.DefaultDeviceDescription;
 import org.onosproject.net.device.DefaultPortDescription;
 import org.onosproject.net.device.DefaultPortStatistics;
@@ -105,7 +98,6 @@ import org.onosproject.net.flow.DefaultTrafficSelector;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
 import org.onosproject.net.flow.FlowEntry;
 import org.onosproject.net.flow.FlowId;
-import org.onosproject.net.flow.FlowRule;
 import org.onosproject.net.flow.FlowRuleBatchEntry;
 import org.onosproject.net.flow.FlowRuleBatchEvent;
 import org.onosproject.net.flow.FlowRuleBatchOperation;
@@ -134,6 +126,7 @@ import org.onosproject.net.flow.criteria.IcmpCodeCriterion;
 import org.onosproject.net.flow.criteria.IcmpTypeCriterion;
 import org.onosproject.net.flow.criteria.Icmpv6CodeCriterion;
 import org.onosproject.net.flow.criteria.Icmpv6TypeCriterion;
+import org.onosproject.net.flow.criteria.IndexedLambdaCriterion;
 import org.onosproject.net.flow.criteria.LambdaCriterion;
 import org.onosproject.net.flow.criteria.MetadataCriterion;
 import org.onosproject.net.flow.criteria.MplsBosCriterion;
@@ -156,17 +149,9 @@ import org.onosproject.net.flow.instructions.L1ModificationInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction;
 import org.onosproject.net.flow.instructions.L4ModificationInstruction;
-import org.onosproject.net.flowobjective.DefaultFilteringObjective;
-import org.onosproject.net.flowobjective.DefaultForwardingObjective;
-import org.onosproject.net.flowobjective.DefaultNextObjective;
-import org.onosproject.net.flowobjective.FilteringObjective;
-import org.onosproject.net.flowobjective.ForwardingObjective;
-import org.onosproject.net.flowobjective.NextObjective;
-import org.onosproject.net.flowobjective.Objective;
 import org.onosproject.net.host.DefaultHostDescription;
 import org.onosproject.net.host.HostDescription;
 import org.onosproject.net.intent.ConnectivityIntent;
-import org.onosproject.net.intent.FlowObjectiveIntent;
 import org.onosproject.net.intent.FlowRuleIntent;
 import org.onosproject.net.intent.HostToHostIntent;
 import org.onosproject.net.intent.Intent;
@@ -180,40 +165,42 @@ import org.onosproject.net.intent.MplsPathIntent;
 import org.onosproject.net.intent.MultiPointToSinglePointIntent;
 import org.onosproject.net.intent.OpticalCircuitIntent;
 import org.onosproject.net.intent.OpticalConnectivityIntent;
-import org.onosproject.net.intent.OpticalOduIntent;
 import org.onosproject.net.intent.OpticalPathIntent;
 import org.onosproject.net.intent.PathIntent;
 import org.onosproject.net.intent.PointToPointIntent;
-import org.onosproject.net.intent.ProtectedTransportIntent;
-import org.onosproject.net.intent.ProtectionEndpointIntent;
 import org.onosproject.net.intent.SinglePointToMultiPointIntent;
 import org.onosproject.net.intent.constraint.AnnotationConstraint;
 import org.onosproject.net.intent.constraint.BandwidthConstraint;
 import org.onosproject.net.intent.constraint.BooleanConstraint;
-import org.onosproject.net.intent.constraint.EncapsulationConstraint;
-import org.onosproject.net.intent.constraint.HashedPathSelectionConstraint;
+import org.onosproject.net.intent.constraint.LambdaConstraint;
 import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.LinkTypeConstraint;
 import org.onosproject.net.intent.constraint.ObstacleConstraint;
 import org.onosproject.net.intent.constraint.PartialFailureConstraint;
-import org.onosproject.net.intent.constraint.ProtectionConstraint;
 import org.onosproject.net.intent.constraint.WaypointConstraint;
 import org.onosproject.net.link.DefaultLinkDescription;
 import org.onosproject.net.meter.MeterId;
+import org.onosproject.net.newresource.ContinuousResource;
+import org.onosproject.net.newresource.ContinuousResourceId;
+import org.onosproject.net.newresource.DiscreteResource;
+import org.onosproject.net.newresource.DiscreteResourceId;
+import org.onosproject.net.newresource.ResourceAllocation;
 import org.onosproject.net.packet.DefaultOutboundPacket;
 import org.onosproject.net.packet.DefaultPacketRequest;
 import org.onosproject.net.packet.PacketPriority;
 import org.onosproject.net.provider.ProviderId;
-import org.onosproject.net.region.DefaultRegion;
-import org.onosproject.net.region.Region;
-import org.onosproject.net.region.RegionId;
-import org.onosproject.net.resource.ContinuousResource;
-import org.onosproject.net.resource.ContinuousResourceId;
-import org.onosproject.net.resource.DiscreteResource;
-import org.onosproject.net.resource.DiscreteResourceCodec;
-import org.onosproject.net.resource.DiscreteResourceId;
-import org.onosproject.net.resource.ResourceAllocation;
-import org.onosproject.net.resource.ResourceConsumerId;
+import org.onosproject.net.resource.link.BandwidthResource;
+import org.onosproject.net.resource.link.BandwidthResourceAllocation;
+import org.onosproject.net.resource.link.BandwidthResourceRequest;
+import org.onosproject.net.resource.link.DefaultLinkResourceAllocations;
+import org.onosproject.net.resource.link.DefaultLinkResourceRequest;
+import org.onosproject.net.resource.link.LambdaResource;
+import org.onosproject.net.resource.link.LambdaResourceAllocation;
+import org.onosproject.net.resource.link.LambdaResourceRequest;
+import org.onosproject.net.resource.link.LinkResourceRequest;
+import org.onosproject.net.resource.link.MplsLabel;
+import org.onosproject.net.resource.link.MplsLabelResourceAllocation;
+import org.onosproject.net.resource.link.MplsLabelResourceRequest;
 import org.onosproject.security.Permission;
 import org.onosproject.store.Timestamp;
 import org.onosproject.store.primitives.MapUpdate;
@@ -221,10 +208,7 @@ import org.onosproject.store.primitives.TransactionId;
 import org.onosproject.store.service.MapEvent;
 import org.onosproject.store.service.MapTransaction;
 import org.onosproject.store.service.SetEvent;
-import org.onosproject.store.service.Task;
 import org.onosproject.store.service.Versioned;
-import org.onosproject.store.service.WorkQueueStats;
-import org.onosproject.ui.model.topo.UiTopoLayoutId;
 
 import java.net.URI;
 import java.time.Duration;
@@ -244,7 +228,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public final class KryoNamespaces {
 
-    public static final int BASIC_MAX_SIZE = 50;
     public static final KryoNamespace BASIC = KryoNamespace.newBuilder()
             .nextId(KryoNamespace.FLOATING_ID)
             .register(byte[].class)
@@ -282,20 +265,11 @@ public final class KryoNamespaces {
             .register(Optional.class)
             .register(Collections.emptyList().getClass())
             .register(Collections.singleton(Object.class).getClass())
-            .register(int[].class)
-            .register(long[].class)
-            .register(short[].class)
-            .register(double[].class)
-            .register(float[].class)
-            .register(char[].class)
-            .register(String[].class)
-            .register(boolean[].class)
-            .build("BASIC");
+            .build();
 
     /**
      * KryoNamespace which can serialize ON.lab misc classes.
      */
-    public static final int MISC_MAX_SIZE = 30;
     public static final KryoNamespace MISC = KryoNamespace.newBuilder()
             .nextId(KryoNamespace.FLOATING_ID)
             .register(new IpPrefixSerializer(), IpPrefix.class)
@@ -311,18 +285,23 @@ public final class KryoNamespaces {
             .register(Bandwidth.class)
             .register(Bandwidth.bps(1L).getClass())
             .register(Bandwidth.bps(1.0).getClass())
-            .build("MISC");
+            .build();
 
+    /**
+     * Kryo registration Id for user custom registration.
+     */
+    public static final int BEGIN_USER_CUSTOM_ID = 300;
+
+    // TODO: Populate other classes
     /**
      * KryoNamespace which can serialize API bundle classes.
      */
-    public static final int API_MAX_SIZE = 499;
     public static final KryoNamespace API = KryoNamespace.newBuilder()
             .nextId(KryoNamespace.INITIAL_ID)
             .register(BASIC)
-            .nextId(KryoNamespace.INITIAL_ID + BASIC_MAX_SIZE)
+            .nextId(KryoNamespace.INITIAL_ID + 30)
             .register(MISC)
-            .nextId(KryoNamespace.INITIAL_ID + BASIC_MAX_SIZE + MISC_MAX_SIZE)
+            .nextId(KryoNamespace.INITIAL_ID + 30 + 20)
             .register(
                     Instructions.MeterInstruction.class,
                     MeterId.class,
@@ -351,19 +330,16 @@ public final class KryoNamespaces {
                     Leadership.class,
                     LeadershipEvent.class,
                     LeadershipEvent.Type.class,
-                    Task.class,
-                    WorkQueueStats.class,
                     HostId.class,
                     HostDescription.class,
                     DefaultHostDescription.class,
                     DefaultFlowEntry.class,
                     StoredFlowEntry.class,
                     DefaultFlowRule.class,
-                    FlowRule.FlowRemoveReason.class,
+                    DefaultFlowEntry.class,
                     DefaultPacketRequest.class,
                     PacketPriority.class,
                     FlowEntry.FlowEntryState.class,
-                    FlowEntry.FlowLiveType.class,
                     FlowId.class,
                     DefaultTrafficSelector.class,
                     PortCriterion.class,
@@ -393,6 +369,7 @@ public final class KryoNamespaces {
                     TunnelIdCriterion.class,
                     IPv6ExthdrFlagsCriterion.class,
                     LambdaCriterion.class,
+                    IndexedLambdaCriterion.class,
                     OchSignalCriterion.class,
                     OchSignalTypeCriterion.class,
                     OduSignalIdCriterion.class,
@@ -406,10 +383,10 @@ public final class KryoNamespaces {
                     Instructions.NoActionInstruction.class,
                     Instructions.OutputInstruction.class,
                     Instructions.GroupInstruction.class,
-                    Instructions.SetQueueInstruction.class,
                     Instructions.TableTypeTransition.class,
                     L0ModificationInstruction.class,
                     L0ModificationInstruction.L0SubType.class,
+                    L0ModificationInstruction.ModLambdaInstruction.class,
                     L0ModificationInstruction.ModOchSignalInstruction.class,
                     L1ModificationInstruction.class,
                     L1ModificationInstruction.L1SubType.class,
@@ -417,10 +394,10 @@ public final class KryoNamespaces {
                     L2ModificationInstruction.class,
                     L2ModificationInstruction.L2SubType.class,
                     L2ModificationInstruction.ModEtherInstruction.class,
-                    L2ModificationInstruction.ModMplsHeaderInstruction.class,
+                    L2ModificationInstruction.PushHeaderInstructions.class,
                     L2ModificationInstruction.ModVlanIdInstruction.class,
                     L2ModificationInstruction.ModVlanPcpInstruction.class,
-                    L2ModificationInstruction.ModVlanHeaderInstruction.class,
+                    L2ModificationInstruction.PopVlanInstruction.class,
                     L2ModificationInstruction.ModMplsLabelInstruction.class,
                     L2ModificationInstruction.ModMplsBosInstruction.class,
                     L2ModificationInstruction.ModMplsTtlInstruction.class,
@@ -462,16 +439,22 @@ public final class KryoNamespaces {
                     OpticalConnectivityIntent.class,
                     OpticalPathIntent.class,
                     OpticalCircuitIntent.class,
-                    OpticalOduIntent.class,
-                    FlowObjectiveIntent.class,
+                    LinkResourceRequest.class,
+                    DefaultLinkResourceRequest.class,
+                    BandwidthResourceRequest.class,
+                    LambdaResourceRequest.class,
+                    LambdaResource.class,
+                    BandwidthResource.class,
+                    DefaultLinkResourceAllocations.class,
+                    BandwidthResourceAllocation.class,
+                    LambdaResourceAllocation.class,
                     DiscreteResource.class,
                     ContinuousResource.class,
                     DiscreteResourceId.class,
                     ContinuousResourceId.class,
                     ResourceAllocation.class,
-                    ResourceConsumerId.class,
-                    ResourceGroup.class,
                     // Constraints
+                    LambdaConstraint.class,
                     BandwidthConstraint.class,
                     LinkTypeConstraint.class,
                     LatencyConstraint.class,
@@ -482,23 +465,13 @@ public final class KryoNamespaces {
                     PartialFailureConstraint.class,
                     IntentOperation.class,
                     FlowRuleExtPayLoad.class,
+                    Frequency.class,
                     DefaultAnnotations.class,
                     PortStatistics.class,
                     DefaultPortStatistics.class,
                     IntentDomainId.class,
                     TableStatisticsEntry.class,
-                    DefaultTableStatisticsEntry.class,
-                    EncapsulationConstraint.class,
-                    EncapsulationType.class,
-                    HashedPathSelectionConstraint.class,
-                    // Flow Objectives
-                    DefaultForwardingObjective.class,
-                    ForwardingObjective.Flag.class,
-                    DefaultFilteringObjective.class,
-                    FilteringObjective.Type.class,
-                    DefaultNextObjective.class,
-                    NextObjective.Type.class,
-                    Objective.Operation.class
+                    DefaultTableStatisticsEntry.class
             )
             .register(new DefaultApplicationIdSerializer(), DefaultApplicationId.class)
             .register(new UriSerializer(), URI.class)
@@ -509,7 +482,6 @@ public final class KryoNamespaces {
             .register(new DefaultPortSerializer(), DefaultPort.class)
             .register(new LinkKeySerializer(), LinkKey.class)
             .register(new ConnectPointSerializer(), ConnectPoint.class)
-            .register(new FilteredConnectPointSerializer(), FilteredConnectPoint.class)
             .register(new DefaultLinkSerializer(), DefaultLink.class)
             .register(new MastershipTermSerializer(), MastershipTerm.class)
             .register(new HostLocationSerializer(), HostLocation.class)
@@ -517,11 +489,6 @@ public final class KryoNamespaces {
             .register(new AnnotationsSerializer(), DefaultAnnotations.class)
             .register(new ExtensionInstructionSerializer(), Instructions.ExtensionInstructionWrapper.class)
             .register(new ExtensionCriterionSerializer(), ExtensionCriterion.class)
-            .register(Region.class)
-            .register(Region.Type.class)
-            .register(RegionId.class)
-            .register(DefaultRegion.class)
-            .register(UiTopoLayoutId.class)
             .register(ExtensionSelectorType.class)
             .register(ExtensionTreatmentType.class)
             .register(TransactionId.class)
@@ -543,6 +510,7 @@ public final class KryoNamespaces {
             .register(ChannelSpacing.class)
             .register(OduCltPort.class)
             .register(CltSignalType.class)
+            .register(IndexedLambda.class)
             .register(OchSignal.class)
             .register(OduSignalId.class)
             .register(OduCltPortDescription.class)
@@ -555,24 +523,15 @@ public final class KryoNamespaces {
             .register(
                     MplsIntent.class,
                     MplsPathIntent.class,
+                    MplsLabelResourceAllocation.class,
+                    MplsLabelResourceRequest.class,
+                    MplsLabel.class,
                     org.onlab.packet.MplsLabel.class,
                     org.onlab.packet.MPLS.class
             )
-            .register(ClosedOpenRange.class)
-            .register(DiscreteResourceCodec.class)
-            .register(new ImmutableByteSequenceSerializer(), ImmutableByteSequence.class)
-            .register(PathIntent.ProtectionType.class)
-            .register(ProtectionConstraint.class)
-            .register(ProtectedTransportEndpointDescription.class)
-            .register(ProtectionEndpointIntent.class)
-            .register(ProtectedTransportIntent.class)
-            .register(MarkerResource.class)
-            .build("API");
 
-    /**
-     * Kryo registration Id for user custom registration.
-     */
-    public static final int BEGIN_USER_CUSTOM_ID = API_MAX_SIZE + 1;
+            .build();
+
 
     // not to be instantiated
     private KryoNamespaces() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ package org.onosproject.net.region;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import org.onosproject.cluster.NodeId;
-import org.onosproject.net.AbstractAnnotated;
-import org.onosproject.net.Annotations;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,7 +27,7 @@ import java.util.Set;
 /**
  * Default implementation of a region.
  */
-public final class DefaultRegion extends AbstractAnnotated implements Region {
+public final class DefaultRegion implements Region {
 
     private final RegionId id;
     private final String name;
@@ -42,12 +40,9 @@ public final class DefaultRegion extends AbstractAnnotated implements Region {
      * @param id      region identifier
      * @param name    friendly name
      * @param type    region type
-     * @param annots  annotations
      * @param masters list of sets of cluster node identifiers; in order of mastership
      */
-    public DefaultRegion(RegionId id, String name, Type type,
-                         Annotations annots, List<Set<NodeId>> masters) {
-        super(annots);
+    public DefaultRegion(RegionId id, String name, Type type, List<Set<NodeId>> masters) {
         this.id = id;
         this.name = name;
         this.type = type;

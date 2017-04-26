@@ -1,21 +1,6 @@
 <!-- Masthead partial HTML -->
-<img class="nav-menu-button clickable" src="data/img/nav-menu-mojo.png"
+<img class="nav-menu-button" src="data/img/nav-menu.png"
      ng-click="mastCtrl.toggleNav()"></div>
-<img class="logo" src="data/img/masthead-logo-mojo.png">
-<div id="mast-right">
-    <nav>
-        <div class="dropdown-parent">
-            <a class="clickable user-menu__name">{{user}} <i class="dropdown-icon"></i></a>
-            <div class="dropdown">
-                <a href="rs/logout">logout</a>
-            </div>
-        </div>
-        <div class="ctrl-btns">
-            <div class="active clickable"
-                 icon icon-size="42" icon-id="query"
-                 tooltip tt-msg="helpTip"
-                 ng-click="directTo()"></div>
-        </div>
-    </nav>
-
-</div>
+<img class="logo" src="data/img/onos-logo.png">
+<span class="title">SPN-OS Network Operating System</span>
+<div id="mast-right"><a href="rs/logout">logout</a></div>

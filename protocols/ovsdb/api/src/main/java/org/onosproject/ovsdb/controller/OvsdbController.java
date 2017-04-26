@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import org.onlab.packet.IpAddress;
 import org.onlab.packet.TpPort;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Abstraction of an ovsdb controller. Serves as an one stop shop for obtaining
@@ -77,13 +76,4 @@ public interface OvsdbController {
      * @param port port number
      */
     void connect(IpAddress ip, TpPort port);
-
-    /**
-     * Connect to the ovsdb server with given ip address, port number, and connection failure handler.
-     *
-     * @param ip ip address
-     * @param port port number
-     * @param failhandler connection failure handler
-     */
-    void connect(IpAddress ip, TpPort port, Consumer<Exception> failhandler);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,9 +74,8 @@ public class LsaQueueConsumerTest {
     @Test
     public void testRun() throws Exception {
         blockingQueue = new ArrayBlockingQueue(5);
-        ospfArea = new OspfAreaImpl();
-        lsdbAge = new LsdbAgeImpl(ospfArea);
         channel = EasyMock.createMock(Channel.class);
+        ospfArea = new OspfAreaImpl();
         lsaWrapper = new LsaWrapperImpl();
         lsaWrapper.setLsaProcessing("verifyChecksum");
         blockingQueue.add(lsaWrapper);
@@ -105,7 +104,7 @@ public class LsaQueueConsumerTest {
         lsaHeader.setLsType(1);
         lsaWrapper.setLsaHeader(lsaHeader);
         lsaWrapper.setLsaProcessing("refreshLsa");
-        lsaWrapper.setLsdbAge(new LsdbAgeImpl(ospfArea));
+        lsaWrapper.setLsdbAge(new LsdbAgeImpl(new OspfAreaImpl()));
         blockingQueue.add(lsaWrapper);
         lsaQueueConsumer = new LsaQueueConsumer(blockingQueue, channel, ospfArea);
         lsaQueueConsumer.run();
@@ -129,7 +128,7 @@ public class LsaQueueConsumerTest {
         lsaHeader.setLsType(2);
         lsaWrapper.setLsaHeader(lsaHeader);
         lsaWrapper.setLsaProcessing("refreshLsa");
-        lsaWrapper.setLsdbAge(new LsdbAgeImpl(ospfArea));
+        lsaWrapper.setLsdbAge(new LsdbAgeImpl(new OspfAreaImpl()));
         blockingQueue.add(lsaWrapper);
         lsaQueueConsumer = new LsaQueueConsumer(blockingQueue, channel, ospfArea);
         lsaQueueConsumer.run();
@@ -156,7 +155,7 @@ public class LsaQueueConsumerTest {
         lsaHeader.setLsType(2);
         lsaWrapper.setLsaHeader(lsaHeader);
         lsaWrapper.setLsaProcessing("maxAgeLsa");
-        lsaWrapper.setLsdbAge(new LsdbAgeImpl(ospfArea));
+        lsaWrapper.setLsdbAge(new LsdbAgeImpl(new OspfAreaImpl()));
         blockingQueue.add(lsaWrapper);
         lsaQueueConsumer = new LsaQueueConsumer(blockingQueue, channel, ospfArea);
         lsaQueueConsumer.run();
@@ -169,7 +168,7 @@ public class LsaQueueConsumerTest {
     @Test
     public void testSetChannel() throws Exception {
         channel = EasyMock.createMock(Channel.class);
-        lsdbAge = new LsdbAgeImpl(ospfArea);
+        lsdbAge = new LsdbAgeImpl(new OspfAreaImpl());
         lsdbAge.startDbAging();
         lsdbAge.setChannel(channel);
         assertThat(lsaQueueConsumer, is(notNullValue()));

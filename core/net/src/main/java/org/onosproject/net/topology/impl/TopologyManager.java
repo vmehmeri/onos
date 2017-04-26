@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import org.onosproject.net.Path;
 import org.onosproject.net.provider.AbstractProviderService;
 import org.onosproject.net.topology.ClusterId;
 import org.onosproject.net.topology.GraphDescription;
-import org.onosproject.net.topology.LinkWeigher;
 import org.onosproject.net.topology.LinkWeight;
 import org.onosproject.net.topology.Topology;
 import org.onosproject.net.topology.TopologyCluster;
@@ -51,7 +50,6 @@ import java.util.Set;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.onosproject.net.topology.AdapterLinkWeigher.adapt;
 import static org.onosproject.security.AppGuard.checkPermission;
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.onosproject.security.AppPermission.Type.*;
@@ -67,12 +65,12 @@ public class TopologyManager
         TopologyProvider, TopologyProviderService>
         implements TopologyService, TopologyProviderRegistry {
 
-    private static final String TOPOLOGY_NULL = "Topology cannot be null";
+    public static final String TOPOLOGY_NULL = "Topology cannot be null";
     private static final String DEVICE_ID_NULL = "Device ID cannot be null";
     private static final String CLUSTER_ID_NULL = "Cluster ID cannot be null";
     private static final String CLUSTER_NULL = "Topology cluster cannot be null";
-    private static final String CONNECTION_POINT_NULL = "Connection point cannot be null";
-    private static final String LINK_WEIGHT_NULL = "Link weight cannot be null";
+    public static final String CONNECTION_POINT_NULL = "Connection point cannot be null";
+    public static final String LINK_WEIGHT_NULL = "Link weight cannot be null";
 
     private final Logger log = getLogger(getClass());
 
@@ -156,26 +154,18 @@ public class TopologyManager
     }
 
     @Override
-    public Set<Path> getPaths(Topology topology, DeviceId src,
-                              DeviceId dst, LinkWeight weight) {
-        return getPaths(topology, src, dst, adapt(weight));
-    }
-
-    @Override
-    public Set<Path> getPaths(Topology topology, DeviceId src,
-                              DeviceId dst, LinkWeigher weigher) {
+    public Set<Path> getPaths(Topology topology, DeviceId src, DeviceId dst, LinkWeight weight) {
         checkPermission(TOPOLOGY_READ);
 
         checkNotNull(topology, TOPOLOGY_NULL);
         checkNotNull(src, DEVICE_ID_NULL);
         checkNotNull(dst, DEVICE_ID_NULL);
-        checkNotNull(weigher, "Link weight cannot be null");
-        return store.getPaths(topology, src, dst, weigher);
+        checkNotNull(weight, "Link weight cannot be null");
+        return store.getPaths(topology, src, dst, weight);
     }
 
     @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst) {
+    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src, DeviceId dst) {
         checkPermission(TOPOLOGY_READ);
         checkNotNull(topology, TOPOLOGY_NULL);
         checkNotNull(src, DEVICE_ID_NULL);
@@ -185,26 +175,17 @@ public class TopologyManager
 
     @Override
     public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
-                                              LinkWeight weight) {
-        return getDisjointPaths(topology, src, dst, adapt(weight));
-    }
-
-    @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
-                                              LinkWeigher weigher) {
+                                              DeviceId dst, LinkWeight weight) {
         checkPermission(TOPOLOGY_READ);
         checkNotNull(topology, TOPOLOGY_NULL);
         checkNotNull(src, DEVICE_ID_NULL);
         checkNotNull(dst, DEVICE_ID_NULL);
-        checkNotNull(weigher, LINK_WEIGHT_NULL);
-        return store.getDisjointPaths(topology, src, dst, weigher);
+        checkNotNull(weight, LINK_WEIGHT_NULL);
+        return store.getDisjointPaths(topology, src, dst, weight);
     }
 
     @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
+    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src, DeviceId dst,
                                               Map<Link, Object> riskProfile) {
         checkPermission(TOPOLOGY_READ);
         checkNotNull(topology, TOPOLOGY_NULL);
@@ -217,20 +198,12 @@ public class TopologyManager
     public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
                                               DeviceId dst, LinkWeight weight,
                                               Map<Link, Object> riskProfile) {
-        return getDisjointPaths(topology, src, dst, adapt(weight), riskProfile);
-    }
-
-    @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
-                                              LinkWeigher weigher,
-                                              Map<Link, Object> riskProfile) {
         checkPermission(TOPOLOGY_READ);
         checkNotNull(topology, TOPOLOGY_NULL);
         checkNotNull(src, DEVICE_ID_NULL);
         checkNotNull(dst, DEVICE_ID_NULL);
-        checkNotNull(weigher, LINK_WEIGHT_NULL);
-        return store.getDisjointPaths(topology, src, dst, weigher, riskProfile);
+        checkNotNull(weight, LINK_WEIGHT_NULL);
+        return store.getDisjointPaths(topology, src, dst, weight, riskProfile);
     }
 
     @Override

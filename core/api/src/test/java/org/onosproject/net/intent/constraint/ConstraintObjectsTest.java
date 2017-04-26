@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.onosproject.net.intent.constraint;
 
 import org.junit.Test;
 import org.onlab.util.Bandwidth;
+import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.Link;
 
 import com.google.common.testing.EqualsTester;
@@ -60,6 +61,36 @@ public class ConstraintObjectsTest {
                 .addEqualityGroup(bandwidthConstraint1, bandwidthConstraintSameAs1)
                 .addEqualityGroup(bandwidthConstraint2)
                 .testEquals();
+    }
+
+    // Lambda Constraint
+
+    final LambdaConstraint lambdaConstraint1 =
+            new LambdaConstraint(new IndexedLambda(100));
+    final LambdaConstraint lambdaConstraintSameAs1 =
+            new LambdaConstraint(new IndexedLambda(100));
+    final LambdaConstraint lambdaConstraint2 =
+            new LambdaConstraint(new IndexedLambda(200));
+
+    /**
+     * Checks that the objects were created properly.
+     */
+    @Test
+    public void testLambdaConstraintCreation() {
+        assertThat(lambdaConstraint1.lambda().index(), is(equalTo(100L)));
+        assertThat(lambdaConstraintSameAs1.lambda().index(), is(equalTo(100L)));
+        assertThat(lambdaConstraint2.lambda().index(), is(equalTo(200L)));
+    }
+
+    /**
+     * Checks the correctness of the equals() method.
+     */
+    @Test
+    public void testLambdaConstraintEquals() {
+        new EqualsTester()
+            .addEqualityGroup(lambdaConstraint1, lambdaConstraintSameAs1)
+            .addEqualityGroup(lambdaConstraint2)
+            .testEquals();
     }
 
     // LinkType Constraint

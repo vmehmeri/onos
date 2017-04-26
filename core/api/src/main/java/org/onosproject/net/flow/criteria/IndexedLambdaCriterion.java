@@ -26,6 +26,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @deprecated in Emu (ONOS 1.4).
  */
+@Deprecated
 public class IndexedLambdaCriterion implements Criterion {
 
     private final IndexedLambda lambda;

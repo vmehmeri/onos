@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package org.onosproject.ui;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.onosproject.ui.model.topo.UiTopoLayout;
 
 /**
  * Abstraction of a user interface session connection.
@@ -24,44 +23,7 @@ import org.onosproject.ui.model.topo.UiTopoLayout;
 public interface UiConnection {
 
     /**
-     * Returns the name of the logged-in user for which this connection exists.
-     *
-     * @return logged in user name
-     */
-    String userName();
-
-    /**
-     * Returns the current layout context.
-     *
-     * @return current topology layout
-     */
-    UiTopoLayout currentLayout();
-
-    /**
-     * Changes the current layout context to the specified layout.
-     *
-     * @param topoLayout new topology layout context
-     */
-    void setCurrentLayout(UiTopoLayout topoLayout);
-
-    /**
-     * Returns the current view identifier.
-     *
-     * @return current view
-     */
-    String currentView();
-
-    /**
-     * Sets the currently selected view.
-     *
-     * @param viewId view identifier
-     */
-    void setCurrentView(String viewId);
-
-    /**
      * Sends the specified JSON message to the user interface client.
-     * It is assumed that the message is already correctly formatted and
-     * ready to send.
      *
      * @param message message to send
      */
@@ -70,9 +32,11 @@ public interface UiConnection {
     /**
      * Composes a message into JSON and sends it to the user interface client.
      *
-     * @param type    message (event) type
+     * @param type    message type
+     * @param sid     message sequence number
      * @param payload message payload
      */
-    void sendMessage(String type, ObjectNode payload);
+    // TODO: remove sid parameter
+    void sendMessage(String type, long sid, ObjectNode payload);
 
 }

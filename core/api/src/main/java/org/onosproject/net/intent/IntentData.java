@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ public class IntentData { //FIXME need to make this "immutable"
 
     private final IntentState request; //TODO perhaps we want a full fledged object for requests
     private IntentState state;
-    private final Timestamp version;
+    private Timestamp version;
     private NodeId origin;
     private int errorCount;
 
@@ -89,29 +89,6 @@ public class IntentData { //FIXME need to make this "immutable"
     }
 
     /**
-     * Creates a new intent data object.
-     *
-     * @param intent intent this metadata references
-     * @param state intent state
-     * @param request intent request
-     * @param version version of the intent for this key
-     * @param origin ID of the node where the data was originally created
-     */
-    public IntentData(Intent intent, IntentState state, IntentState request, Timestamp version, NodeId origin) {
-        checkNotNull(intent);
-        checkNotNull(state);
-        checkNotNull(request);
-        checkNotNull(version);
-        checkNotNull(origin);
-
-        this.intent = intent;
-        this.state = state;
-        this.request = request;
-        this.version = version;
-        this.origin = origin;
-    }
-
-    /**
      * Copy constructor.
      *
      * @param intentData intent data to copy
@@ -137,15 +114,13 @@ public class IntentData { //FIXME need to make this "immutable"
     public IntentData(IntentData original, List<Intent> installables) {
         this(original);
 
-        this.installables = checkNotNull(installables).isEmpty() ?
-                Collections.emptyList() : ImmutableList.copyOf(installables);
+        this.installables = ImmutableList.copyOf(checkNotNull(installables));
     }
 
     // kryo constructor
     protected IntentData() {
         intent = null;
         request = null;
-        version = null;
     }
 
     /**

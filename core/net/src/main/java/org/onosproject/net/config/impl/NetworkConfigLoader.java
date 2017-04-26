@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,14 +73,13 @@ public class NetworkConfigLoader {
 
                 populateConfigurations();
 
-                if (applyConfigurations()) {
-                    log.info("Loaded initial network configuration from {}", CFG_FILE);
-                } else {
-                    log.error("Partially loaded initial network configuration from {}", CFG_FILE);
-                }
+                applyConfigurations();
+
+                log.info("Loaded initial network configuration from {}", CFG_FILE);
             }
         } catch (Exception e) {
-            log.warn("Unable to load initial network configuration from {}", CFG_FILE, e);
+            log.warn("Unable to load initial network configuration from {}",
+                    CFG_FILE, e);
         }
     }
 
@@ -186,10 +185,8 @@ public class NetworkConfigLoader {
     /**
      * Apply the configurations associated with all of the config classes that
      * are imported and have not yet been applied.
-     *
-     * @return false if any of the configuration parsing fails
      */
-    private boolean applyConfigurations() {
+    private void applyConfigurations() {
         Iterator<Map.Entry<InnerConfigPosition, JsonNode>> iter = jsons.entrySet().iterator();
 
         Map.Entry<InnerConfigPosition, JsonNode> entry;
@@ -198,7 +195,7 @@ public class NetworkConfigLoader {
         String subjectKey;
         String subjectString;
         String configKey;
-        boolean isSuccess = true;
+
         while (iter.hasNext()) {
             entry = iter.next();
             node = entry.getValue();
@@ -215,19 +212,13 @@ public class NetworkConfigLoader {
                 Object subject = networkConfigService.getSubjectFactory(subjectKey).
                         createSubject(subjectString);
 
-                try {
-                    //Apply the configuration
-                    networkConfigService.applyConfig(subject, configClass, node);
-                } catch (IllegalArgumentException e) {
-                    log.warn("Error parsing config " + subjectKey + "/" + subject + "/" + configKey);
-                    isSuccess = false;
-                }
+                //Apply the configuration
+                networkConfigService.applyConfig(subject, configClass, node);
 
                 //Now that it has been applied the corresponding JSON entry is no longer needed
                 iter.remove();
             }
         }
-        return isSuccess;
-   }
+    }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,14 +30,12 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Manage flow objectives.
@@ -45,20 +43,16 @@ import java.io.InputStream;
 @Path("flowobjectives")
 public class FlowObjectiveWebResource extends AbstractWebResource {
 
-    @Context
-    private UriInfo uriInfo;
-
-    private static final String DEVICE_INVALID =
+    public static final String DEVICE_INVALID =
             "Invalid deviceId in objective creation request";
-    private static final String POLICY_INVALID = "Invalid policy";
+    public static final String POLICY_INVALID = "Invalid policy";
 
-    private final FlowObjectiveService flowObjectiveService = get(FlowObjectiveService.class);
-    private final ObjectNode root = mapper().createObjectNode();
+    final FlowObjectiveService flowObjectiveService = get(FlowObjectiveService.class);
+    final ObjectNode root = mapper().createObjectNode();
 
     /**
      * Creates and installs a new filtering objective for the specified device.
      *
-     * @param appId    application identifier
      * @param deviceId device identifier
      * @param stream   filtering objective JSON
      * @return status of the request - CREATED if the JSON is correct,
@@ -69,40 +63,30 @@ public class FlowObjectiveWebResource extends AbstractWebResource {
     @Path("{deviceId}/filter")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response createFilteringObjective(@QueryParam("appId") String appId,
-                                             @PathParam("deviceId") String deviceId,
+    public Response createFilteringObjective(@PathParam("deviceId") String deviceId,
                                              InputStream stream) {
+        URI location = null;
         try {
-            UriBuilder locationBuilder = null;
             ObjectNode jsonTree = (ObjectNode) mapper().readTree(stream);
             if (validateDeviceId(deviceId, jsonTree)) {
-
-                if (appId != null) {
-                    jsonTree.put("appId", appId);
-                }
-
                 DeviceId did = DeviceId.deviceId(deviceId);
                 FilteringObjective filteringObjective =
                         codec(FilteringObjective.class).decode(jsonTree, this);
                 flowObjectiveService.filter(did, filteringObjective);
-                locationBuilder = uriInfo.getBaseUriBuilder()
-                        .path("flowobjectives")
-                        .path(did.toString())
-                        .path("filter")
-                        .path(Integer.toString(filteringObjective.id()));
+                location = new URI(Integer.toString(filteringObjective.id()));
             }
-            return Response
-                    .created(locationBuilder.build())
-                    .build();
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }
+
+        return Response
+                .created(location)
+                .build();
     }
 
     /**
      * Creates and installs a new forwarding objective for the specified device.
      *
-     * @param appId    application identifier
      * @param deviceId device identifier
      * @param stream   forwarding objective JSON
      * @return status of the request - CREATED if the JSON is correct,
@@ -113,40 +97,30 @@ public class FlowObjectiveWebResource extends AbstractWebResource {
     @Path("{deviceId}/forward")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response createForwardingObjective(@QueryParam("appId") String appId,
-                                              @PathParam("deviceId") String deviceId,
+    public Response createForwardingObjective(@PathParam("deviceId") String deviceId,
                                               InputStream stream) {
+        URI location = null;
         try {
-            UriBuilder locationBuilder = null;
             ObjectNode jsonTree = (ObjectNode) mapper().readTree(stream);
             if (validateDeviceId(deviceId, jsonTree)) {
-
-                if (appId != null) {
-                    jsonTree.put("appId", appId);
-                }
-
                 DeviceId did = DeviceId.deviceId(deviceId);
                 ForwardingObjective forwardingObjective =
                         codec(ForwardingObjective.class).decode(jsonTree, this);
                 flowObjectiveService.forward(did, forwardingObjective);
-                locationBuilder = uriInfo.getBaseUriBuilder()
-                        .path("flowobjectives")
-                        .path(did.toString())
-                        .path("forward")
-                        .path(Integer.toString(forwardingObjective.id()));
+                location = new URI(Integer.toString(forwardingObjective.id()));
             }
-            return Response
-                    .created(locationBuilder.build())
-                    .build();
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }
+
+        return Response
+                .created(location)
+                .build();
     }
 
     /**
      * Creates and installs a new next objective for the specified device.
      *
-     * @param appId    application identifier
      * @param deviceId device identifier
      * @param stream   next objective JSON
      * @return status of the request - CREATED if the JSON is correct,
@@ -157,40 +131,31 @@ public class FlowObjectiveWebResource extends AbstractWebResource {
     @Path("{deviceId}/next")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response createNextObjective(@QueryParam("appId") String appId,
-                                        @PathParam("deviceId") String deviceId,
+    public Response createNextObjective(@PathParam("deviceId") String deviceId,
                                         InputStream stream) {
+        URI location = null;
         try {
-            UriBuilder locationBuilder = null;
             ObjectNode jsonTree = (ObjectNode) mapper().readTree(stream);
             if (validateDeviceId(deviceId, jsonTree)) {
-
-                if (appId != null) {
-                    jsonTree.put("appId", appId);
-                }
-
                 DeviceId did = DeviceId.deviceId(deviceId);
                 NextObjective nextObjective =
                         codec(NextObjective.class).decode(jsonTree, this);
                 flowObjectiveService.next(did, nextObjective);
-                locationBuilder = uriInfo.getBaseUriBuilder()
-                        .path("flowobjectives")
-                        .path(did.toString())
-                        .path("next")
-                        .path(Integer.toString(nextObjective.id()));
+                location = new URI(Integer.toString(nextObjective.id()));
             }
-            return Response
-                    .created(locationBuilder.build())
-                    .build();
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }
+
+        return Response
+                .created(location)
+                .build();
     }
 
     /**
      * Returns the globally unique nextId.
      *
-     * @return 200 OK with next identifier
+     * @return nextId
      * @onos.rsModel NextId
      */
     @GET
@@ -205,13 +170,13 @@ public class FlowObjectiveWebResource extends AbstractWebResource {
      * Installs the filtering rules onto the specified device.
      *
      * @param stream filtering rule JSON
-     * @return 200 OK
      * @onos.rsModel ObjectivePolicy
      */
     @POST
     @Path("policy")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response initPolicy(InputStream stream) {
+    @Produces(MediaType.APPLICATION_JSON)
+    public void initPolicy(InputStream stream) {
 
         try {
             ObjectNode jsonTree = (ObjectNode) mapper().readTree(stream);
@@ -222,14 +187,13 @@ public class FlowObjectiveWebResource extends AbstractWebResource {
             }
 
             flowObjectiveService.initPolicy(policyJson.asText());
-            return Response.ok().build();
         } catch (IOException e) {
             throw new IllegalArgumentException(e);
         }
     }
 
     /**
-     * Validates the deviceId that is contained in json string against the
+     * Validate the deviceId that is contained in json string against the
      * input deviceId.
      *
      * @param deviceId device identifier

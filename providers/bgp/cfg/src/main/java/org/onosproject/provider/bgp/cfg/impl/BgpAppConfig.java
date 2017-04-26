@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,6 @@ import org.onosproject.bgp.controller.BgpCfg;
 import org.onosproject.bgp.controller.BgpController;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.net.config.Config;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +41,6 @@ public class BgpAppConfig extends Config<ApplicationId> {
 
     BgpCfg bgpConfig = null;
 
-    protected final Logger log = LoggerFactory.getLogger(BgpAppConfig.class);
     public static final String ROUTER_ID = "routerId";
     public static final String LOCAL_AS = "localAs";
     public static final String MAX_SESSION = "maxSession";
@@ -51,7 +48,6 @@ public class BgpAppConfig extends Config<ApplicationId> {
     public static final String HOLD_TIME = "holdTime";
     public static final String LARGE_AS_CAPABILITY = "largeAsCapability";
     public static final String FLOW_SPEC_CAPABILITY = "flowSpecCapability";
-    public static final String FLOW_SPEC_RPD_CAPABILITY = "flowSpecRpdCapability";
 
     public static final String BGP_PEER = "bgpPeer";
     public static final String PEER_IP = "peerIp";
@@ -64,12 +60,6 @@ public class BgpAppConfig extends Config<ApplicationId> {
     static final int MAX_SHORT_AS_NUMBER = 65535;
     static final long MAX_LONG_AS_NUMBER = 4294967295L;
 
-    static final int MIN_SESSION_NUMBER = 1;
-    static final long MAX_SESSION_NUMBER = 21;
-
-    static final int MIN_HOLDTIME = 0;
-    static final long MAX_HOLDTIME = 65535;
-
     @Override
     public boolean isValid() {
         boolean fields = false;
@@ -78,12 +68,11 @@ public class BgpAppConfig extends Config<ApplicationId> {
         bgpConfig = bgpController.getConfig();
 
         fields = hasOnlyFields(ROUTER_ID, LOCAL_AS, MAX_SESSION, LS_CAPABILITY,
-                HOLD_TIME, LARGE_AS_CAPABILITY, FLOW_SPEC_CAPABILITY, FLOW_SPEC_RPD_CAPABILITY, BGP_PEER) &&
+                HOLD_TIME, LARGE_AS_CAPABILITY, FLOW_SPEC_CAPABILITY, BGP_PEER) &&
                 isIpAddress(ROUTER_ID, MANDATORY) && isNumber(LOCAL_AS, MANDATORY) &&
-                isNumber(MAX_SESSION, OPTIONAL, MIN_SESSION_NUMBER, MAX_SESSION_NUMBER)
-                && isNumber(HOLD_TIME, OPTIONAL, MIN_HOLDTIME, MAX_HOLDTIME) &&
+                isNumber(MAX_SESSION, OPTIONAL, 20) && isNumber(HOLD_TIME, OPTIONAL, 180) &&
                 isBoolean(LS_CAPABILITY, OPTIONAL) && isBoolean(LARGE_AS_CAPABILITY, OPTIONAL) &&
-                isString(FLOW_SPEC_CAPABILITY, OPTIONAL) && isBoolean(FLOW_SPEC_RPD_CAPABILITY, OPTIONAL);
+                isString(FLOW_SPEC_CAPABILITY, OPTIONAL);
 
         if (!fields) {
             return fields;
@@ -129,15 +118,6 @@ public class BgpAppConfig extends Config<ApplicationId> {
     }
 
     /**
-     * Returns flow spec route policy distribution capability support from the configuration.
-     *
-     * @return true if flow spec route policy distribution capability is set otherwise false
-     */
-    public boolean rpdCapability() {
-        return Boolean.parseBoolean(get(FLOW_SPEC_RPD_CAPABILITY, null));
-    }
-
-    /**
      * Returns largeAs capability support from the configuration.
      *
      * @return largeAs capability
@@ -172,28 +152,12 @@ public class BgpAppConfig extends Config<ApplicationId> {
     public boolean validateFlowSpec() {
         if (flowSpecCapability() != null) {
             String flowSpec = flowSpecCapability();
-            if ((!flowSpec.equals("IPV4")) && (!flowSpec.equals("VPNV4")) && (!flowSpec.equals("IPV4_VPNV4"))) {
-                log.debug("Flow specification capabality is false");
-                return false;
+            if ((flowSpec.equals("IPV4")) || (flowSpec.equals("VPNV4")) || (flowSpec.equals("IPV4_VPNV4"))) {
+                return true;
             }
         }
-        log.debug("Flow specification capabality is true");
-        return true;
-    }
 
-    /**
-     * Validates the hold time value.
-     *
-     * @return true if valid else false
-     */
-    public boolean validateHoldTime() {
-        if (holdTime() != 0) {
-            short holdTime = holdTime();
-            if ((holdTime == 1) || (holdTime == 2)) {
-                return false;
-            }
-        }
-        return true;
+        return false;
     }
 
     /**
@@ -218,10 +182,6 @@ public class BgpAppConfig extends Config<ApplicationId> {
         if (!validateFlowSpec()) {
             return false;
         }
-
-        if (!validateHoldTime()) {
-            return false;
-        }
         return true;
     }
 
@@ -234,6 +194,10 @@ public class BgpAppConfig extends Config<ApplicationId> {
 
         long localAs = 0;
         localAs = localAs();
+
+        if (bgpController.connectedPeerCount() != 0) {
+            return false;
+        }
 
         if (largeAsCapability()) {
 
@@ -276,7 +240,9 @@ public class BgpAppConfig extends Config<ApplicationId> {
      */
     public boolean validateRouterId() {
         String routerId = routerId();
-        // TODO: router ID validation
+        if (bgpController.connectedPeerCount() != 0) {
+            return false;
+        }
         return true;
     }
 
@@ -307,11 +273,10 @@ public class BgpAppConfig extends Config<ApplicationId> {
                     !validateRemoteAs(nodes.get(i).asNumber()) ||
                     !validatePeerHoldTime(nodes.get(i).holdTime()) ||
                     !(connectMode.equals(PEER_CONNECT_ACTIVE) || connectMode.equals(PEER_CONNECT_PASSIVE))) {
-                log.debug("BGP peer configration false");
                 return false;
             }
         }
-        log.debug("BGP peer configration true");
+
         return true;
     }
 
@@ -322,6 +287,7 @@ public class BgpAppConfig extends Config<ApplicationId> {
      */
     public List<BgpPeerConfig> bgpPeer() {
         List<BgpPeerConfig> nodes = new ArrayList<BgpPeerConfig>();
+
         JsonNode jsonNodes = object.get(BGP_PEER);
         if (jsonNodes == null) {
             return null;

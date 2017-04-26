@@ -40,17 +40,15 @@ flowJsonTemplate = \
     '}}'
 
 flowJson = flowJsonTemplate.format(inPort, outPort)
-payload = {'appId': 'org.onosproject.cli'}
-flowRequest = requests.post('http://' + node + ':8181/onos/v1/flows/' + device,
+intentRequest = requests.post('http://' + node + ':8181/onos/v1/flows/' + device,
                               auth=HTTPBasicAuth('onos', 'rocks'),
-                              data=flowJson,
-                              params=payload)
+                              data=flowJson)
 
-if flowRequest.status_code != 201:
-    print flowRequest.text
+if intentRequest.status_code != 201:
+    print intentRequest.text
     sys.exit(1)
 
-location = flowRequest.headers["location"]
+location = intentRequest.headers["location"]
 print "@stc " + name + "Location=" + location
 sys.exit(0)
 

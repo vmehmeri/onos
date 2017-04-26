@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.onosproject.openstackinterface.OpenstackFloatingIP;
 import org.onosproject.openstackinterface.web.OpenstackFloatingIpCodec;
-import org.onosproject.openstacknetworking.OpenstackFloatingIpService;
+import org.onosproject.openstacknetworking.OpenstackRoutingService;
 import org.onosproject.rest.AbstractWebResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +45,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class OpenstackFloatingIpWebResource extends AbstractWebResource {
     private final Logger log = LoggerFactory.getLogger(getClass());
 
-    private static final OpenstackFloatingIpCodec FLOATING_IP_CODEC = new OpenstackFloatingIpCodec();
+    private static final OpenstackFloatingIpCodec FLOATING_IP_CODEC
+            = new OpenstackFloatingIpCodec();
 
     /**
      * Create FloatingIP.
@@ -63,15 +64,20 @@ public class OpenstackFloatingIpWebResource extends AbstractWebResource {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode floatingIpNode = (ObjectNode) mapper.readTree(input);
 
-            OpenstackFloatingIP osFloatingIp = FLOATING_IP_CODEC.decode(floatingIpNode, this);
-            OpenstackFloatingIpService floatingIpService =
-                    getService(OpenstackFloatingIpService.class);
-            floatingIpService.createFloatingIp(osFloatingIp);
+            OpenstackFloatingIP osFloatingIp =
+                    FLOATING_IP_CODEC.decode(floatingIpNode, this);
+
+            OpenstackRoutingService routingService =
+                    getService(OpenstackRoutingService.class);
+
+            routingService.createFloatingIP(osFloatingIp);
 
             log.debug("REST API CREATE floatingip called");
+
             return Response.status(Response.Status.OK).build();
         } catch (Exception e) {
             log.error("createFloatingIp failed with {}", e.toString());
+
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.toString())
                     .build();
         }
@@ -96,15 +102,20 @@ public class OpenstackFloatingIpWebResource extends AbstractWebResource {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode floatingIpNode = (ObjectNode) mapper.readTree(input);
 
-            OpenstackFloatingIP osFloatingIp = FLOATING_IP_CODEC.decode(floatingIpNode, this);
-            OpenstackFloatingIpService floatingIpService =
-                    getService(OpenstackFloatingIpService.class);
-            floatingIpService.updateFloatingIp(osFloatingIp);
+            OpenstackFloatingIP osFloatingIp =
+                    FLOATING_IP_CODEC.decode(floatingIpNode, this);
+
+            OpenstackRoutingService routingService =
+                    getService(OpenstackRoutingService.class);
+
+            routingService.updateFloatingIP(osFloatingIp);
 
             log.debug("REST API UPDATE floatingip called {}", id);
+
             return Response.status(Response.Status.OK).build();
         } catch (Exception e) {
             log.error("updateFloatingIp failed with {}", e.toString());
+
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.toString())
                     .build();
         }
@@ -114,20 +125,21 @@ public class OpenstackFloatingIpWebResource extends AbstractWebResource {
      * Delete FloatingIP.
      *
      * @param id FloatingIP identifier
-     * @return 204 OK
+     * @return 200 OK
      */
     @DELETE
     @Path("{id}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response deleteFloatingIp(@PathParam("id") String id) {
         checkNotNull(id);
 
-        OpenstackFloatingIpService floatingIpService =
-                getService(OpenstackFloatingIpService.class);
-        floatingIpService.deleteFloatingIp(id);
+        OpenstackRoutingService routingService =
+                getService(OpenstackRoutingService.class);
+        routingService.deleteFloatingIP(id);
 
         log.debug("REST API DELETE floatingip is called {}", id);
-        return Response.noContent().build();
+
+        return Response.status(Response.Status.OK).build();
     }
 
 }

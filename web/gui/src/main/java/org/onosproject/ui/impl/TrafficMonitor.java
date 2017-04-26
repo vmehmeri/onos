@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,20 +31,18 @@ import org.onosproject.net.flow.instructions.Instruction;
 import org.onosproject.net.flow.instructions.Instructions.OutputInstruction;
 import org.onosproject.net.intent.FlowObjectiveIntent;
 import org.onosproject.net.intent.FlowRuleIntent;
-import org.onosproject.net.intent.HostToHostIntent;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.LinkCollectionIntent;
 import org.onosproject.net.intent.OpticalConnectivityIntent;
 import org.onosproject.net.intent.OpticalPathIntent;
 import org.onosproject.net.intent.PathIntent;
 import org.onosproject.net.statistic.Load;
-import org.onosproject.ui.impl.topo.util.IntentSelection;
-import org.onosproject.ui.impl.topo.util.ServicesBundle;
-import org.onosproject.ui.impl.topo.util.TopoIntentFilter;
-import org.onosproject.ui.impl.topo.util.TrafficLink;
-import org.onosproject.ui.impl.topo.util.TrafficLink.StatsType;
-import org.onosproject.ui.impl.topo.util.TrafficLinkMap;
-import org.onosproject.ui.topo.AbstractTopoMonitor;
+import org.onosproject.ui.impl.topo.IntentSelection;
+import org.onosproject.ui.impl.topo.ServicesBundle;
+import org.onosproject.ui.impl.topo.TopoIntentFilter;
+import org.onosproject.ui.impl.topo.TrafficLink;
+import org.onosproject.ui.impl.topo.TrafficLink.StatsType;
+import org.onosproject.ui.impl.topo.TrafficLinkMap;
 import org.onosproject.ui.topo.DeviceHighlight;
 import org.onosproject.ui.topo.Highlights;
 import org.onosproject.ui.topo.Highlights.Amount;
@@ -68,14 +66,12 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import static org.onosproject.net.DefaultEdgeLink.createEdgeLink;
-import static org.onosproject.ui.impl.TrafficMonitor.Mode.IDLE;
-import static org.onosproject.ui.impl.TrafficMonitor.Mode.RELATED_INTENTS;
-import static org.onosproject.ui.impl.TrafficMonitor.Mode.SELECTED_INTENT;
+import static org.onosproject.ui.impl.TrafficMonitor.Mode.*;
 
 /**
  * Encapsulates the behavior of monitoring specific traffic patterns.
  */
-public class TrafficMonitor extends AbstractTopoMonitor {
+public class TrafficMonitor {
 
     // 4 Kilo Bytes as threshold
     private static final double BPS_THRESHOLD = 4 * TopoUtils.KILO;
@@ -111,9 +107,9 @@ public class TrafficMonitor extends AbstractTopoMonitor {
     /**
      * Constructs a traffic monitor.
      *
-     * @param trafficPeriod  traffic task period in ms
-     * @param servicesBundle bundle of services
-     * @param msgHandler     our message handler
+     * @param trafficPeriod   traffic task period in ms
+     * @param servicesBundle  bundle of services
+     * @param msgHandler  our message handler
      */
     public TrafficMonitor(long trafficPeriod, ServicesBundle servicesBundle,
                           TopologyViewMessageHandler msgHandler) {
@@ -135,9 +131,9 @@ public class TrafficMonitor extends AbstractTopoMonitor {
      * <p>
      * The monitoring mode is expected to be one of:
      * <ul>
-     * <li>ALL_FLOW_TRAFFIC</li>
-     * <li>ALL_PORT_TRAFFIC</li>
-     * <li>SELECTED_INTENT</li>
+     *     <li>ALL_FLOW_TRAFFIC</li>
+     *     <li>ALL_PORT_TRAFFIC</li>
+     *     <li>SELECTED_INTENT</li>
      * </ul>
      *
      * @param mode monitoring mode
@@ -181,11 +177,11 @@ public class TrafficMonitor extends AbstractTopoMonitor {
      * <p>
      * The monitoring mode is expected to be one of:
      * <ul>
-     * <li>DEV_LINK_FLOWS</li>
-     * <li>RELATED_INTENTS</li>
+     *     <li>DEV_LINK_FLOWS</li>
+     *     <li>RELATED_INTENTS</li>
      * </ul>
      *
-     * @param mode          monitoring mode
+     * @param mode monitoring mode
      * @param nodeSelection how to select a node
      */
     public synchronized void monitor(Mode mode, NodeSelection nodeSelection) {
@@ -225,7 +221,6 @@ public class TrafficMonitor extends AbstractTopoMonitor {
     }
 
     // TODO: move this out to the "h2h/multi-intent app"
-
     /**
      * Monitor for traffic data to be sent back to the web client, for the
      * given intent.
@@ -311,7 +306,7 @@ public class TrafficMonitor extends AbstractTopoMonitor {
         selectedIntents = null;
     }
 
-    private synchronized void scheduleTask() {
+    private synchronized void  scheduleTask() {
         if (trafficTask == null) {
             log.debug("Starting up background traffic task...");
             trafficTask = new TrafficUpdateTask();
@@ -434,7 +429,7 @@ public class TrafficMonitor extends AbstractTopoMonitor {
                 allBut.remove(current);
                 secondary = allBut;
                 log.debug("Highlight intent: {} ([{}] of {})",
-                        current.id(), selectedIntents.index(), count);
+                          current.id(), selectedIntents.index(), count);
             }
 
             highlightIntentLinks(highlights, primary, secondary);
@@ -450,7 +445,7 @@ public class TrafficMonitor extends AbstractTopoMonitor {
             Set<Intent> primary = new HashSet<>();
             primary.add(current);
             log.debug("Highlight traffic for intent: {} ([{}] of {})",
-                    current.id(), selectedIntents.index(), selectedIntents.size());
+                      current.id(), selectedIntents.index(), selectedIntents.size());
 
             highlightIntentLinksWithTraffic(highlights, primary);
             highlights.subdueAllElse(Amount.MINIMALLY);
@@ -508,13 +503,14 @@ public class TrafficMonitor extends AbstractTopoMonitor {
     private Map<Link, Integer> getLinkFlowCounts(DeviceId deviceId) {
         // get the flows for the device
         List<FlowEntry> entries = new ArrayList<>();
-        for (FlowEntry flowEntry : servicesBundle.flowService().getFlowEntries(deviceId)) {
+        for (FlowEntry flowEntry : servicesBundle.flowService()
+                                            .getFlowEntries(deviceId)) {
             entries.add(flowEntry);
         }
 
         // get egress links from device, and include edge links
         Set<Link> links = new HashSet<>(servicesBundle.linkService()
-                .getDeviceEgressLinks(deviceId));
+                                            .getDeviceEgressLinks(deviceId));
         Set<Host> hosts = servicesBundle.hostService().getConnectedHosts(deviceId);
         if (hosts != null) {
             for (Host host : hosts) {
@@ -576,9 +572,9 @@ public class TrafficMonitor extends AbstractTopoMonitor {
                     if (installable instanceof PathIntent) {
                         links = ((PathIntent) installable).path().links();
                     } else if (installable instanceof FlowRuleIntent) {
-                        links = addEdgeLinksIfNeeded(intent, linkResources(installable));
+                        links = linkResources(installable);
                     } else if (installable instanceof FlowObjectiveIntent) {
-                        links = addEdgeLinksIfNeeded(intent, linkResources(installable));
+                        links = linkResources(installable);
                     } else if (installable instanceof LinkCollectionIntent) {
                         links = ((LinkCollectionIntent) installable).links();
                     } else if (installable instanceof OpticalPathIntent) {
@@ -591,19 +587,6 @@ public class TrafficMonitor extends AbstractTopoMonitor {
                 }
             }
         }
-    }
-
-    private Iterable<Link> addEdgeLinksIfNeeded(Intent parentIntent,
-                                                Collection<Link> links) {
-        if (parentIntent instanceof HostToHostIntent) {
-            links = new HashSet<>(links);
-            HostToHostIntent h2h = (HostToHostIntent) parentIntent;
-            Host h1 = servicesBundle.hostService().getHost(h2h.one());
-            Host h2 = servicesBundle.hostService().getHost(h2h.two());
-            links.add(createEdgeLink(h1, true));
-            links.add(createEdgeLink(h2, true));
-        }
-        return links;
     }
 
     private void updateHighlights(Highlights highlights, Iterable<Link> links) {

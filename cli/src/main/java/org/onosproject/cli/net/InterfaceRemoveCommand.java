@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import org.onosproject.net.ConnectPoint;
 /**
  * Removes an interface configuration.
  */
-@Command(scope = "onos", name = "interface-remove",
+@Command(scope = "onos", name = "remove-interface",
         description = "Removes a configured interface")
 public class InterfaceRemoveCommand extends AbstractShellCommand {
 

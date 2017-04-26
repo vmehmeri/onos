@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,23 +79,21 @@
 
     angular.module('onosLayer')
     .factory('VeilService',
-        ['$log', '$route', 'FnService', 'KeyService', 'GlyphService', 'WebSocketService',
+        ['$log', '$route', 'FnService', 'KeyService', 'GlyphService',
 
-        function (_$log_, _$route_, _fs_, _ks_, _gs_, wss) {
+        function (_$log_, _$route_, _fs_, _ks_, _gs_) {
             $log = _$log_;
             $route = _$route_;
             fs = _fs_;
             ks = _ks_;
             gs = _gs_;
 
-            var self = {
+            return {
                 init: init,
                 show: show,
                 hide: hide,
                 lostServer: lostServer
             };
-            wss._setVeilDelegate(self);
-            return self;
     }]);
 
 }());

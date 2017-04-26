@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,8 @@
  */
 package org.onosproject.vtnrsc.flowclassifier.impl;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static org.slf4j.LoggerFactory.getLogger;
-
-import java.util.UUID;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -26,7 +24,6 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
-import org.onlab.packet.IpPrefix;
 import org.onlab.util.KryoNamespace;
 import org.onosproject.event.AbstractListenerManager;
 import org.onosproject.store.serializers.KryoNamespaces;
@@ -36,11 +33,8 @@ import org.onosproject.store.service.EventuallyConsistentMapListener;
 import org.onosproject.store.service.MultiValuedTimestamp;
 import org.onosproject.store.service.StorageService;
 import org.onosproject.store.service.WallClockTimestamp;
-import org.onosproject.vtnrsc.DefaultFlowClassifier;
-import org.onosproject.vtnrsc.FlowClassifier;
 import org.onosproject.vtnrsc.FlowClassifierId;
-import org.onosproject.vtnrsc.TenantId;
-import org.onosproject.vtnrsc.VirtualPortId;
+import org.onosproject.vtnrsc.FlowClassifier;
 import org.onosproject.vtnrsc.flowclassifier.FlowClassifierEvent;
 import org.onosproject.vtnrsc.flowclassifier.FlowClassifierListener;
 import org.onosproject.vtnrsc.flowclassifier.FlowClassifierService;
@@ -77,8 +71,7 @@ public class FlowClassifierManager extends AbstractListenerManager<FlowClassifie
         KryoNamespace.Builder serializer = KryoNamespace.newBuilder()
                 .register(KryoNamespaces.API)
                 .register(MultiValuedTimestamp.class)
-                .register(FlowClassifier.class, FlowClassifierId.class, UUID.class, IpPrefix.class,
-                          VirtualPortId.class, DefaultFlowClassifier.class, TenantId.class);
+                .register(FlowClassifier.class);
         flowClassifierStore = storageService
                 .<FlowClassifierId, FlowClassifier>eventuallyConsistentMapBuilder()
                 .withName("flowclassifierstore").withSerializer(serializer)

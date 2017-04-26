@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.onlab.util.ItemNotFoundException;
 import org.onosproject.cluster.NodeId;
-import org.onosproject.net.Annotations;
-import org.onosproject.net.DefaultAnnotations;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.region.Region;
 import org.onosproject.net.region.RegionEvent;
@@ -52,8 +50,6 @@ public class DistributedRegionStoreTest {
 
     private static final NodeId NID1 = NodeId.nodeId("n1");
 
-    private static final Annotations NO_ANNOTS = DefaultAnnotations.EMPTY;
-
     private static final List<Set<NodeId>> MASTERS = ImmutableList.of(ImmutableSet.of(NID1));
 
     private TestStore store;
@@ -80,16 +76,16 @@ public class DistributedRegionStoreTest {
 
     @Test
     public void basics() {
-        Region r1 = store.createRegion(RID1, "R1", METRO, NO_ANNOTS, MASTERS);
+        Region r1 = store.createRegion(RID1, "R1", METRO, MASTERS);
         assertEquals("incorrect id", RID1, r1.id());
         assertEquals("incorrect event", REGION_ADDED, event.type());
 
-        Region r2 = store.createRegion(RID2, "R2", CAMPUS, NO_ANNOTS, MASTERS);
+        Region r2 = store.createRegion(RID2, "R2", CAMPUS, MASTERS);
         assertEquals("incorrect id", RID2, r2.id());
         assertEquals("incorrect type", CAMPUS, r2.type());
         assertEquals("incorrect event", REGION_ADDED, event.type());
 
-        r2 = store.updateRegion(RID2, "R2", COUNTRY, NO_ANNOTS, MASTERS);
+        r2 = store.updateRegion(RID2, "R2", COUNTRY, MASTERS);
         assertEquals("incorrect type", COUNTRY, r2.type());
         assertEquals("incorrect event", REGION_UPDATED, event.type());
 
@@ -110,18 +106,18 @@ public class DistributedRegionStoreTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void duplicateCreate() {
-        store.createRegion(RID1, "R1", METRO, NO_ANNOTS, MASTERS);
-        store.createRegion(RID1, "R2", CAMPUS, NO_ANNOTS, MASTERS);
+        store.createRegion(RID1, "R1", METRO, MASTERS);
+        store.createRegion(RID1, "R2", CAMPUS, MASTERS);
     }
 
     @Test(expected = ItemNotFoundException.class)
     public void missingUpdate() {
-        store.updateRegion(RID1, "R1", METRO, NO_ANNOTS, MASTERS);
+        store.updateRegion(RID1, "R1", METRO, MASTERS);
     }
 
     @Test
     public void membership() {
-        Region r = store.createRegion(RID1, "R1", METRO, NO_ANNOTS, MASTERS);
+        Region r = store.createRegion(RID1, "R1", METRO, MASTERS);
         assertTrue("no devices expected", store.getRegionDevices(RID1).isEmpty());
         assertNull("no region expected", store.getRegionForDevice(DID1));
 
@@ -143,7 +139,7 @@ public class DistributedRegionStoreTest {
 
         // Test adding DID3 to RID2 but it is already in RID1.
         // DID3 will be removed from RID1 and added to RID2.
-        Region r2 = store.createRegion(RID2, "R2", CAMPUS, NO_ANNOTS, MASTERS);
+        Region r2 = store.createRegion(RID2, "R2", CAMPUS, MASTERS);
         store.addDevices(RID2, ImmutableSet.of(DID3));
         deviceIds = store.getRegionDevices(RID1);
         assertEquals("incorrect device count", 2, deviceIds.size());

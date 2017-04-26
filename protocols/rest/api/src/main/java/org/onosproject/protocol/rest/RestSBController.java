@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,44 +16,108 @@
 
 package org.onosproject.protocol.rest;
 
+import org.onlab.packet.IpAddress;
 import org.onosproject.net.DeviceId;
-import org.onosproject.protocol.http.HttpSBController;
 
-import java.util.Set;
+import java.io.InputStream;
+import java.util.Map;
 
 /**
  * Abstraction of an REST controller. Serves as a one stop shop for obtaining
- * Rest southbound devices.
+ * Rest southbound devices and (un)register listeners.
  */
-public interface RestSBController extends HttpSBController {
+public interface RestSBController {
 
     /**
-     * Add a new association between a proxied device exposed to ONOS and
-     * a REST proxy server.
-     * @param deviceId REST device identifier
-     * @param proxy REST proxy device
+     * Returns all the devices known to this controller.
+     *
+     * @return map of devices
      */
-    void addProxiedDevice(DeviceId deviceId, RestSBDevice proxy);
+    Map<DeviceId, RestSBDevice> getDevices();
 
     /**
-     * Remove the association between a proxied device exposed to ONOS
-     * and a REST proxy server.
-     * @param deviceId REST device identifier
+     * Returns a device by node identifier.
+     *
+     * @param deviceInfo node identifier
+     * @return RestSBDevice rest device
      */
-    void removeProxiedDevice(DeviceId deviceId);
+    RestSBDevice getDevice(DeviceId deviceInfo);
 
     /**
-     * Get all the proxied device exposed to ONOS ids under the same
-     * REST proxy server.
-     * @param proxyId REST proxy device identifier
-     * @return set of device ids under same proxy
+     * Returns a device by Ip and Port.
+     *
+     * @param ip   device ip
+     * @param port device port
+     * @return RestSBDevice rest device
      */
-    Set<DeviceId> getProxiedDevices(DeviceId proxyId);
+    RestSBDevice getDevice(IpAddress ip, int port);
 
     /**
-     * Get a REST proxied server given a device id.
-     * @param deviceId the id of proxied device exposed to ONOS
-     * @return the corresponding REST proxied device
+     * Adds a device to the device map.
+     *
+     * @param device to be added
      */
-    RestSBDevice getProxySBDevice(DeviceId deviceId);
+    void addDevice(RestSBDevice device);
+
+    /**
+     * Removes the device from the devices map.
+     *
+     * @param deviceId to be removed
+     */
+    void removeDevice(DeviceId deviceId);
+
+    /**
+     * Does a REST POST request with specified parameters to the device.
+     *
+     * @param device    device to make the request to
+     * @param request   url of the request
+     * @param payload   payload of the request as an InputStream
+     * @param mediaType type of content in the payload i.e. application/json
+     * @return true if operation returned 200, 201, 202, false otherwise
+     */
+    boolean post(DeviceId device, String request, InputStream payload, String mediaType);
+
+    /**
+     * Does a REST PUT request with specified parameters to the device.
+     *
+     * @param device    device to make the request to
+     * @param request   resource path of the request
+     * @param payload   payload of the request as an InputStream
+     * @param mediaType type of content in the payload i.e. application/json
+     * @return true if operation returned 200, 201, 202, false otherwise
+     */
+    boolean put(DeviceId device, String request, InputStream payload, String mediaType);
+
+    /**
+     * Does a REST GET request with specified parameters to the device.
+     *
+     * @param device    device to make the request to
+     * @param request   url of the request
+     * @param mediaType format to retrieve the content in
+     * @return an inputstream of data from the reply.
+     */
+    InputStream get(DeviceId device, String request, String mediaType);
+
+    /**
+     * Does a REST PATCH request with specified parameters to the device.
+     *
+     * @param device    device to make the request to
+     * @param request   url of the request
+     * @param payload   payload of the request as an InputStream
+     * @param mediaType format to retrieve the content in
+     * @return true if operation returned 200, 201, 202, false otherwise
+     */
+    boolean patch(DeviceId device, String request, InputStream payload, String mediaType);
+
+    /**
+     * Does a REST DELETE request with specified parameters to the device.
+     *
+     * @param device    device to make the request to
+     * @param request   url of the request
+     * @param payload   payload of the request as an InputStream
+     * @param mediaType type of content in the payload i.e. application/json
+     * @return true if operation returned 200 false otherwise
+     */
+    boolean delete(DeviceId device, String request, InputStream payload, String mediaType);
+
 }

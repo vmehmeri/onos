@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Sets;
 import org.onlab.packet.IpAddress;
-import org.onlab.packet.VlanId;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.config.Config;
@@ -42,7 +41,6 @@ public class BgpConfig extends Config<ApplicationId> {
     public static final String CONNECT_POINT = "connectPoint";
     public static final String NAME = "name";
     public static final String PEERS = "peers";
-    public static final String VLAN = "vlan";
 
     /**
      * Gets the set of configured BGP speakers.
@@ -71,33 +69,19 @@ public class BgpConfig extends Config<ApplicationId> {
                 name = Optional.of(jsonNode.get(NAME).asText());
             }
 
-            VlanId vlan = getVlan(jsonNode);
-
             speakers.add(new BgpSpeakerConfig(name,
-                                              vlan,
-                                              ConnectPoint.deviceConnectPoint(jsonNode.path(CONNECT_POINT).asText()),
-                                              listenAddresses));
+                    ConnectPoint.deviceConnectPoint(jsonNode.path(CONNECT_POINT).asText()),
+                    listenAddresses));
         });
 
         return speakers;
     }
 
-    /*
-     * If configured, it retrieves a VLAN Id from a BGP speaker node
-     */
-    private VlanId getVlan(JsonNode node) {
-        VlanId vlan = VlanId.NONE;
-        if (!node.path(VLAN).isMissingNode()) {
-            vlan = VlanId.vlanId(node.path(VLAN).asText());
-        }
-        return vlan;
-    }
-
     /**
      * Examines whether a name of BGP speaker exists in configuration.
      *
-     * @param name the name of BGP speaker being search
-     * @return the BGP speaker
+     * @param name name of BGP speaker being search
+     * @return speaker
      */
     public BgpSpeakerConfig getSpeakerWithName(String name) {
         for (BgpConfig.BgpSpeakerConfig speaker : bgpSpeakers()) {
@@ -109,15 +93,15 @@ public class BgpConfig extends Config<ApplicationId> {
     }
 
     /**
-     * Adds a BGP speaker to the configuration.
+     * Adds BGP speaker to configuration.
      *
-     * @param speaker the BGP speaker configuration entry
+     * @param speaker BGP speaker configuration entry
      */
     public void addSpeaker(BgpSpeakerConfig speaker) {
-        // Create the new speaker node and set the parameters
         ObjectNode speakerNode = JsonNodeFactory.instance.objectNode();
+
         speakerNode.put(NAME, speaker.name().get());
-        speakerNode.put(VLAN, speaker.vlan().toString());
+
         speakerNode.put(CONNECT_POINT, speaker.connectPoint().elementId().toString()
                 + "/" + speaker.connectPoint().port().toString());
 
@@ -126,9 +110,8 @@ public class BgpConfig extends Config<ApplicationId> {
             peersNode.add(peerAddress.toString());
         }
 
-        // Add the new BGP speaker to the existing node array
         ArrayNode speakersArray = bgpSpeakers().isEmpty() ?
-                initBgpSpeakersConfiguration() : (ArrayNode) object.get(SPEAKERS);
+                initBgpConfiguration() : (ArrayNode) object.get(SPEAKERS);
         speakersArray.add(speakerNode);
     }
 
@@ -174,8 +157,8 @@ public class BgpConfig extends Config<ApplicationId> {
     /**
      * Finds BGP speaker peering with a given external peer.
      *
-     * @param peerAddress BGP peer address
-     * @return BGP speaker
+     * @param peerAddress peering address to be removed
+     * @return speaker
      */
     public BgpSpeakerConfig getSpeakerFromPeer(IpAddress peerAddress) {
         for (BgpConfig.BgpSpeakerConfig speaker : bgpSpeakers()) {
@@ -213,9 +196,10 @@ public class BgpConfig extends Config<ApplicationId> {
      *
      * @return empty array of BGP speakers
      */
-    private ArrayNode initBgpSpeakersConfiguration() {
+    private ArrayNode initBgpConfiguration() {
         return object.putArray(SPEAKERS);
     }
+
 
     /**
      * Configuration for a BGP speaker.
@@ -223,26 +207,18 @@ public class BgpConfig extends Config<ApplicationId> {
     public static class BgpSpeakerConfig {
 
         private Optional<String> name;
-        private VlanId vlanId;
         private ConnectPoint connectPoint;
         private Set<IpAddress> peers;
 
-        public BgpSpeakerConfig(Optional<String> name,
-                                VlanId vlanId,
-                                ConnectPoint connectPoint,
+        public BgpSpeakerConfig(Optional<String> name, ConnectPoint connectPoint,
                                 Set<IpAddress> peers) {
             this.name = checkNotNull(name);
-            this.vlanId = checkNotNull(vlanId);
             this.connectPoint = checkNotNull(connectPoint);
             this.peers = checkNotNull(peers);
         }
 
         public Optional<String> name() {
             return name;
-        }
-
-        public VlanId vlan() {
-            return vlanId;
         }
 
         public ConnectPoint connectPoint() {
@@ -276,7 +252,6 @@ public class BgpConfig extends Config<ApplicationId> {
             if (obj instanceof BgpSpeakerConfig) {
                 final BgpSpeakerConfig that = (BgpSpeakerConfig) obj;
                 return Objects.equals(this.name, that.name) &&
-                        Objects.equals(this.vlanId, that.vlanId) &&
                         Objects.equals(this.connectPoint, that.connectPoint) &&
                         Objects.equals(this.peers, that.peers);
             }
@@ -285,7 +260,7 @@ public class BgpConfig extends Config<ApplicationId> {
 
         @Override
         public int hashCode() {
-            return Objects.hash(name, vlanId, connectPoint, peers);
+            return Objects.hash(name, connectPoint, peers);
         }
     }
 }

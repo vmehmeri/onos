@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.onosproject.store.device.impl;
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+
 import org.easymock.Capture;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -54,12 +55,12 @@ import org.onosproject.store.Timestamp;
 import org.onosproject.store.cluster.StaticClusterService;
 import org.onosproject.store.cluster.messaging.ClusterCommunicationService;
 import org.onosproject.store.cluster.messaging.ClusterMessage;
+import org.onosproject.store.cluster.messaging.ClusterMessageHandler;
 import org.onosproject.store.cluster.messaging.MessageSubject;
 import org.onosproject.store.impl.MastershipBasedTimestamp;
 import org.onosproject.store.service.EventuallyConsistentMap;
 import org.onosproject.store.service.EventuallyConsistentMapBuilder;
 import org.onosproject.store.service.StorageService;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -69,37 +70,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static java.util.Arrays.asList;
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.capture;
-import static org.easymock.EasyMock.createNiceMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.reset;
-import static org.easymock.EasyMock.verify;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.easymock.EasyMock.*;
+import static org.junit.Assert.*;
 import static org.onosproject.cluster.ControllerNode.State.ACTIVE;
 import static org.onosproject.net.DefaultAnnotations.union;
 import static org.onosproject.net.Device.Type.SWITCH;
 import static org.onosproject.net.DeviceId.deviceId;
-import static org.onosproject.net.device.DeviceEvent.Type.DEVICE_ADDED;
-import static org.onosproject.net.device.DeviceEvent.Type.DEVICE_AVAILABILITY_CHANGED;
-import static org.onosproject.net.device.DeviceEvent.Type.DEVICE_REMOVED;
-import static org.onosproject.net.device.DeviceEvent.Type.DEVICE_UPDATED;
-import static org.onosproject.net.device.DeviceEvent.Type.PORT_ADDED;
-import static org.onosproject.net.device.DeviceEvent.Type.PORT_REMOVED;
-import static org.onosproject.net.device.DeviceEvent.Type.PORT_UPDATED;
+import static org.onosproject.net.device.DeviceEvent.Type.*;
 
 
 // TODO add tests for remote replication
@@ -149,7 +133,7 @@ public class GossipDeviceStoreTest {
     private static final NodeId NID2 = new NodeId("remote");
     private static final ControllerNode ONOS2 =
             new DefaultControllerNode(NID2, IpAddress.valueOf("127.0.0.2"));
-    private static final List<SparseAnnotations> NO_ANNOTATION = Collections.emptyList();
+    private static final List<SparseAnnotations> NO_ANNOTATION = Collections.<SparseAnnotations>emptyList();
 
     EventuallyConsistentMapBuilder ecMapBuilder;
     EventuallyConsistentMap ecMap;
@@ -173,6 +157,9 @@ public class GossipDeviceStoreTest {
     @Before
     public void setUp() throws Exception {
         clusterCommunicator = createNiceMock(ClusterCommunicationService.class);
+        clusterCommunicator.addSubscriber(anyObject(MessageSubject.class),
+                                          anyObject(ClusterMessageHandler.class), anyObject(ExecutorService.class));
+        expectLastCall().anyTimes();
         replay(clusterCommunicator);
         ClusterService clusterService = new TestClusterService();
 
@@ -505,7 +492,7 @@ public class GossipDeviceStoreTest {
     @Test
     public final void testUpdatePorts() {
         putDevice(DID1, SW1);
-        List<PortDescription> pds = Arrays.asList(
+        List<PortDescription> pds = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, true),
                 new DefaultPortDescription(P2, true)
                 );
@@ -530,7 +517,7 @@ public class GossipDeviceStoreTest {
         assertTrue("Event for all expectedport appeared", expectedPorts.isEmpty());
 
 
-        List<PortDescription> pds2 = Arrays.asList(
+        List<PortDescription> pds2 = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, false),
                 new DefaultPortDescription(P2, true),
                 new DefaultPortDescription(P3, true)
@@ -560,7 +547,7 @@ public class GossipDeviceStoreTest {
             }
         }
 
-        List<PortDescription> pds3 = Arrays.asList(
+        List<PortDescription> pds3 = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, false),
                 new DefaultPortDescription(P2, true)
                 );
@@ -590,7 +577,7 @@ public class GossipDeviceStoreTest {
     @Test
     public final void testUpdatePortStatus() {
         putDevice(DID1, SW1);
-        List<PortDescription> pds = Arrays.asList(
+        List<PortDescription> pds = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, true)
                 );
         deviceStore.updatePorts(PID, DID1, pds);
@@ -615,7 +602,7 @@ public class GossipDeviceStoreTest {
     public final void testUpdatePortStatusAncillary() throws IOException {
         putDeviceAncillary(DID1, SW1);
         putDevice(DID1, SW1);
-        List<PortDescription> pds = Arrays.asList(
+        List<PortDescription> pds = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, true, A1)
                 );
         deviceStore.updatePorts(PID, DID1, pds);
@@ -740,7 +727,7 @@ public class GossipDeviceStoreTest {
     public final void testGetPorts() {
         putDevice(DID1, SW1);
         putDevice(DID2, SW1);
-        List<PortDescription> pds = Arrays.asList(
+        List<PortDescription> pds = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, true),
                 new DefaultPortDescription(P2, true)
                 );
@@ -763,7 +750,7 @@ public class GossipDeviceStoreTest {
     public final void testGetPort() {
         putDevice(DID1, SW1);
         putDevice(DID2, SW1);
-        List<PortDescription> pds = Arrays.asList(
+        List<PortDescription> pds = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, true),
                 new DefaultPortDescription(P2, false)
                 );
@@ -784,7 +771,7 @@ public class GossipDeviceStoreTest {
     @Test
     public final void testRemoveDevice() {
         putDevice(DID1, SW1, A1);
-        List<PortDescription> pds = Arrays.asList(
+        List<PortDescription> pds = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, true, A2)
                 );
         deviceStore.updatePorts(PID, DID1, pds);
@@ -813,7 +800,7 @@ public class GossipDeviceStoreTest {
 
         // putBack Device, Port w/o annotation
         putDevice(DID1, SW1);
-        List<PortDescription> pds2 = Arrays.asList(
+        List<PortDescription> pds2 = Arrays.<PortDescription>asList(
                 new DefaultPortDescription(P1, true)
                 );
         deviceStore.updatePorts(PID, DID1, pds2);

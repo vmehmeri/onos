@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package org.onosproject.driver.pipeline;
 
 import org.onlab.osgi.ServiceDirectory;
 import org.onlab.packet.Ethernet;
-import org.onlab.packet.MacAddress;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.net.DeviceId;
@@ -34,11 +33,7 @@ import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.flow.criteria.Criterion;
 import org.onosproject.net.flow.criteria.EthTypeCriterion;
-import org.onosproject.net.flow.criteria.IPCriterion;
-import org.onosproject.net.flow.criteria.PortCriterion;
-import org.onosproject.net.flow.criteria.TunnelIdCriterion;
 import org.onosproject.net.flow.criteria.UdpPortCriterion;
-import org.onosproject.net.flow.instructions.Instruction;
 import org.onosproject.net.flowobjective.FilteringObjective;
 import org.onosproject.net.flowobjective.FlowObjectiveStore;
 import org.onosproject.net.flowobjective.ForwardingObjective;
@@ -47,7 +42,9 @@ import org.onosproject.net.flowobjective.Objective;
 import org.onosproject.net.flowobjective.ObjectiveError;
 import org.slf4j.Logger;
 
-import java.util.Optional;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Objects;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -65,20 +62,14 @@ public class OpenstackPipeline extends DefaultSingleTablePipeline
     protected ApplicationId appId;
     protected FlowRuleService flowRuleService;
 
-    protected static final int SRC_VNI_TABLE = 0;
-    protected static final int ACL_TABLE = 1;
-    protected static final int CT_TABLE = 2;
-    protected static final int JUMP_TABLE = 3;
-    protected static final int ROUTING_TABLE = 4;
-    protected static final int FORWARDING_TABLE = 5;
-    protected static final int DUMMY_TABLE = 10;
-    protected static final int LAST_TABLE = FORWARDING_TABLE;
+    protected static final int VNI_TABLE = 0;
+    protected static final int FORWARDING_TABLE = 1;
+    protected static final int ACL_TABLE = 2;
 
     private static final int DROP_PRIORITY = 0;
-    private static final int HIGH_PRIORITY = 30000;
     private static final int TIME_OUT = 0;
     private static final int DHCP_SERVER_PORT = 67;
-    private static final String VIRTUAL_GATEWAY_MAC = "fe:00:00:00:00:02";
+    private static final int DHCP_CLIENT_PORT = 68;
 
 
     @Override
@@ -109,43 +100,51 @@ public class OpenstackPipeline extends DefaultSingleTablePipeline
 
     @Override
     public void forward(ForwardingObjective forwardingObjective) {
-        FlowRule flowRule;
+        Collection<FlowRule> rules;
+        FlowRuleOperations.Builder flowOpsBuilder = FlowRuleOperations.builder();
 
-        switch (forwardingObjective.flag()) {
-            case SPECIFIC:
-                flowRule = processSpecific(forwardingObjective);
+        rules = processForward(forwardingObjective);
+
+        switch (forwardingObjective.op()) {
+            case ADD:
+                rules.stream()
+                        .filter(Objects::nonNull)
+                        .forEach(flowOpsBuilder::add);
                 break;
-            case VERSATILE:
-                flowRule = processVersatile(forwardingObjective);
+            case REMOVE:
+                rules.stream()
+                        .filter(Objects::nonNull)
+                        .forEach(flowOpsBuilder::remove);
                 break;
             default:
                 fail(forwardingObjective, ObjectiveError.UNKNOWN);
-                log.warn("Unknown forwarding flag {}", forwardingObjective.flag());
-                return;
+                log.warn("Unknown forwarding type {}");
         }
 
-        if (forwardingObjective.op().equals(Objective.Operation.ADD)) {
-            applyRules(true, flowRule);
-        } else {
-            applyRules(false, flowRule);
-        }
+        flowRuleService.apply(flowOpsBuilder.build(new FlowRuleOperationsContext() {
+            @Override
+            public void onSuccess(FlowRuleOperations ops) {
+                pass(forwardingObjective);
+            }
 
+            @Override
+            public void onError(FlowRuleOperations ops) {
+                fail(forwardingObjective, ObjectiveError.FLOWINSTALLATIONFAILED);
+            }
+        }));
     }
 
     private void initializePipeline() {
-        //TODO: For now, we do not support security group feature temporarily.
-        connectTables(SRC_VNI_TABLE, JUMP_TABLE); // Table 0 -> Table 3
-        //FIXME CT table needs to be reconstructed using OVS 2.5 connection tracking feature.
-        connectTables(CT_TABLE, JUMP_TABLE);  // Table 2 -> Table 3
-        setUpTableMissEntry(ACL_TABLE);
-        setupJumpTable();
+        processVniTable(true);
+        processForwardingTable(true);
+        processAclTable(true);
     }
 
-    private void connectTables(int fromTable, int toTable) {
+    private void processVniTable(boolean install) {
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         TrafficTreatment.Builder treatment = DefaultTrafficTreatment.builder();
 
-        treatment.transition(toTable);
+        treatment.transition(FORWARDING_TABLE);
 
         FlowRule flowRule = DefaultFlowRule.builder()
                 .forDevice(deviceId)
@@ -154,13 +153,13 @@ public class OpenstackPipeline extends DefaultSingleTablePipeline
                 .withPriority(DROP_PRIORITY)
                 .fromApp(appId)
                 .makePermanent()
-                .forTable(fromTable)
+                .forTable(VNI_TABLE)
                 .build();
 
-        applyRules(true, flowRule);
+        applyRules(install, flowRule);
     }
 
-    private void setUpTableMissEntry(int table) {
+    private void processForwardingTable(boolean install) {
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         TrafficTreatment.Builder treatment = DefaultTrafficTreatment.builder();
 
@@ -173,47 +172,30 @@ public class OpenstackPipeline extends DefaultSingleTablePipeline
                 .withPriority(DROP_PRIORITY)
                 .fromApp(appId)
                 .makePermanent()
-                .forTable(table)
+                .forTable(FORWARDING_TABLE)
                 .build();
 
-        applyRules(true, flowRule);
+        applyRules(install, flowRule);
     }
 
-    private void setupJumpTable() {
+    private void processAclTable(boolean install) {
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         TrafficTreatment.Builder treatment = DefaultTrafficTreatment.builder();
 
-        selector.matchEthDst(MacAddress.valueOf(VIRTUAL_GATEWAY_MAC));
-        treatment.transition(ROUTING_TABLE);
+        treatment.wipeDeferred();
+        treatment.drop();
 
         FlowRule flowRule = DefaultFlowRule.builder()
-                .forDevice(deviceId)
-                .withSelector(selector.build())
-                .withTreatment(treatment.build())
-                .withPriority(HIGH_PRIORITY)
-                .fromApp(appId)
-                .makePermanent()
-                .forTable(JUMP_TABLE)
-                .build();
-
-        applyRules(true, flowRule);
-
-        selector = DefaultTrafficSelector.builder();
-        treatment = DefaultTrafficTreatment.builder();
-
-        treatment.transition(FORWARDING_TABLE);
-
-        flowRule = DefaultFlowRule.builder()
                 .forDevice(deviceId)
                 .withSelector(selector.build())
                 .withTreatment(treatment.build())
                 .withPriority(DROP_PRIORITY)
                 .fromApp(appId)
                 .makePermanent()
-                .forTable(JUMP_TABLE)
+                .forTable(ACL_TABLE)
                 .build();
 
-        applyRules(true, flowRule);
+        applyRules(install, flowRule);
     }
 
     private void applyRules(boolean install, FlowRule flowRule) {
@@ -234,7 +216,20 @@ public class OpenstackPipeline extends DefaultSingleTablePipeline
         }));
     }
 
-    private FlowRule processVersatile(ForwardingObjective forwardingObjective) {
+    private Collection<FlowRule> processForward(ForwardingObjective forwardingObjective) {
+        switch (forwardingObjective.flag()) {
+            case SPECIFIC:
+                return processSpecific(forwardingObjective);
+            case VERSATILE:
+                return processVersatile(forwardingObjective);
+            default:
+                fail(forwardingObjective, ObjectiveError.UNKNOWN);
+                log.warn("Unknown forwarding flag {}", forwardingObjective.flag());
+        }
+        return Collections.emptySet();
+    }
+
+    private Collection<FlowRule> processVersatile(ForwardingObjective forwardingObjective) {
         log.debug("Processing versatile forwarding objective");
 
         FlowRule.Builder ruleBuilder = DefaultFlowRule.builder()
@@ -258,39 +253,25 @@ public class OpenstackPipeline extends DefaultSingleTablePipeline
         if (ethCriterion != null) {
             if (ethCriterion.ethType().toShort() == Ethernet.TYPE_ARP ||
                     ethCriterion.ethType().toShort() == Ethernet.TYPE_LLDP) {
-                ruleBuilder.forTable(SRC_VNI_TABLE);
-                return ruleBuilder.build();
+                ruleBuilder.forTable(VNI_TABLE);
+                return Collections.singletonList(ruleBuilder.build());
             } else if (udpPortCriterion != null && udpPortCriterion.udpPort().toInt() == DHCP_SERVER_PORT) {
-                ruleBuilder.forTable(SRC_VNI_TABLE);
-                return ruleBuilder.build();
+                ruleBuilder.forTable(VNI_TABLE);
+                return Collections.singletonList(ruleBuilder.build());
             }
         }
-
-        return null;
+        return Collections.emptySet();
     }
 
-    private FlowRule processSpecific(ForwardingObjective forwardingObjective) {
+    private Collection<FlowRule> processSpecific(ForwardingObjective forwardingObjective) {
         log.debug("Processing specific forwarding objective");
-
-        TrafficTreatment.Builder treatment = DefaultTrafficTreatment.builder();
-
-
-        Optional<Instruction> group = forwardingObjective.treatment().immediate().stream()
-                .filter(i -> i.type() == Instruction.Type.GROUP).findAny();
-        int tableType = tableType(forwardingObjective);
-        if (tableType != LAST_TABLE && !group.isPresent()) {
-            treatment.transition(nextTable(tableType));
-        }
-        forwardingObjective.treatment().allInstructions().stream()
-                .filter(i -> i.type() != Instruction.Type.NOACTION).forEach(treatment::add);
 
         FlowRule.Builder ruleBuilder = DefaultFlowRule.builder()
                 .forDevice(deviceId)
                 .withSelector(forwardingObjective.selector())
-                .withTreatment(treatment.build())
+                .withTreatment(forwardingObjective.treatment())
                 .withPriority(forwardingObjective.priority())
-                .fromApp(forwardingObjective.appId())
-                .forTable(tableType);
+                .fromApp(forwardingObjective.appId());
 
         if (forwardingObjective.permanent()) {
             ruleBuilder.makePermanent();
@@ -298,41 +279,30 @@ public class OpenstackPipeline extends DefaultSingleTablePipeline
             ruleBuilder.makeTemporary(TIME_OUT);
         }
 
-        return ruleBuilder.build();
-    }
-
-    int tableType(ForwardingObjective fo) {
-
-        IPCriterion ipSrc = (IPCriterion) fo.selector().getCriterion(Criterion.Type.IPV4_SRC);
-        IPCriterion ipDst = (IPCriterion) fo.selector().getCriterion(Criterion.Type.IPV4_DST);
-        TunnelIdCriterion tunnelId =
-                (TunnelIdCriterion) fo.selector().getCriterion(Criterion.Type.TUNNEL_ID);
-        PortCriterion inPort = (PortCriterion) fo.selector().getCriterion(Criterion.Type.IN_PORT);
-        Optional<Instruction> output = fo.treatment().immediate().stream()
-                .filter(i -> i.type() == Instruction.Type.OUTPUT).findAny();
-        Optional<Instruction> group = fo.treatment().immediate().stream()
-                .filter(i -> i.type() == Instruction.Type.GROUP).findAny();
-
-        // TODO: Add the Connection Tracking Table
-        if (inPort != null) {
-            return SRC_VNI_TABLE;
-        } else if (output.isPresent()) {
-            return FORWARDING_TABLE;
-        } else if ((ipSrc != null && ipSrc.ip().prefixLength() == 32 &&
-                ipDst != null && ipDst.ip().prefixLength() == 32) ||
-                (ipSrc != null && ipSrc.ip().prefixLength() == 32 && ipDst == null) ||
-                (ipDst != null && ipDst.ip().prefixLength() == 32 && ipSrc == null)) {
-            return ACL_TABLE;
-        } else if ((tunnelId != null && ipSrc != null && ipDst != null) || group.isPresent()) {
-            return ROUTING_TABLE;
+        //VNI Table Rule
+        if (forwardingObjective.selector().getCriterion(Criterion.Type.IN_PORT) != null) {
+            TrafficTreatment.Builder tBuilder = DefaultTrafficTreatment.builder();
+            forwardingObjective.treatment().allInstructions().forEach(tBuilder::add);
+            tBuilder.transition(FORWARDING_TABLE);
+            ruleBuilder.withTreatment(tBuilder.build());
+            ruleBuilder.forTable(VNI_TABLE);
+        } else if (forwardingObjective.selector().getCriterion(Criterion.Type.TUNNEL_ID) != null) {
+            TrafficTreatment.Builder tBuilder = DefaultTrafficTreatment.builder();
+            tBuilder.deferred();
+            forwardingObjective.treatment().allInstructions().forEach(tBuilder::add);
+            tBuilder.transition(ACL_TABLE);
+            ruleBuilder.withTreatment(tBuilder.build());
+            ruleBuilder.forTable(FORWARDING_TABLE);
+        } else {
+            ruleBuilder.forTable(ACL_TABLE);
         }
 
-        return DUMMY_TABLE;
+        return Collections.singletonList(ruleBuilder.build());
     }
 
-    int nextTable(int baseTable) {
 
-        return baseTable + 1;
+    private void pass(Objective obj) {
+        obj.context().ifPresent(context -> context.onSuccess(obj));
     }
 
     private void fail(Objective obj, ObjectiveError error) {

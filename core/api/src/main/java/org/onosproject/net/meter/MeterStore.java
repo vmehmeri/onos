@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package org.onosproject.net.meter;
 
-import org.onosproject.net.DeviceId;
 import org.onosproject.store.Store;
 
 import java.util.Collection;
@@ -41,24 +40,6 @@ public interface MeterStore extends Store<MeterEvent, MeterStoreDelegate> {
      * @return a future indicating the result of the store operation
      */
     CompletableFuture<MeterStoreResult> deleteMeter(Meter meter);
-
-
-    /**
-     * Adds the meter features to the store.
-     *
-     * @param meterfeatures the meter features
-     * @return the result of the store operation
-     */
-    MeterStoreResult storeMeterFeatures(MeterFeatures meterfeatures);
-
-    /**
-     * Deletes the meter features from the store.
-     *
-     * @param deviceId the device id
-     * @return a future indicating the result of the store operation
-     */
-    MeterStoreResult deleteMeterFeatures(DeviceId deviceId);
-
 
     /**
      * Updates a meter whose meter id is the same as the passed meter.
@@ -105,13 +86,5 @@ public interface MeterStore extends Store<MeterEvent, MeterStoreDelegate> {
      * @param m a meter
      */
     void deleteMeterNow(Meter m);
-
-    /**
-     * Retrieve maximum meters available for the device.
-     *
-     * @param key the meter features key
-     * @return the maximum number of meters supported by the device
-     */
-    long getMaxMeters(MeterFeaturesKey key);
 
 }

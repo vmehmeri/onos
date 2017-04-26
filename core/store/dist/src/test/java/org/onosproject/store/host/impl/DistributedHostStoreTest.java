@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package org.onosproject.store.host.impl;
 
+import junit.framework.TestCase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,13 +32,10 @@ import org.onosproject.store.service.TestStorageService;
 import java.util.HashSet;
 import java.util.Set;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertFalse;
-
 /**
  * Tests for the ECHostStore.
  */
-public class DistributedHostStoreTest {
+public class DistributedHostStoreTest extends TestCase {
 
     private DistributedHostStore ecXHostStore;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -138,6 +138,11 @@ public final class TestDistributedSet<E> extends DistributedSetAdapter<E> {
     @Override
     public String name() {
         return this.setName;
+    }
+
+    @Override
+    public Type primitiveType() {
+        return super.primitiveType();
     }
 
     @Override

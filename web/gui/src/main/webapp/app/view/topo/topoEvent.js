@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,10 @@
 
     // internal state
     var handlerMap,
-        openListener;
+        openListener,
+        heartbeatTimer;
+
+    var heartbeatPeriod = 9000; // 9 seconds
 
     // ==========================
 
@@ -71,6 +74,20 @@
         wss.sendEvent('topoStart');
     }
 
+    function cancelHeartbeat() {
+        if (heartbeatTimer) {
+            $interval.cancel(heartbeatTimer);
+        }
+        heartbeatTimer = null;
+    }
+
+    function scheduleHeartbeat() {
+        cancelHeartbeat();
+        heartbeatTimer = $interval(function () {
+            wss.sendEvent('topoHeartbeat');
+        }, heartbeatPeriod);
+    }
+
 
     angular.module('ovTopo')
     .factory('TopoEventService',
@@ -101,10 +118,12 @@
                 // in case we fail over to a new server, listen for wsock-open
                 openListener = wss.addOpenListener(wsOpen);
                 wss.sendEvent('topoStart');
+                scheduleHeartbeat();
                 $log.debug('topo comms started');
             }
 
             function stop() {
+                cancelHeartbeat();
                 wss.sendEvent('topoStop');
                 wss.unbindHandlers(handlerMap);
                 wss.removeOpenListener(openListener);

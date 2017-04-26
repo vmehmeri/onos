@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,16 @@
 package org.onosproject.net.intent;
 
 import com.google.common.base.MoreObjects;
-import org.onlab.graph.Weight;
+import com.google.common.collect.ImmutableSet;
+import org.onlab.util.Bandwidth;
 import org.onosproject.core.DefaultGroupId;
 import org.onosproject.core.GroupId;
-import org.onosproject.net.DefaultPath;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.ElementId;
-import org.onosproject.net.HostId;
 import org.onosproject.net.Link;
 import org.onosproject.net.NetTestTools;
 import org.onosproject.net.NetworkResource;
 import org.onosproject.net.Path;
-import org.onosproject.net.device.DeviceServiceAdapter;
 import org.onosproject.net.flow.FlowId;
 import org.onosproject.net.flow.FlowRule;
 import org.onosproject.net.flow.FlowRuleExtPayLoad;
@@ -38,19 +36,32 @@ import org.onosproject.net.flow.criteria.Criterion.Type;
 import org.onosproject.net.flow.instructions.Instruction;
 import org.onosproject.net.flow.instructions.Instructions;
 import org.onosproject.net.flow.instructions.Instructions.MetadataInstruction;
-import org.onosproject.net.provider.ProviderId;
+import org.onosproject.net.resource.ResourceAllocation;
+import org.onosproject.net.resource.ResourceRequest;
+import org.onosproject.net.resource.ResourceType;
+import org.onosproject.net.resource.link.BandwidthResource;
+import org.onosproject.net.resource.link.BandwidthResourceRequest;
+import org.onosproject.net.resource.link.LambdaResource;
+import org.onosproject.net.resource.link.LambdaResourceAllocation;
+import org.onosproject.net.resource.link.LambdaResourceRequest;
+import org.onosproject.net.resource.link.LinkResourceAllocations;
+import org.onosproject.net.resource.link.LinkResourceListener;
+import org.onosproject.net.resource.link.LinkResourceRequest;
+import org.onosproject.net.resource.link.LinkResourceService;
+import org.onosproject.net.resource.link.MplsLabel;
+import org.onosproject.net.resource.link.MplsLabelResourceAllocation;
 import org.onosproject.net.topology.DefaultTopologyEdge;
 import org.onosproject.net.topology.DefaultTopologyVertex;
-import org.onosproject.net.topology.LinkWeigher;
+import org.onosproject.net.topology.LinkWeight;
 import org.onosproject.net.topology.PathServiceAdapter;
 import org.onosproject.net.topology.TopologyVertex;
 import org.onosproject.store.Timestamp;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -149,160 +160,169 @@ public class IntentTestsMocks {
                 System.arraycopy(reversePathHops, 0, allHops, 0, pathHops.length);
             }
 
-            result.add(createPath(src instanceof HostId, dst instanceof HostId, allHops));
-            return result;
-        }
-
-        @Override
-        public Set<Path> getPaths(ElementId src, ElementId dst, LinkWeigher weigher) {
-            Set<Path> paths = getPaths(src, dst);
-
-            for (Path path : paths) {
-                DeviceId srcDevice = path.src().elementId() instanceof DeviceId ? path.src().deviceId() : null;
-                DeviceId dstDevice = path.dst().elementId() instanceof DeviceId ? path.dst().deviceId() : null;
-                if (srcDevice != null && dstDevice != null) {
-                    TopologyVertex srcVertex = new DefaultTopologyVertex(srcDevice);
-                    TopologyVertex dstVertex = new DefaultTopologyVertex(dstDevice);
-                    Link link = link(src.toString(), 1, dst.toString(), 1);
-
-                    Weight weightValue = weigher.weight(new DefaultTopologyEdge(srcVertex, dstVertex, link));
-                    if (weightValue.isNegative()) {
-                        return new HashSet<>();
-                    }
-                }
-            }
-            return paths;
-        }
-    }
-
-    /**
-     * Mock path service for creating paths within the test.
-     *
-     */
-    public static class Mp2MpMockPathService extends PathServiceAdapter {
-
-        final String[] pathHops;
-        final String[] reversePathHops;
-
-        /**
-         * Constructor that provides a set of hops to mock.
-         *
-         * @param pathHops path hops to mock
-         */
-        public Mp2MpMockPathService(String[] pathHops) {
-            this.pathHops = pathHops;
-            String[] reversed = pathHops.clone();
-            Collections.reverse(Arrays.asList(reversed));
-            reversePathHops = reversed;
-        }
-
-        @Override
-        public Set<Path> getPaths(ElementId src, ElementId dst) {
-            Set<Path> result = new HashSet<>();
-
-            String[] allHops = new String[pathHops.length + 2];
-            allHops[0] = src.toString();
-            allHops[allHops.length - 1] = dst.toString();
-
-            if (pathHops.length != 0) {
-                System.arraycopy(pathHops, 0, allHops, 1, pathHops.length);
-            }
-
             result.add(createPath(allHops));
-
             return result;
         }
 
         @Override
-        public Set<Path> getPaths(ElementId src, ElementId dst, LinkWeigher weigher) {
+        public Set<Path> getPaths(ElementId src, ElementId dst, LinkWeight weight) {
             final Set<Path> paths = getPaths(src, dst);
 
             for (Path path : paths) {
-                final DeviceId srcDevice = path.src().elementId() instanceof DeviceId ? path.src().deviceId() : null;
-                final DeviceId dstDevice = path.dst().elementId() instanceof DeviceId ? path.dst().deviceId() : null;
-                if (srcDevice != null && dstDevice != null) {
-                    final TopologyVertex srcVertex = new DefaultTopologyVertex(srcDevice);
-                    final TopologyVertex dstVertex = new DefaultTopologyVertex(dstDevice);
-                    final Link link = link(src.toString(), 1, dst.toString(), 1);
+                final DeviceId srcDevice = path.src().deviceId();
+                final DeviceId dstDevice = path.dst().deviceId();
+                final TopologyVertex srcVertex = new DefaultTopologyVertex(srcDevice);
+                final TopologyVertex dstVertex = new DefaultTopologyVertex(dstDevice);
+                final Link link = link(src.toString(), 1, dst.toString(), 1);
 
-                    final Weight weightValue = weigher.weight(new DefaultTopologyEdge(srcVertex, dstVertex, link));
-                    if (weightValue.isNegative()) {
-                        return new HashSet<>();
-                    }
+                final double weightValue = weight.weight(new DefaultTopologyEdge(srcVertex, dstVertex, link));
+                if (weightValue < 0) {
+                    return new HashSet<>();
                 }
             }
             return paths;
         }
     }
 
-    /**
-     * Mock path service for creating paths for MP2SP intent tests, returning
-     * pre-determined paths.
-     */
-    public static class FixedMP2MPMockPathService extends PathServiceAdapter {
-
-        final String[] pathHops;
-
-        public static final String DPID_1 = "of:s1";
-        public static final String DPID_2 = "of:s2";
-        public static final String DPID_3 = "of:s3";
-        public static final String DPID_4 = "of:s4";
-
-        /**
-         * Constructor that provides a set of hops to mock.
-         *
-         * @param pathHops path hops to mock
-         */
-        public FixedMP2MPMockPathService(String[] pathHops) {
-            this.pathHops = pathHops;
+    public static class MockLinkResourceAllocations implements LinkResourceAllocations {
+        @Override
+        public Set<ResourceAllocation> getResourceAllocation(Link link) {
+            return ImmutableSet.of(
+                    new LambdaResourceAllocation(LambdaResource.valueOf(77)),
+                    new MplsLabelResourceAllocation(MplsLabel.valueOf(10)));
         }
 
         @Override
-        public Set<Path> getPaths(ElementId src, ElementId dst) {
-            List<Link> links = new ArrayList<>();
-            Set<Path> result = new HashSet<>();
-            ProviderId providerId = new ProviderId("of", "foo");
-            DefaultPath path;
-            if (src.toString().equals(DPID_1) && dst.toString().equals(DPID_4)) {
-                links.add(NetTestTools.linkNoPrefixes(src.toString(), 2, pathHops[0], 1));
-                links.add(NetTestTools.linkNoPrefixes(pathHops[0], 2, dst.toString(), 1));
-            } else if (src.toString().equals(DPID_2) && dst.toString().equals(DPID_4)) {
-                links.add(NetTestTools.linkNoPrefixes(src.toString(), 2, pathHops[0], 3));
-                links.add(NetTestTools.linkNoPrefixes(pathHops[0], 2, dst.toString(), 1));
-            } else if (src.toString().equals(DPID_4) && dst.toString().equals(DPID_1)) {
-                links.add(NetTestTools.linkNoPrefixes(src.toString(), 2, pathHops[0], 1));
-                links.add(NetTestTools.linkNoPrefixes(pathHops[0], 2, dst.toString(), 1));
-            } else if (src.toString().equals(DPID_4) && dst.toString().equals(DPID_2)) {
-                links.add(NetTestTools.linkNoPrefixes(src.toString(), 2, pathHops[0], 1));
-                links.add(NetTestTools.linkNoPrefixes(pathHops[0], 3, dst.toString(), 1));
-            } else {
-                return result;
-            }
-            path = new DefaultPath(providerId, links, 3);
-            result.add(path);
+        public IntentId intentId() {
+            return null;
+        }
 
+        @Override
+        public Collection<Link> links() {
+            return null;
+        }
+
+        @Override
+        public Set<ResourceRequest> resources() {
+            return null;
+        }
+
+        @Override
+        public ResourceType type() {
+            return null;
+        }
+    }
+
+    public static class MockedAllocationFailure extends RuntimeException { }
+
+    public static class MockResourceService implements LinkResourceService {
+
+        double availableBandwidth = -1.0;
+        int availableLambda = -1;
+
+        /**
+         * Allocates a resource service that will allow bandwidth allocations
+         * up to a limit.
+         *
+         * @param bandwidth available bandwidth limit
+         * @return resource manager for bandwidth requests
+         */
+        public static MockResourceService makeBandwidthResourceService(double bandwidth) {
+            final MockResourceService result = new MockResourceService();
+            result.availableBandwidth = bandwidth;
+            return result;
+        }
+
+        /**
+         * Allocates a resource service that will allow lambda allocations.
+         *
+         * @param lambda Lambda to return for allocation requests. Currently unused
+         * @return resource manager for lambda requests
+         */
+        public static MockResourceService makeLambdaResourceService(int lambda) {
+            final MockResourceService result = new MockResourceService();
+            result.availableLambda = lambda;
             return result;
         }
 
         @Override
-        public Set<Path> getPaths(ElementId src, ElementId dst, LinkWeigher weigher) {
-            final Set<Path> paths = getPaths(src, dst);
+        public LinkResourceAllocations requestResources(LinkResourceRequest req) {
+            int lambda = -1;
+            double bandwidth = -1.0;
 
-            for (Path path : paths) {
-                final DeviceId srcDevice = path.src().elementId() instanceof DeviceId ? path.src().deviceId() : null;
-                final DeviceId dstDevice = path.dst().elementId() instanceof DeviceId ? path.dst().deviceId() : null;
-                if (srcDevice != null && dstDevice != null) {
-                    final TopologyVertex srcVertex = new DefaultTopologyVertex(srcDevice);
-                    final TopologyVertex dstVertex = new DefaultTopologyVertex(dstDevice);
-                    final Link link = link(src.toString(), 1, dst.toString(), 1);
-
-                    final Weight weightValue = weigher.weight(new DefaultTopologyEdge(srcVertex, dstVertex, link));
-                    if (weightValue.isNegative()) {
-                        return new HashSet<>();
-                    }
+            for (ResourceRequest resourceRequest : req.resources()) {
+                if (resourceRequest.type() == ResourceType.BANDWIDTH) {
+                    final BandwidthResourceRequest brr = (BandwidthResourceRequest) resourceRequest;
+                    bandwidth = brr.bandwidth().toDouble();
+                } else if (resourceRequest.type() == ResourceType.LAMBDA) {
+                    lambda = 1;
                 }
             }
-            return paths;
+
+            if (availableBandwidth < bandwidth) {
+                throw new MockedAllocationFailure();
+            }
+            if (lambda > 0 && availableLambda == 0) {
+                throw new MockedAllocationFailure();
+            }
+
+            return new IntentTestsMocks.MockLinkResourceAllocations();
+        }
+
+        @Override
+        public void releaseResources(LinkResourceAllocations allocations) {
+            // Mock
+        }
+
+        @Override
+        public LinkResourceAllocations updateResources(LinkResourceRequest req,
+                                                       LinkResourceAllocations oldAllocations) {
+            return null;
+        }
+
+        @Override
+        public Iterable<LinkResourceAllocations> getAllocations() {
+            return ImmutableSet.of(
+                    new IntentTestsMocks.MockLinkResourceAllocations());
+        }
+
+        @Override
+        public Iterable<LinkResourceAllocations> getAllocations(Link link) {
+            return ImmutableSet.of(
+                    new IntentTestsMocks.MockLinkResourceAllocations());
+        }
+
+        @Override
+        public LinkResourceAllocations getAllocations(IntentId intentId) {
+            return new IntentTestsMocks.MockLinkResourceAllocations();
+        }
+
+        @Override
+        public Iterable<ResourceRequest> getAvailableResources(Link link) {
+            final List<ResourceRequest> result = new LinkedList<>();
+            if (availableBandwidth > 0.0) {
+                result.add(new BandwidthResourceRequest(
+                        new BandwidthResource(Bandwidth.bps(availableBandwidth))));
+            }
+            if (availableLambda > 0) {
+                result.add(new LambdaResourceRequest());
+            }
+            return result;
+        }
+
+        @Override
+        public Iterable<ResourceRequest> getAvailableResources(Link link, LinkResourceAllocations allocations) {
+            return null;
+        }
+
+        @Override
+        public void addListener(LinkResourceListener listener) {
+
+        }
+
+        @Override
+        public void removeListener(LinkResourceListener listener) {
+
         }
     }
 
@@ -373,16 +393,6 @@ public class IntentTestsMocks {
         @Override
         public int timeout() {
             return 0;
-        }
-
-        @Override
-        public int hardTimeout() {
-            return 0;
-        }
-
-        @Override
-        public FlowRemoveReason reason() {
-            return FlowRemoveReason.NO_REASON;
         }
 
         @Override
@@ -474,13 +484,4 @@ public class IntentTestsMocks {
         }
     }
 
-    /**
-     * Mocks the device service so that a device appears available in the test.
-     */
-    public static class MockDeviceService extends DeviceServiceAdapter {
-        @Override
-        public boolean isAvailable(DeviceId deviceId) {
-            return true;
-        }
-    }
 }

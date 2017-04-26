@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package org.onosproject.cpman.impl.message;
 
 import org.onosproject.cluster.NodeId;
-import org.onosproject.cpman.ControlLoadSnapshot;
+import org.onosproject.cpman.ControlLoad;
 import org.onosproject.cpman.ControlMetric;
 import org.onosproject.cpman.ControlMetricType;
 import org.onosproject.cpman.ControlPlaneMonitorService;
@@ -25,8 +25,6 @@ import org.onosproject.net.DeviceId;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Test adapter control plane monitoring service.
@@ -34,49 +32,28 @@ import java.util.concurrent.TimeUnit;
 public class ControlPlaneMonitorServiceAdaptor implements ControlPlaneMonitorService {
     @Override
     public void updateMetric(ControlMetric controlMetric,
-                             int updateIntervalInMinutes,
-                             Optional<DeviceId> deviceId) {
+                             int updateIntervalInMinutes, Optional<DeviceId> deviceId) {
     }
 
     @Override
     public void updateMetric(ControlMetric controlMetric,
-                             int updateIntervalInMinutes,
-                             String resourceName) {
+                             int updateIntervalInMinutes, String resourceName) {
     }
 
     @Override
-    public CompletableFuture<ControlLoadSnapshot> getLoad(NodeId nodeId,
-                                                          ControlMetricType type,
-                                                          Optional<DeviceId> deviceId) {
+    public ControlLoad getLoad(NodeId nodeId,
+                               ControlMetricType type, Optional<DeviceId> deviceId) {
         return null;
     }
 
     @Override
-    public CompletableFuture<ControlLoadSnapshot> getLoad(NodeId nodeId,
-                                                          ControlMetricType type,
-                                                          String resourceName) {
+    public ControlLoad getLoad(NodeId nodeId,
+                               ControlMetricType type, String resourceName) {
         return null;
     }
 
     @Override
-    public CompletableFuture<ControlLoadSnapshot> getLoad(NodeId nodeId,
-                                                          ControlMetricType type,
-                                                          int duration, TimeUnit unit,
-                                                          Optional<DeviceId> deviceId) {
-        return null;
-    }
-
-    @Override
-    public CompletableFuture<ControlLoadSnapshot> getLoad(NodeId nodeId,
-                                                          ControlMetricType type,
-                                                          int duration, TimeUnit unit,
-                                                          String resourceName) {
-        return null;
-    }
-
-    @Override
-    public CompletableFuture<Set<String>> availableResources(NodeId nodeId,
-                                                             ControlResource.Type resourceType) {
+    public Set<String> availableResources(ControlResource.Type resourceType) {
         return null;
     }
 }

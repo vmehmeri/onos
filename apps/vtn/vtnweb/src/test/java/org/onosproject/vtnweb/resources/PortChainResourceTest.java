@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,13 +30,10 @@ import java.net.HttpURLConnection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +42,6 @@ import org.onlab.osgi.ServiceDirectory;
 import org.onlab.osgi.TestServiceDirectory;
 import org.onlab.rest.BaseResource;
 import org.onosproject.codec.CodecService;
-import org.onosproject.net.DeviceId;
 import org.onosproject.vtnrsc.FiveTuple;
 import org.onosproject.vtnrsc.FlowClassifierId;
 import org.onosproject.vtnrsc.LoadBalanceId;
@@ -61,6 +57,9 @@ import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.UniformInterfaceException;
+import com.sun.jersey.api.client.WebResource;
 
 /**
  * Unit tests for port chain REST APIs.
@@ -166,49 +165,13 @@ public class PortChainResourceTest extends VtnResourceTest {
         }
 
         @Override
-        public LoadBalanceId matchPath(List<PortPairId> path) {
+        public Optional<LoadBalanceId> matchPath(List<PortPairId> path) {
             return null;
         }
 
         @Override
         public int getLoadBalancePathSize() {
             return 0;
-        }
-
-        @Override
-        public void addSfcClassifiers(LoadBalanceId id, List<DeviceId> classifierList) {
-        }
-
-        @Override
-        public void addSfcForwarders(LoadBalanceId id, List<DeviceId> forwarderList) {
-        }
-
-        @Override
-        public void removeSfcClassifiers(LoadBalanceId id, List<DeviceId> classifierList) {
-        }
-
-        @Override
-        public void removeSfcForwarders(LoadBalanceId id, List<DeviceId> forwarderList) {
-        }
-
-        @Override
-        public List<DeviceId> getSfcClassifiers(LoadBalanceId id) {
-            return null;
-        }
-
-        @Override
-        public List<DeviceId> getSfcForwarders(LoadBalanceId id) {
-            return null;
-        }
-
-        @Override
-        public Set<LoadBalanceId> getLoadBalancePathMapKeys() {
-            return null;
-        }
-
-        @Override
-        public PortChain oldPortChain() {
-            return null;
         }
     }
 
@@ -240,8 +203,8 @@ public class PortChainResourceTest extends VtnResourceTest {
 
         expect(portChainService.getPortChains()).andReturn(null).anyTimes();
         replay(portChainService);
-        final WebTarget wt = target();
-        final String response = wt.path("port_chains").request().get(String.class);
+        final WebResource rs = resource();
+        final String response = rs.path("port_chains").get(String.class);
         assertThat(response, is("{\"port_chains\":[]}"));
     }
 
@@ -258,9 +221,8 @@ public class PortChainResourceTest extends VtnResourceTest {
         expect(portChainService.getPortChain(anyObject())).andReturn(portChain1).anyTimes();
         replay(portChainService);
 
-        final WebTarget wt = target();
-        final String response = wt.path("port_chains/1278dcd4-459f-62ed-754b-87fc5e4a6751")
-                .request().get(String.class);
+        final WebResource rs = resource();
+        final String response = rs.path("port_chains/1278dcd4-459f-62ed-754b-87fc5e4a6751").get(String.class);
         final JsonObject result = Json.parse(response).asObject();
         assertThat(result, notNullValue());
     }
@@ -273,14 +235,13 @@ public class PortChainResourceTest extends VtnResourceTest {
         expect(portChainService.getPortChain(anyObject()))
         .andReturn(null).anyTimes();
         replay(portChainService);
-        WebTarget wt = target();
+        WebResource rs = resource();
         try {
-            wt.path("port_chains/78dcd363-fc23-aeb6-f44b-56dc5aafb3ae")
-                    .request().get(String.class);
+            rs.path("port_chains/78dcd363-fc23-aeb6-f44b-56dc5aafb3ae").get(String.class);
             fail("Fetch of non-existent port chain did not throw an exception");
-        } catch (NotFoundException ex) {
+        } catch (UniformInterfaceException ex) {
             assertThat(ex.getMessage(),
-                       containsString("HTTP 404 Not Found"));
+                       containsString("returned a response status of"));
         }
     }
 
@@ -294,12 +255,12 @@ public class PortChainResourceTest extends VtnResourceTest {
         .andReturn(true).anyTimes();
         replay(portChainService);
 
-        WebTarget wt = target();
+        WebResource rs = resource();
         InputStream jsonStream = PortChainResourceTest.class.getResourceAsStream("post-PortChain.json");
 
-        Response response = wt.path("port_chains")
-                .request(MediaType.APPLICATION_JSON_TYPE)
-                .post(Entity.json(jsonStream));
+        ClientResponse response = rs.path("port_chains")
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .post(ClientResponse.class, jsonStream);
         assertThat(response.getStatus(), is(HttpURLConnection.HTTP_OK));
     }
 
@@ -312,13 +273,13 @@ public class PortChainResourceTest extends VtnResourceTest {
         .andReturn(true).anyTimes();
         replay(portChainService);
 
-        WebTarget wt = target();
+        WebResource rs = resource();
 
         String location = "port_chains/1278dcd4-459f-62ed-754b-87fc5e4a6751";
 
-        Response deleteResponse = wt.path(location)
-                .request(MediaType.APPLICATION_JSON_TYPE, MediaType.TEXT_PLAIN_TYPE)
-                .delete();
+        ClientResponse deleteResponse = rs.path(location)
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .delete(ClientResponse.class);
         assertThat(deleteResponse.getStatus(),
                    is(HttpURLConnection.HTTP_NO_CONTENT));
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,10 @@
  */
 package org.onosproject.cli.net;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.karaf.shell.commands.Command;
 import org.onosproject.cli.AbstractShellCommand;
 import org.onosproject.net.packet.PacketProcessorEntry;
 import org.onosproject.net.packet.PacketService;
-
-import java.util.List;
 
 import static org.onosproject.net.packet.PacketProcessor.ADVISOR_MAX;
 import static org.onosproject.net.packet.PacketProcessor.DIRECTOR_MAX;
@@ -41,25 +36,11 @@ public class PacketProcessorsListCommand extends AbstractShellCommand {
     protected void execute() {
         PacketService service = get(PacketService.class);
         if (outputJson()) {
-            print("%s", json(service.getProcessors()));
+            // TODO: implement this
+            print("Not implemented.");
         } else {
             service.getProcessors().forEach(this::print);
         }
-    }
-
-    private JsonNode json(List<PacketProcessorEntry> processors) {
-        ObjectMapper mapper = new ObjectMapper();
-        ArrayNode result = mapper.createArrayNode();
-
-        for (PacketProcessorEntry p : processors) {
-            result.add(mapper.createObjectNode()
-                    .put("priority", priorityFormat(p.priority()))
-                    .put("class", p.processor().getClass().getName())
-                    .put("packets", p.invocations())
-                    .put("avgNanos", p.averageNanos()));
-        }
-
-        return result;
     }
 
     private void print(PacketProcessorEntry entry) {

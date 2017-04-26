@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,10 @@ import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.onosproject.app.ApplicationAdminService;
 import org.onosproject.cli.AbstractShellCommand;
-import org.onosproject.core.Application;
 import org.onosproject.core.ApplicationId;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Manages application inventory.
@@ -86,42 +83,20 @@ public class ApplicationCommand extends AbstractShellCommand {
     private boolean manageApp(ApplicationAdminService service, String name) {
         ApplicationId appId = service.getId(name);
         if (appId == null) {
-            List<Application> matches = service.getApplications().stream()
-                .filter(app -> app.id().name().matches(".*\\." + name + "$"))
-                .collect(Collectors.toList());
-
-            if (matches.size() == 1) {
-                // Found match
-                appId = matches.iterator().next().id();
-            } else if (!matches.isEmpty()) {
-                print("Did you mean one of: %s",
-                      matches.stream()
-                          .map(Application::id)
-                          .map(ApplicationId::name)
-                          .collect(Collectors.toList()));
-                return false;
-            }
-        }
-        if (appId == null) {
             print("No such application: %s", name);
             return false;
         }
 
-        String action;
         if (command.equals(UNINSTALL)) {
             service.uninstall(appId);
-            action = "Uninstalled";
         } else if (command.equals(ACTIVATE)) {
             service.activate(appId);
-            action = "Activated";
         } else if (command.equals(DEACTIVATE)) {
             service.deactivate(appId);
-            action = "Deactivated";
         } else {
             print("Unsupported command: %s", command);
             return false;
         }
-        print("%s %s", action, appId.name());
         return true;
     }
 

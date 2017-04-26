@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,8 @@
 package org.onosproject.ospf.protocol.lsa.types;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Objects;
 import com.google.common.primitives.Bytes;
-
-import java.util.Arrays;
-
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.onosproject.ospf.controller.OspfLsaType;
 import org.onosproject.ospf.protocol.lsa.OpaqueLsaHeader;
@@ -110,12 +108,12 @@ public class OpaqueLsa9 extends OpaqueLsaHeader {
             return false;
         }
         OpaqueLsa9 that = (OpaqueLsa9) o;
-        return Arrays.equals(opaqueInfo, that.opaqueInfo);
+        return Objects.equal(opaqueInfo, that.opaqueInfo);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(opaqueInfo);
+        return Objects.hashCode(opaqueInfo);
     }
 
     @Override

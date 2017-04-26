@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
 import org.onlab.util.Identifier;
 import org.onosproject.cluster.NodeId;
-import org.onosproject.net.Annotations;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.region.DefaultRegion;
 import org.onosproject.net.region.Region;
@@ -91,7 +90,11 @@ public class DistributedRegionStore
     protected void activate() {
         Serializer serializer =
                 Serializer.using(Arrays.asList(KryoNamespaces.API),
-                        Identifier.class);
+                                 Identifier.class,
+                                 RegionId.class,
+                                 Region.class,
+                                 DefaultRegion.class,
+                                 Region.Type.class);
 
         regionsRepo = storageService.<RegionId, Region>consistentMapBuilder()
                 .withSerializer(serializer)
@@ -142,19 +145,19 @@ public class DistributedRegionStore
 
     @Override
     public Region createRegion(RegionId regionId, String name, Region.Type type,
-                               Annotations annots, List<Set<NodeId>> masterNodeIds) {
+                               List<Set<NodeId>> masterNodeIds) {
         return regionsRepo.compute(regionId, (id, region) -> {
             checkArgument(region == null, DUPLICATE_REGION);
-            return new DefaultRegion(regionId, name, type, annots, masterNodeIds);
+            return new DefaultRegion(regionId, name, type, masterNodeIds);
         }).value();
     }
 
     @Override
     public Region updateRegion(RegionId regionId, String name, Region.Type type,
-                               Annotations annots, List<Set<NodeId>> masterNodeIds) {
+                               List<Set<NodeId>> masterNodeIds) {
         return regionsRepo.compute(regionId, (id, region) -> {
             nullIsNotFound(region, NO_REGION);
-            return new DefaultRegion(regionId, name, type, annots, masterNodeIds);
+            return new DefaultRegion(regionId, name, type, masterNodeIds);
         }).value();
     }
 
@@ -166,9 +169,8 @@ public class DistributedRegionStore
 
     @Override
     public void addDevices(RegionId regionId, Collection<DeviceId> deviceIds) {
-        // Devices can only be a member in one region.  Remove the device if it
-        // belongs to a different region than the region for which we are
-        // attempting to add it.
+        // Devices can only be a member in one region.  Remove the device if it belongs to
+        // a different region than the region for which we are attempting to add it.
         for (DeviceId deviceId : deviceIds) {
             Region region = getRegionForDevice(deviceId);
             if ((region != null) && (!regionId.id().equals(region.id().id()))) {
@@ -202,7 +204,7 @@ public class DistributedRegionStore
             } else {
                 return ImmutableSet.<DeviceId>builder()
                         .addAll(Sets.difference(existingDevices,
-                                ImmutableSet.copyOf(deviceIds)))
+                                                ImmutableSet.copyOf(deviceIds)))
                         .build();
             }
         });
@@ -213,8 +215,7 @@ public class DistributedRegionStore
     /**
      * Listener class to map listener events to the region inventory events.
      */
-    private class InternalRegionListener
-            implements MapEventListener<RegionId, Region> {
+    private class InternalRegionListener implements MapEventListener<RegionId, Region> {
         @Override
         public void event(MapEvent<RegionId, Region> event) {
             Region region = null;
@@ -242,14 +243,13 @@ public class DistributedRegionStore
     /**
      * Listener class to map listener events to the region membership events.
      */
-    private class InternalMembershipListener
-            implements MapEventListener<RegionId, Set<DeviceId>> {
+    private class InternalMembershipListener implements MapEventListener<RegionId, Set<DeviceId>> {
         @Override
         public void event(MapEvent<RegionId, Set<DeviceId>> event) {
             if (event.type() != MapEvent.Type.REMOVE) {
                 notifyDelegate(new RegionEvent(REGION_MEMBERSHIP_CHANGED,
-                        regionsById.get(event.key()),
-                        event.newValue().value()));
+                                               regionsById.get(event.key()),
+                                               event.newValue().value()));
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@
     // traffic overlay definition
     var overlay = {
         overlayId: 'traffic',
-        glyphId: 'm_allTraffic',
+        glyphId: 'allTraffic',
         tooltip: 'Traffic Overlay',
 
         // NOTE: Traffic glyphs already installed as part of the base ONOS set.
@@ -53,13 +53,13 @@
         // (keys match button identifiers, also defined in TrafficOverlay.java)
         buttons: {
             showDeviceFlows: {
-                gid: 'm_flows',
+                gid: 'flows',
                 tt: 'Show Device Flows',
                 cb: function (data) { tts.showDeviceLinkFlows(); }
             },
 
             showRelatedTraffic: {
-                gid: 'm_relatedIntents',
+                gid: 'relatedIntents',
                 tt: 'Show Related Traffic',
                 cb: function (data) { tts.showRelatedIntents(); }
             }
@@ -71,43 +71,43 @@
             0: {
                 cb: function () { tts.cancelTraffic(true); },
                 tt: 'Cancel traffic monitoring',
-                gid: 'm_xMark'
+                gid: 'xMark'
             },
 
             A: {
                 cb: function () { tts.showAllFlowTraffic(); },
                 tt: 'Monitor all traffic using flow stats',
-                gid: 'm_allTraffic'
+                gid: 'allTraffic'
             },
             Q: {
                 cb: function () { tts.showAllPortTraffic(); },
                 tt: 'Monitor all traffic using port stats',
-                gid: 'm_allTraffic'
+                gid: 'allTraffic'
             },
             F: {
                 cb: function () { tts.showDeviceLinkFlows(); },
                 tt: 'Show device link flows',
-                gid: 'm_flows'
+                gid: 'flows'
             },
             V: {
                 cb: function () { tts.showRelatedIntents(); },
                 tt: 'Show all related intents',
-                gid: 'm_relatedIntents'
+                gid: 'relatedIntents'
             },
             leftArrow: {
                 cb: function () { tts.showPrevIntent(); },
                 tt: 'Show previous related intent',
-                gid: 'm_prev'
+                gid: 'prevIntent'
             },
             rightArrow: {
                 cb: function () { tts.showNextIntent(); },
                 tt: 'Show next related intent',
-                gid: 'm_next'
+                gid: 'nextIntent'
             },
             W: {
                 cb: function () { tts.showSelectedIntentTraffic(); },
                 tt: 'Monitor traffic of selected intent',
-                gid: 'm_intentTraffic'
+                gid: 'intentTraffic'
             },
 
             _keyOrder: [
@@ -141,16 +141,6 @@
             },
             mouseout: function () {
                 tts.requestTrafficForMode(true);
-            },
-
-            // intent visualization hooks
-            acceptIntent: function (type) {
-                // accept any intent type except "Protected" intents
-                return (!type.startsWith('Protected'));
-            },
-            showIntent: function (info) {
-                $log.debug('^^ trafficOverlay.showintent() ^^', info);
-                tts.selectIntent(info);
             }
         }
     };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,21 +23,22 @@ public class BellmanFordGraphSearch<V extends Vertex, E extends Edge<V>>
         extends AbstractGraphPathSearch<V, E> {
 
     @Override
-    protected Result<V, E> internalSearch(Graph<V, E> graph, V src, V dst,
-                               EdgeWeigher<V, E> weigher, int maxPaths) {
+    public Result<V, E> search(Graph<V, E> graph, V src, V dst,
+                               EdgeWeight<V, E> weight, int maxPaths) {
+        checkArguments(graph, src, dst);
 
         // Prepare the graph search result.
         DefaultResult result = new DefaultResult(src, dst, maxPaths);
 
         // The source vertex has cost 0, of course.
-        result.updateVertex(src, null, weigher.getInitialWeight(), true);
+        result.updateVertex(src, null, 0.0, true);
 
         int max = graph.getVertexes().size() - 1;
         for (int i = 0; i < max; i++) {
             // Relax, if possible, all egress edges of the current vertex.
             for (E edge : graph.getEdges()) {
                 if (result.hasCost(edge.src())) {
-                    result.relaxEdge(edge, result.cost(edge.src()), weigher);
+                    result.relaxEdge(edge, result.cost(edge.src()), weight);
                 }
             }
         }
@@ -45,7 +46,7 @@ public class BellmanFordGraphSearch<V extends Vertex, E extends Edge<V>>
         // Remove any vertexes reached by traversing edges with negative weights.
         for (E edge : graph.getEdges()) {
             if (result.hasCost(edge.src())) {
-                if (result.relaxEdge(edge, result.cost(edge.src()), weigher)) {
+                if (result.relaxEdge(edge, result.cost(edge.src()), weight)) {
                     result.removeVertex(edge.dst());
                 }
             }
@@ -55,4 +56,5 @@ public class BellmanFordGraphSearch<V extends Vertex, E extends Edge<V>>
         result.buildPaths();
         return result;
     }
+
 }

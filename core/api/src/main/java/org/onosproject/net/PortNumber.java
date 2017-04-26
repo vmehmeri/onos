@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package org.onosproject.net;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
@@ -52,7 +51,7 @@ public final class PortNumber {
     /**
      * Logical PortNumbers.
      */
-    public enum Logical {
+    public static enum Logical {
         IN_PORT(IN_PORT_NUMBER),
         TABLE(TABLE_NUMBER),
         NORMAL(NORMAL_NUMBER),
@@ -95,7 +94,7 @@ public final class PortNumber {
 
     // lazily populated Logical port number to PortNumber
     static final Supplier<Map<Long, Logical>> LOGICAL = Suppliers.memoize(() -> {
-            Builder<Long, Logical> builder = ImmutableMap.builder();
+            Builder<Long, Logical> builder = ImmutableMap.<Long, Logical>builder();
             for (Logical lp : Logical.values()) {
                 builder.put(lp.number(), lp);
             }
@@ -273,22 +272,5 @@ public final class PortNumber {
             return this.number == other.number;
         }
         return false;
-    }
-
-    /**
-     * Indicates whether some other PortNumber object is equal to this one
-     * including it's name.
-     *
-     * @param that other {@link PortNumber} instance to compare
-     * @return true if equal, false otherwise
-     */
-    public boolean exactlyEquals(PortNumber that) {
-        if (this == that) {
-            return true;
-        }
-
-        return this.equals(that) &&
-               this.hasName == that.hasName &&
-               Objects.equal(this.name, that.name);
     }
 }

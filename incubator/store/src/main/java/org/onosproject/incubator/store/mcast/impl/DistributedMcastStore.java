@@ -1,18 +1,3 @@
-/*
- * Copyright 2015-present Open Networking Laboratory
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.onosproject.incubator.store.mcast.impl;
 
 import org.apache.felix.scr.annotations.Activate;
@@ -25,6 +10,7 @@ import org.onlab.util.KryoNamespace;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.mcast.McastEvent;
 import org.onosproject.net.mcast.McastRoute;
+import org.onosproject.net.mcast.McastRouteInfo;
 import org.onosproject.net.mcast.McastStore;
 import org.onosproject.net.mcast.McastStoreDelegate;
 import org.onosproject.store.AbstractStore;
@@ -38,7 +24,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.onosproject.net.mcast.McastRouteInfo.mcastRouteInfo;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -54,7 +39,7 @@ public class DistributedMcastStore extends AbstractStore<McastEvent, McastStoreD
     // map and not emitting events but rather use a provider-like mechanism
     // to program the dataplane.
 
-    private static final String MCASTRIB = "onos-mcast-rib-table";
+    private static final String MCASTRIB = "mcast-rib-table";
     private Logger log = getLogger(getClass());
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
@@ -96,14 +81,14 @@ public class DistributedMcastStore extends AbstractStore<McastEvent, McastStoreD
         switch (operation) {
             case ADD:
                 if (mcastRoutes.putIfAbsent(route, MulticastData.empty()) == null) {
-                    notifyDelegate(new McastEvent(McastEvent.Type.ROUTE_ADDED,
-                                                  mcastRouteInfo(route)));
+                    delegate.notify(new McastEvent(McastEvent.Type.ROUTE_ADDED,
+                                                   McastRouteInfo.mcastRouteInfo(route)));
                 }
                 break;
             case REMOVE:
                 if (mcastRoutes.remove(route) != null) {
-                    notifyDelegate(new McastEvent(McastEvent.Type.ROUTE_REMOVED,
-                                                  mcastRouteInfo(route)));
+                    delegate.notify(new McastEvent(McastEvent.Type.ROUTE_REMOVED,
+                                                   McastRouteInfo.mcastRouteInfo(route)));
                 }
                 break;
             default:
@@ -124,10 +109,10 @@ public class DistributedMcastStore extends AbstractStore<McastEvent, McastStoreD
 
 
         if (data != null) {
-            notifyDelegate(new McastEvent(McastEvent.Type.SOURCE_ADDED,
-                                          mcastRouteInfo(route,
-                                                         data.sinks(),
-                                                         source)));
+            delegate.notify(new McastEvent(McastEvent.Type.SOURCE_ADDED,
+                                           McastRouteInfo.mcastRouteInfo(route,
+                                                                         data.sinks(),
+                                                                         source)));
         }
 
     }
@@ -157,16 +142,19 @@ public class DistributedMcastStore extends AbstractStore<McastEvent, McastStoreD
         if (data != null) {
             switch (operation) {
                 case ADD:
-                    notifyDelegate(new McastEvent(McastEvent.Type.SINK_ADDED,
-                                                  mcastRouteInfo(route, sink,
-                                                                 data.source())));
+                    delegate.notify(new McastEvent(
+                            McastEvent.Type.SINK_ADDED,
+                            McastRouteInfo.mcastRouteInfo(route,
+                                                          sink,
+                                                          data.source())));
                     break;
                 case REMOVE:
                     if (data != null) {
-                        notifyDelegate(new McastEvent(McastEvent.Type.SINK_REMOVED,
-                                                      mcastRouteInfo(route,
-                                                                     sink,
-                                                                     data.source())));
+                        delegate.notify(new McastEvent(
+                                McastEvent.Type.SINK_REMOVED,
+                                McastRouteInfo.mcastRouteInfo(route,
+                                                              sink,
+                                                              data.source())));
                     }
                     break;
                 default:

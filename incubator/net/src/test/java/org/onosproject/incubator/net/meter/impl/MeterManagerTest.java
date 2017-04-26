@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,10 +35,8 @@ import org.onosproject.net.DeviceId;
 import org.onosproject.net.meter.Band;
 import org.onosproject.net.meter.DefaultBand;
 import org.onosproject.net.meter.DefaultMeter;
-import org.onosproject.net.meter.DefaultMeterFeatures;
 import org.onosproject.net.meter.DefaultMeterRequest;
 import org.onosproject.net.meter.Meter;
-import org.onosproject.net.meter.MeterFeaturesKey;
 import org.onosproject.net.meter.MeterId;
 import org.onosproject.net.meter.MeterOperation;
 import org.onosproject.net.meter.MeterOperations;
@@ -53,12 +51,13 @@ import org.onosproject.net.provider.ProviderId;
 import org.onosproject.store.service.TestStorageService;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.onosproject.net.NetTestTools.APP_ID;
 import static org.onosproject.net.NetTestTools.did;
 import static org.onosproject.net.NetTestTools.injectEventDispatcher;
@@ -97,24 +96,6 @@ public class MeterManagerTest {
         TestUtils.setField(meterStore, "clusterService", new TestClusterService());
         TestUtils.setField(meterStore, "mastershipService", new TestMastershipService());
         meterStore.activate();
-        meterStore.storeMeterFeatures(DefaultMeterFeatures.builder().forDevice(did("1"))
-                .withMaxMeters(255L)
-                .withBandTypes(new HashSet<>())
-                .withUnits(new HashSet<>())
-                .hasStats(false)
-                .hasBurst(false)
-                .withMaxBands((byte) 0)
-                .withMaxColors((byte) 0)
-                .build());
-        meterStore.storeMeterFeatures(DefaultMeterFeatures.builder().forDevice(did("2"))
-                .withMaxMeters(2)
-                .withBandTypes(new HashSet<>())
-                .withUnits(new HashSet<>())
-                .hasBurst(false)
-                .hasStats(false)
-                .withMaxBands((byte) 0)
-                .withMaxColors((byte) 0)
-                .build());
 
         manager = new MeterManager();
         manager.store = meterStore;
@@ -213,14 +194,6 @@ public class MeterManagerTest {
         assertThat(manager.getMeter(did("1"), MeterId.meterId(1)), is(m1));
         assertThat(manager.getMeter(did("2"), MeterId.meterId(1)), is(m2));
     }
-
-    @Test
-    public void testMeterFeatures() {
-        assertEquals(meterStore.getMaxMeters(MeterFeaturesKey.key(did("1"))), 255L);
-        assertEquals(meterStore.getMaxMeters(MeterFeaturesKey.key(did("2"))), 2);
-    }
-
-
 
     public class TestApplicationId extends DefaultApplicationId {
         public TestApplicationId(int id, String name) {

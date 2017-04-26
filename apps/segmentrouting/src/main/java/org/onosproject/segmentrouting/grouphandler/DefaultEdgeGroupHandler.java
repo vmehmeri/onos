@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,10 @@
  */
 package org.onosproject.segmentrouting.grouphandler;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.onosproject.core.ApplicationId;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
@@ -22,10 +26,6 @@ import org.onosproject.net.flowobjective.FlowObjectiveService;
 import org.onosproject.net.link.LinkService;
 import org.onosproject.segmentrouting.SegmentRoutingManager;
 import org.onosproject.segmentrouting.config.DeviceProperties;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Default ECMP group handler creation module for an edge device.
@@ -76,8 +76,7 @@ public class DefaultEdgeGroupHandler extends DefaultGroupHandler {
             List<Integer> groupSegmentIds =
                     getSegmentIdsTobePairedWithNeighborSet(combo);
             for (Integer sId : groupSegmentIds) {
-                // For these NeighborSet isMpls is meaningless.
-                NeighborSet ns = new NeighborSet(combo, false, sId);
+                NeighborSet ns = new NeighborSet(combo, sId);
                 log.trace("createGroupsAtEdgeRouter: sw {} "
                         + "combo {} sId {} ns {}",
                         deviceId, combo, sId, ns);
@@ -164,8 +163,7 @@ public class DefaultEdgeGroupHandler extends DefaultGroupHandler {
             List<Integer> groupSegmentIds =
                     getSegmentIdsTobePairedWithNeighborSet(combo);
             for (Integer sId : groupSegmentIds) {
-                // For these NeighborSet isMpls is meaningless.
-                NeighborSet ns = new NeighborSet(combo, false, sId);
+                NeighborSet ns = new NeighborSet(combo, sId);
                 log.trace("computeImpactedNeighborsetForPortEvent: sw {} "
                         + "combo {} sId {} ns {}",
                         deviceId, combo, sId, ns);

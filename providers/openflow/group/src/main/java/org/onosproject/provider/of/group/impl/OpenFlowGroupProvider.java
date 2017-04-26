@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,7 @@ package org.onosproject.provider.of.group.impl;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -34,12 +31,9 @@ import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.onosproject.core.DefaultGroupId;
 import org.onosproject.core.GroupId;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.PortNumber;
-import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.driver.DriverService;
 import org.onosproject.net.group.DefaultGroup;
 import org.onosproject.net.group.Group;
-import org.onosproject.net.group.GroupBucket;
 import org.onosproject.net.group.GroupBuckets;
 import org.onosproject.net.group.GroupDescription;
 import org.onosproject.net.group.GroupOperation;
@@ -48,7 +42,6 @@ import org.onosproject.net.group.GroupOperations;
 import org.onosproject.net.group.GroupProvider;
 import org.onosproject.net.group.GroupProviderRegistry;
 import org.onosproject.net.group.GroupProviderService;
-import org.onosproject.net.group.GroupService;
 import org.onosproject.net.group.StoredGroupBucketEntry;
 import org.onosproject.net.provider.AbstractProvider;
 import org.onosproject.net.provider.ProviderId;
@@ -69,7 +62,6 @@ import org.projectfloodlight.openflow.protocol.OFGroupStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsType;
@@ -95,12 +87,6 @@ public class OpenFlowGroupProvider extends AbstractProvider implements GroupProv
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected DriverService driverService;
-
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected DeviceService deviceService;
-
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected GroupService groupService;
 
     private GroupProviderService providerService;
 
@@ -225,7 +211,7 @@ public class OpenFlowGroupProvider extends AbstractProvider implements GroupProv
             }
         }
 
-        if (providerService != null && groupStatsReply != null) {
+        if (groupStatsReply != null && groupDescStatsReply != null) {
             Collection<Group> groups = buildGroupMetrics(deviceId,
                     groupStatsReply, groupDescStatsReply);
             providerService.pushGroupMetrics(deviceId, groups);
@@ -351,11 +337,11 @@ public class OpenFlowGroupProvider extends AbstractProvider implements GroupProv
                                         GroupMsgErrorCode.values()[(code.ordinal())];
                                 GroupOperation failedOperation = GroupOperation
                                         .createFailedGroupOperation(operation, failureCode);
-                                log.warn("Received a group mod error {}", msg);
                                 providerService.groupOperationFailed(deviceId,
                                         failedOperation);
                                 pendingGroupOperations.remove(pendingGroupId);
                                 pendingXidMaps.remove(pendingGroupId);
+                                log.warn("Received a group mod error {}", msg);
                             } else {
                                 log.error("Cannot find pending group operation with group ID: {}",
                                         pendingGroupId);
@@ -377,7 +363,10 @@ public class OpenFlowGroupProvider extends AbstractProvider implements GroupProv
             if (isGroupSupported(sw)) {
                 GroupStatsCollector gsc = new GroupStatsCollector(sw, POLL_INTERVAL);
                 gsc.start();
-                stopCollectorIfNeeded(collectors.put(dpid, gsc));
+                GroupStatsCollector prevGsc = collectors.put(dpid, gsc);
+                if (prevGsc != null) {
+                    prevGsc.stop();
+                }
             }
 
             //figure out race condition
@@ -388,10 +377,7 @@ public class OpenFlowGroupProvider extends AbstractProvider implements GroupProv
 
         @Override
         public void switchRemoved(Dpid dpid) {
-            stopCollectorIfNeeded(collectors.remove(dpid));
-        }
-
-        private void stopCollectorIfNeeded(GroupStatsCollector collector) {
+            GroupStatsCollector collector = collectors.remove(dpid);
             if (collector != null) {
                 collector.stop();
             }
@@ -403,66 +389,11 @@ public class OpenFlowGroupProvider extends AbstractProvider implements GroupProv
 
         @Override
         public void portChanged(Dpid dpid, OFPortStatus status) {
-            providerService.notifyOfFailovers(checkFailoverGroups(dpid, status));
         }
 
         @Override
         public void receivedRoleReply(Dpid dpid, RoleState requested, RoleState response) {
         }
-    }
-
-    /**
-     * Builds a list of failover Groups whose primary live bucket failed over
-     * (i.e. bucket in use has changed).
-     *
-     * @param dpid    DPID of switch whose port's status changed
-     * @param status  new status of port
-     * @return        list of groups whose primary live bucket failed over
-     */
-    private List<Group> checkFailoverGroups(Dpid dpid, OFPortStatus status) {
-        List<Group> groupList = new ArrayList<>();
-        OFPortDesc desc = status.getDesc();
-        PortNumber portNumber = PortNumber.portNumber(desc.getPortNo().getPortNumber());
-        DeviceId id = DeviceId.deviceId(Dpid.uri(dpid));
-        if (desc.isEnabled()) {
-            return groupList;
-        }
-        Iterator<Group> iterator = groupService.getGroups(id).iterator();
-        while (iterator.hasNext()) {
-            Group group = iterator.next();
-            if (group.type() == GroupDescription.Type.FAILOVER &&
-                    checkFailoverGroup(group, id, portNumber)) {
-                groupList.add(group);
-            }
-        }
-    return groupList;
-    }
-
-    /**
-     * Checks whether the first live port in the failover group's bucket
-     * has failed over.
-     *
-     * @param group       failover group to be checked for failover
-     * @param id          device ID of switch whose port's status changed
-     * @param portNumber  port number of port that was disabled
-     * @return            whether the failover group experienced failover
-     */
-    private boolean checkFailoverGroup(Group group, DeviceId id,
-                                       PortNumber portNumber) {
-        boolean portReached = false;
-        boolean portEnabled = false;
-        Iterator<GroupBucket> bIterator = group.buckets().buckets().iterator();
-        GroupBucket bucket;
-        while (bIterator.hasNext() && !portReached) {
-            bucket = bIterator.next();
-            if (deviceService.getPort(id, bucket.watchPort()).isEnabled()) {
-                portEnabled = true;
-            }
-            if (bucket.watchPort().equals(portNumber)) {
-                portReached = true;
-            }
-        }
-        return portReached && !portEnabled;
     }
 
 }

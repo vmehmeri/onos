@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,11 +37,9 @@ public class AdjacencyListsGraphTest {
     private static final TestVertex G = new TestVertex("G");
 
     private final Set<TestEdge> edges =
-            ImmutableSet.of(new TestEdge(A, B),
-                            new TestEdge(B, C),
-                            new TestEdge(C, D),
-                            new TestEdge(D, A),
-                            new TestEdge(B, D));
+            ImmutableSet.of(new TestEdge(A, B, 1), new TestEdge(B, C, 1),
+                            new TestEdge(C, D, 1), new TestEdge(D, A, 1),
+                            new TestEdge(B, D, 1));
 
     @Test
     public void equality() {

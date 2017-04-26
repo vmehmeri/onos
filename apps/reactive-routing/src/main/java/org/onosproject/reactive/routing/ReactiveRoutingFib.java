@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import org.onlab.packet.VlanId;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.incubator.net.intf.Interface;
 import org.onosproject.incubator.net.intf.InterfaceService;
-import org.onosproject.intentsync.IntentSynchronizationService;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.Host;
 import org.onosproject.net.flow.DefaultTrafficSelector;
@@ -39,6 +38,8 @@ import org.onosproject.net.intent.Key;
 import org.onosproject.net.intent.MultiPointToSinglePointIntent;
 import org.onosproject.net.intent.constraint.PartialFailureConstraint;
 import org.onosproject.routing.IntentRequestListener;
+import org.onosproject.routing.IntentSynchronizationService;
+import org.onosproject.routing.config.RoutingConfigurationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -64,6 +64,7 @@ public class ReactiveRoutingFib implements IntentRequestListener {
 
     private final ApplicationId appId;
     private final HostService hostService;
+    private final RoutingConfigurationService configService;
     private final InterfaceService interfaceService;
     private final IntentSynchronizationService intentSynchronizer;
 
@@ -74,14 +75,17 @@ public class ReactiveRoutingFib implements IntentRequestListener {
      *
      * @param appId application ID to use to generate intents
      * @param hostService host service
+     * @param configService routing configuration service
      * @param interfaceService interface service
      * @param intentSynchronizer intent synchronization service
      */
     public ReactiveRoutingFib(ApplicationId appId, HostService hostService,
+                              RoutingConfigurationService configService,
                               InterfaceService interfaceService,
                               IntentSynchronizationService intentSynchronizer) {
         this.appId = appId;
         this.hostService = hostService;
+        this.configService = configService;
         this.interfaceService = interfaceService;
         this.intentSynchronizer = intentSynchronizer;
 
@@ -91,6 +95,8 @@ public class ReactiveRoutingFib implements IntentRequestListener {
     @Override
     public void setUpConnectivityInternetToHost(IpAddress hostIpAddress) {
         checkNotNull(hostIpAddress);
+        Set<ConnectPoint> ingressPoints =
+                configService.getBgpPeerConnectPoints();
 
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
 
@@ -124,24 +130,6 @@ public class ReactiveRoutingFib implements IntentRequestListener {
         Key key = Key.of(ipPrefix.toString(), appId);
         int priority = ipPrefix.prefixLength() * PRIORITY_MULTIPLIER
                 + PRIORITY_OFFSET;
-
-        Set<ConnectPoint> interfaceConnectPoints =
-                interfaceService.getInterfaces().stream()
-                .map(intf -> intf.connectPoint()).collect(Collectors.toSet());
-
-        if (interfaceConnectPoints.isEmpty()) {
-            log.error("The interface connect points are empty!");
-            return;
-        }
-
-        Set<ConnectPoint> ingressPoints = new HashSet<>();
-
-        for (ConnectPoint connectPoint : interfaceConnectPoints) {
-            if (!connectPoint.equals(egressPoint)) {
-                ingressPoints.add(connectPoint);
-            }
-        }
-
         MultiPointToSinglePointIntent intent =
                 MultiPointToSinglePointIntent.builder()
                         .appId(appId)
@@ -162,8 +150,7 @@ public class ReactiveRoutingFib implements IntentRequestListener {
     public void setUpConnectivityHostToInternet(IpAddress hostIp, IpPrefix prefix,
                                                 IpAddress nextHopIpAddress) {
         // Find the attachment point (egress interface) of the next hop
-        Interface egressInterface =
-                interfaceService.getMatchingInterface(nextHopIpAddress);
+        Interface egressInterface = interfaceService.getMatchingInterface(nextHopIpAddress);
         if (egressInterface == null) {
             log.warn("No outgoing interface found for {}",
                     nextHopIpAddress);

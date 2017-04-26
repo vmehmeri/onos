@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 package org.onosproject.store.primitives.resources.impl;
 
 import static org.slf4j.LoggerFactory.getLogger;
-
-import com.google.common.collect.ImmutableSet;
 import io.atomix.copycat.server.session.ServerSession;
 import io.atomix.copycat.server.Commit;
 import io.atomix.copycat.server.Snapshottable;
@@ -26,6 +24,7 @@ import io.atomix.copycat.server.session.SessionListener;
 import io.atomix.copycat.server.storage.snapshot.SnapshotReader;
 import io.atomix.copycat.server.storage.snapshot.SnapshotWriter;
 import io.atomix.resource.ResourceStateMachine;
+import io.atomix.resource.ResourceType;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -34,7 +33,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -60,7 +58,6 @@ import org.slf4j.Logger;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
-import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -78,8 +75,8 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
                                                            ElectionState.class,
                                                            Registration.class);
 
-    public AtomixLeaderElectorState(Properties properties) {
-        super(properties);
+    public AtomixLeaderElectorState() {
+        super(new ResourceType(AtomixLeaderElector.class));
     }
 
     @Override
@@ -125,21 +122,9 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
      * @param commit listen commit
      */
     public void listen(Commit<? extends Listen> commit) {
-        Long sessionId = commit.session().id();
         if (listeners.putIfAbsent(commit.session().id(), commit) != null) {
             commit.close();
         }
-        commit.session()
-                .onStateChange(
-                        state -> {
-                            if (state == ServerSession.State.CLOSED
-                                    || state == ServerSession.State.EXPIRED) {
-                                Commit<? extends Listen> listener = listeners.remove(sessionId);
-                                if (listener != null) {
-                                    listener.close();
-                                }
-                            }
-                        });
     }
 
     /**
@@ -185,9 +170,6 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
                 notifyLeadershipChange(oldLeadership, newLeadership);
             }
             return newLeadership;
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
         } finally {
             commit.close();
         }
@@ -207,9 +189,6 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
             if (!Objects.equal(oldLeadership, newLeadership)) {
                 notifyLeadershipChange(oldLeadership, newLeadership);
             }
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
         } finally {
             commit.close();
         }
@@ -234,9 +213,6 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
             return (electionState != null &&
                     electionState.leader() != null &&
                     commit.operation().nodeId().equals(electionState.leader().nodeId()));
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
         } finally {
             commit.close();
         }
@@ -261,9 +237,6 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
                 notifyLeadershipChange(oldLeadership, newLeadership);
             }
             return true;
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
         } finally {
             commit.close();
         }
@@ -287,9 +260,6 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
                 }
             });
             notifyLeadershipChanges(changes);
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
         } finally {
             commit.close();
         }
@@ -304,9 +274,6 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
         String topic = commit.operation().topic();
         try {
             return leadership(topic);
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
         } finally {
             commit.close();
         }
@@ -320,13 +287,10 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
     public Set<String> electedTopics(Commit<? extends GetElectedTopics> commit) {
         try {
             NodeId nodeId = commit.operation().nodeId();
-            return ImmutableSet.copyOf(Maps.filterEntries(elections, e -> {
+            return Maps.filterEntries(elections, e -> {
                 Leader leader = leadership(e.getKey()).leader();
                 return leader != null && leader.nodeId().equals(nodeId);
-            }).keySet());
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
+            }).keySet();
         } finally {
             commit.close();
         }
@@ -338,13 +302,8 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
      * @return topic to leader mapping
      */
     public Map<String, Leadership> allLeaderships(Commit<? extends GetAllLeaderships> commit) {
-        Map<String, Leadership> result = new HashMap<>();
         try {
-            result.putAll(Maps.transformEntries(elections, (k, v) -> leadership(k)));
-            return result;
-        } catch (Exception e) {
-            log.error("State machine operation failed", e);
-            throw Throwables.propagate(e);
+            return Maps.transformEntries(elections, (k, v) -> leadership(k));
         } finally {
             commit.close();
         }
@@ -449,7 +408,7 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
                         .filter(r -> r.sessionId() != session.id())
                         .collect(Collectors.toList());
                 if (leader.sessionId() == session.id()) {
-                    if (!updatedRegistrations.isEmpty()) {
+                    if (updatedRegistrations.size() > 0) {
                         return new ElectionState(updatedRegistrations,
                                 updatedRegistrations.get(0),
                                 termCounter.get(),
@@ -474,7 +433,7 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
                         .filter(r -> !r.nodeId().equals(nodeId))
                         .collect(Collectors.toList());
                 if (leader.nodeId().equals(nodeId)) {
-                    if (!updatedRegistrations.isEmpty()) {
+                    if (updatedRegistrations.size() > 0) {
                         return new ElectionState(updatedRegistrations,
                                 updatedRegistrations.get(0),
                                 termCounter.get(),
@@ -580,7 +539,7 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
         byte[] encodedElections  = serializer.encode(elections);
         writer.writeInt(encodedElections.length);
         writer.write(encodedElections);
-        log.debug("Took state machine snapshot");
+        log.info("Took state machine snapshot");
     }
 
     @Override
@@ -593,7 +552,7 @@ public class AtomixLeaderElectorState extends ResourceStateMachine
         byte[] encodedElections = new byte[encodedElectionsSize];
         reader.read(encodedElections);
         elections = serializer.decode(encodedElections);
-        log.debug("Reinstated state machine from snapshot");
+        log.info("Reinstated state machine from snapshot");
     }
 
     private AtomicLong termCounter(String topic) {

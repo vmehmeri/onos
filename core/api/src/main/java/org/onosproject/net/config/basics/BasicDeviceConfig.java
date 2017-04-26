@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.onosproject.net.config.basics;
 import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.key.DeviceKeyId;
-
 /**
  * Basic configuration for network infrastructure devices.
  */
@@ -35,10 +34,9 @@ public final class BasicDeviceConfig extends BasicElementConfig<DeviceId> {
 
     @Override
     public boolean isValid() {
-        return hasOnlyFields(ALLOWED, NAME, LOC_TYPE, LATITUDE, LONGITUDE,
-                GRID_Y, GRID_X, UI_TYPE, RACK_ADDRESS, OWNER, TYPE, DRIVER,
-                MANUFACTURER, HW_VERSION, SW_VERSION, SERIAL,
-                MANAGEMENT_ADDRESS, DEVICE_KEY_ID);
+        return hasOnlyFields(ALLOWED, NAME, LATITUDE, LONGITUDE, RACK_ADDRESS, OWNER,
+                             TYPE, DRIVER, MANUFACTURER, HW_VERSION, SW_VERSION, SERIAL,
+                             MANAGEMENT_ADDRESS, DEVICE_KEY_ID);
     }
 
     /**
@@ -47,7 +45,7 @@ public final class BasicDeviceConfig extends BasicElementConfig<DeviceId> {
      * @return device type override
      */
     public Device.Type type() {
-        return get(TYPE, null, Device.Type.class);
+        return get(TYPE, Device.Type.SWITCH, Device.Type.class);
     }
 
     /**
@@ -187,12 +185,12 @@ public final class BasicDeviceConfig extends BasicElementConfig<DeviceId> {
     /**
      * Sets the device key id.
      *
-     * @param deviceKeyId the new device key id; null to clear
+     * @param deviceKeyId new device key id; null to clear
      * @return self
      */
     public BasicDeviceConfig deviceKeyId(DeviceKeyId deviceKeyId) {
         return (BasicDeviceConfig) setOrClear(DEVICE_KEY_ID,
-                deviceKeyId != null ? deviceKeyId.id() : null);
+                                              deviceKeyId != null ? deviceKeyId.id() : null);
     }
 
     // TODO: device port meta-data to be configured via BasicPortsConfig

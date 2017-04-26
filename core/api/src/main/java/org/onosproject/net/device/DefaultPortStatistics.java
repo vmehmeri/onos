@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,27 +142,20 @@ public final class DefaultPortStatistics implements PortStatistics {
     }
 
     @Override
-    public boolean isZero() {
-        return  bytesReceived() == 0 &&
-                bytesSent() == 0 &&
-                packetsReceived() == 0 &&
-                packetsRxDropped() == 0 &&
-                packetsSent() == 0 &&
-                packetsTxDropped() == 0;
-    }
-
-    @Override
     public String toString() {
-        return "device: " + deviceId + ", " +
-                "port: " + this.port + ", " +
-                "pktRx: " + this.packetsReceived + ", " +
-                "pktTx: " + this.packetsSent + ", " +
-                "byteRx: " + this.bytesReceived + ", " +
-                "byteTx: " + this.bytesSent + ", " +
-                "pktRxErr: " + this.packetsRxErrors + ", " +
-                "pktTxErr: " + this.packetsTxErrors + ", " +
-                "pktRxDrp: " + this.packetsRxDropped + ", " +
-                "pktTxDrp: " + this.packetsTxDropped;
+        StringBuilder sb = new StringBuilder("device: " + deviceId + ", ");
+
+        sb.append("port: " + this.port + ", ");
+        sb.append("pktRx: " + this.packetsReceived + ", ");
+        sb.append("pktTx: " + this.packetsSent + ", ");
+        sb.append("byteRx: " + this.bytesReceived + ", ");
+        sb.append("byteTx: " + this.bytesSent + ", ");
+        sb.append("pktRxErr: " + this.packetsRxErrors + ", ");
+        sb.append("pktTxErr: " + this.packetsTxErrors + ", ");
+        sb.append("pktRxDrp: " + this.packetsRxDropped + ", ");
+        sb.append("pktTxDrp: " + this.packetsTxDropped);
+
+        return sb.toString();
     }
 
     public static final class Builder {
@@ -350,5 +343,4 @@ public final class DefaultPortStatistics implements PortStatistics {
         }
 
     }
-
 }

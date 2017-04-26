@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,16 +21,19 @@ import java.util.Objects;
 
 public abstract class L0ModificationInstruction implements Instruction {
 
-    private static final String SEPARATOR = ":";
+    public static final String SEPARATOR = ":";
 
     /**
      * Represents the type of traffic treatment.
      */
     public enum L0SubType {
         /**
-         * OCh (Optical Channel) modification.
+         * Lambda modification.
          */
         LAMBDA,
+        /**
+         * OCh (Optical Channel) modification.
+         */
         OCH,
     }
 
@@ -42,17 +45,17 @@ public abstract class L0ModificationInstruction implements Instruction {
     }
 
     /**
-     -     * Represents a L0 lambda modification instruction.
-     -     */
+     * Represents a L0 lambda modification instruction.
+     */
     public static final class ModLambdaInstruction extends L0ModificationInstruction {
 
         private final L0SubType subtype;
         private final short lambda;
 
         ModLambdaInstruction(L0SubType subType, short lambda) {
-                this.subtype = subType;
-                this.lambda = lambda;
-            }
+            this.subtype = subType;
+            this.lambda = lambda;
+        }
 
         @Override
         public L0SubType subtype() {
@@ -68,7 +71,7 @@ public abstract class L0ModificationInstruction implements Instruction {
             return subtype().toString() + SEPARATOR + lambda;
         }
 
-       @Override
+        @Override
         public int hashCode() {
             return Objects.hash(type(), subtype, lambda);
         }
@@ -76,17 +79,16 @@ public abstract class L0ModificationInstruction implements Instruction {
         @Override
         public boolean equals(Object obj) {
             if (this == obj) {
-                    return true;
-                }
+                return true;
+            }
             if (obj instanceof ModLambdaInstruction) {
-                    ModLambdaInstruction that = (ModLambdaInstruction) obj;
-                   return  Objects.equals(lambda, that.lambda) &&
-                                   Objects.equals(subtype, that.subtype);
-               }
-           return false;
-       }
+                ModLambdaInstruction that = (ModLambdaInstruction) obj;
+                return  Objects.equals(lambda, that.lambda) &&
+                        Objects.equals(subtype, that.subtype);
+            }
+            return false;
+        }
     }
-
 
     /**
      * Represents an L0 OCh (Optical Channel) modification instruction.

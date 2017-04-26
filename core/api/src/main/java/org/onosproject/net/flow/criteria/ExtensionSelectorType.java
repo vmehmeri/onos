@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,13 +38,7 @@ public class ExtensionSelectorType {
         NICIRA_MATCH_NSH_CH2(3),
         NICIRA_MATCH_NSH_CH3(4),
         NICIRA_MATCH_NSH_CH4(5),
-        NICIRA_MATCH_ENCAP_ETH_TYPE(6),
-        OFDPA_MATCH_VLAN_VID(16),
-        OFDPA_MATCH_OVID(17),
-        OFDPA_MATCH_MPLS_L2_PORT(18),
-        BMV2_MATCH_PARAMS(128),
-
-        UNRESOLVED_TYPE(200);
+        OFDPA_MATCH_VLAN_VID(16);
 
         private ExtensionSelectorType type;
 
@@ -76,15 +70,6 @@ public class ExtensionSelectorType {
      */
     public ExtensionSelectorType(int type) {
         this.type = type;
-    }
-
-    /**
-     * Returns the integer value associated with this type.
-     *
-     * @return an integer value
-     */
-    public int toInt() {
-        return this.type;
     }
 
     @Override

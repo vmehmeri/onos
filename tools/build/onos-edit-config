@@ -3,24 +3,16 @@
 # Used to update the project's refs/meta/config
 # ----------------------------------------------------
 
-GERRIT_URL=$(git remote show origin | grep "Fetch URL" | cut -d: -f2- | grep ssh)
-
 set -e
 
-if [ -z "$GERRIT_URL" ]; then
-  GERRIT_USER=${GERRIT_USER:-$USER}
-  GERRIT_PROJECT=${GERRIT_PROJECT:-onos}
-  GERRIT_URL="ssh://$GERRIT_USER@gerrit.onosproject.org:29418/$GERRIT_PROJECT"
-else
-  GERRIT_PROJECT=${GERRIT_URL##*/}
-  GERRIT_USER=$(echo ${GERRIT_URL#*//} | cut -d@ -f1)
-fi
+GERRIT_USER=${GERRIT_USER:-$USER}
+GERRIT_PROJECT=${GERRIT_PROJECT:-onos}
 
 function setup {
   DIR=$(mktemp -d /tmp/$GERRIT_PROJECT-config.XXXXX) || { echo "Failed to create temp file"; exit 1; }
   cd $DIR
   git init
-  git remote add origin $GERRIT_URL
+  git remote add origin ssh://$GERRIT_USER@gerrit.onosproject.org:29418/$GERRIT_PROJECT
   git fetch origin refs/meta/config:refs/remotes/origin/meta/config
   git checkout meta/config
 }
@@ -31,8 +23,8 @@ function cleanup {
 }
 
 function testReleaseMembership {
-    ssh -p 29418 gerrit.onosproject.org gerrit ls-members "ONOS\ Release" | grep -q $GERRIT_USER ||
-        (echo 'ERROR: Not a member of the ONOS Release group'; cleanup; exit 1)
+    trap "echo 'ERROR: Not a member of the ONOS Release group'; cleanup" ERR
+    ssh -p 29418 gerrit.onosproject.org gerrit ls-members "ONOS\ Release" | grep -q $GERRIT_USER
 }
 
 setup

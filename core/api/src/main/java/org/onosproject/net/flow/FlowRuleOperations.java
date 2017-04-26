@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static org.onosproject.net.flow.FlowRuleOperation.Type.*;
 
 /**
@@ -33,7 +32,7 @@ import static org.onosproject.net.flow.FlowRuleOperation.Type.*;
 public class FlowRuleOperations {
 
     private final List<Set<FlowRuleOperation>> stages;
-    private final FlowRuleOperationsContext callback;
+    private final FlowRuleOperationsContext callback; // TODO consider Optional
 
     private FlowRuleOperations(List<Set<FlowRuleOperation>> stages,
                                FlowRuleOperationsContext cb) {
@@ -165,7 +164,7 @@ public class FlowRuleOperations {
          * @return flow rule operations
          */
         public FlowRuleOperations build() {
-            return build(NullFlowRuleOperationsContext.getInstance());
+            return build(null);
         }
 
         /**
@@ -175,8 +174,6 @@ public class FlowRuleOperations {
          * @return flow rule operations
          */
         public FlowRuleOperations build(FlowRuleOperationsContext cb) {
-            checkNotNull(cb);
-
             closeStage();
             return new FlowRuleOperations(listBuilder.build(), cb);
         }

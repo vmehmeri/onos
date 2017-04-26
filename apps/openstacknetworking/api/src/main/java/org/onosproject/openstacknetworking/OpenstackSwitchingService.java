@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015-2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,57 @@
  */
 package org.onosproject.openstacknetworking;
 
-import org.onosproject.net.Host;
+import org.onosproject.openstackinterface.OpenstackNetwork;
+import org.onosproject.openstackinterface.OpenstackPort;
+import org.onosproject.openstackinterface.OpenstackSubnet;
+
+import java.util.Map;
 
 /**
- * Handles switch update requests from OpenStack and  CLI.
+ * Handles port management REST API from Openstack for VMs.
  */
 public interface OpenstackSwitchingService {
-    /**
-     * Handles to purge data plane flow of existing VM.
-     *
-     * @param host VM Host information
-     */
-    void purgeVmFlow(Host host);
 
     /**
-     * Handles to reinstall data plane flow of existing VM.
+     * Store the port information created by Openstack.
      *
-     * @param host VM Host information
+     * @param openstackPort port information
      */
-    void reinstallVmFlow(Host host);
+    void createPorts(OpenstackPort openstackPort);
+
+    /**
+     * Removes flow rules corresponding to the port removed by Openstack.
+     *
+     * @param uuid UUID
+     */
+    void removePort(String uuid);
+
+    /**
+     * Updates flow rules corresponding to the port information updated by Openstack.
+     *
+     * @param openstackPort OpenStack port
+     */
+    void updatePort(OpenstackPort openstackPort);
+
+    /**
+     * Stores the network information created by openstack.
+     *
+     * @param openstackNetwork network information
+     */
+    void createNetwork(OpenstackNetwork openstackNetwork);
+
+    /**
+     * Stores the subnet information created by openstack.
+     *
+     * @param openstackSubnet subnet information
+     */
+    void createSubnet(OpenstackSubnet openstackSubnet);
+
+    /**
+     * Retruns OpenstackPortInfo map.
+     *
+     * @return OpenstackPortInfo map
+     */
+    Map<String, OpenstackPortInfo> openstackPortInfo();
+
 }

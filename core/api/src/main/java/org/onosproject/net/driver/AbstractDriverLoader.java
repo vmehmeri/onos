@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ public abstract class AbstractDriverLoader {
     @Activate
     protected void activate() {
         try {
-            provider = new XmlDriverLoader(getClass().getClassLoader(), driverAdminService)
+            provider = new XmlDriverLoader(getClass().getClassLoader())
                     .loadDrivers(getClass().getResourceAsStream(path), driverAdminService);
             driverAdminService.registerProvider(provider);
         } catch (Exception e) {

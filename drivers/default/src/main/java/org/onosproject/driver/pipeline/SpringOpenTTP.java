@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package org.onosproject.driver.pipeline;
 
-import static java.util.concurrent.Executors.newScheduledThreadPool;
 import static org.onlab.util.Tools.groupedThreads;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -59,7 +58,6 @@ import org.onosproject.net.flow.criteria.PortCriterion;
 import org.onosproject.net.flow.criteria.VlanIdCriterion;
 import org.onosproject.net.flow.instructions.Instruction;
 import org.onosproject.net.flow.instructions.Instructions.OutputInstruction;
-import org.onosproject.net.flow.instructions.L2ModificationInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModVlanIdInstruction;
 import org.onosproject.net.flowobjective.FilteringObjective;
 import org.onosproject.net.flowobjective.FlowObjectiveStore;
@@ -87,8 +85,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -97,11 +95,6 @@ import java.util.stream.Collectors;
  */
 public class SpringOpenTTP extends AbstractHandlerBehaviour
         implements Pipeliner {
-
-    /**
-     * GroupCheck delay.
-     */
-    private static final int CHECK_DELAY = 500;
 
     // Default table ID - compatible with CpqD switch
     private static final int TABLE_VLAN = 0;
@@ -124,7 +117,7 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
     protected int aclTableId = TABLE_ACL;
     protected int srcMacTableId = TABLE_SMAC;
 
-    private static final Logger log = getLogger(SpringOpenTTP.class);
+    protected final Logger log = getLogger(getClass());
 
     private ServiceDirectory serviceDirectory;
     private FlowRuleService flowRuleService;
@@ -136,26 +129,18 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
 
     private Cache<GroupKey, NextObjective> pendingGroups;
 
-    private static final ScheduledExecutorService GROUP_CHECKER
-        = newScheduledThreadPool(2,
-                                 groupedThreads("onos/pipeliner",
-                                                "spring-open-%d", log));
-    static {
-        // ONOS-3579 workaround, let core threads die out on idle
-        if (GROUP_CHECKER instanceof ScheduledThreadPoolExecutor) {
-            ScheduledThreadPoolExecutor executor = (ScheduledThreadPoolExecutor) GROUP_CHECKER;
-            executor.setKeepAliveTime(CHECK_DELAY * 2, TimeUnit.MILLISECONDS);
-            executor.allowCoreThreadTimeOut(true);
-        }
-    }
-
+    private ScheduledExecutorService groupChecker = Executors
+            .newScheduledThreadPool(2,
+                                    groupedThreads("onos/pipeliner",
+                                                   "spring-open-%d"));
     protected KryoNamespace appKryo = new KryoNamespace.Builder()
             .register(KryoNamespaces.API)
             .register(GroupKey.class)
             .register(DefaultGroupKey.class)
             .register(TrafficTreatment.class)
             .register(SpringOpenGroup.class)
-            .build("SpringOpenTTP");
+            .register(byte[].class)
+            .build();
 
     @Override
     public void init(DeviceId deviceId, PipelinerContext context) {
@@ -171,6 +156,9 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                                               ObjectiveError.GROUPINSTALLATIONFAILED);
                                      }
                                  }).build();
+
+        groupChecker.scheduleAtFixedRate(new GroupChecker(), 0, 500,
+                                         TimeUnit.MILLISECONDS);
 
         coreService = serviceDirectory.get(CoreService.class);
         flowRuleService = serviceDirectory.get(FlowRuleService.class);
@@ -336,7 +324,8 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                     buckets = nextObjective
                             .next()
                             .stream()
-                            .map(DefaultGroupBucket::createSelectGroupBucket)
+                            .map((treatment) -> DefaultGroupBucket
+                                 .createSelectGroupBucket(treatment))
                             .collect(Collectors.toList());
                     if (!buckets.isEmpty()) {
                         final GroupKey key = new DefaultGroupKey(
@@ -352,7 +341,6 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                                 + " in dev:{}", nextObjective.id(), deviceId);
                         pendingGroups.put(key, nextObjective);
                         groupService.addGroup(groupDescription);
-                        verifyPendingGroupLater();
                     }
                 }
                 break;
@@ -360,7 +348,8 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                 buckets = nextObjective
                         .next()
                         .stream()
-                        .map(DefaultGroupBucket::createAllGroupBucket)
+                        .map((treatment) -> DefaultGroupBucket
+                                .createAllGroupBucket(treatment))
                         .collect(Collectors.toList());
                 if (!buckets.isEmpty()) {
                     final GroupKey key = new DefaultGroupKey(
@@ -377,7 +366,6 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                             + "in device {}", nextObjective.id(), deviceId);
                     pendingGroups.put(key, nextObjective);
                     groupService.addGroup(groupDescription);
-                    verifyPendingGroupLater();
                 }
                 break;
             case FAILOVER:
@@ -861,8 +849,7 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
 
     protected List<FlowRule> processVlanIdFilter(VlanIdCriterion vlanIdCriterion,
                                                  FilteringObjective filt,
-                                                 VlanId assignedVlan, VlanId explicitlyAssignedVlan, VlanId pushedVlan,
-                                                 boolean pushVlan, boolean popVlan,
+                                                 VlanId assignedVlan,
                                                  ApplicationId applicationId) {
         List<FlowRule> rules = new ArrayList<>();
         log.debug("adding rule for VLAN: {}", vlanIdCriterion.vlanId());
@@ -874,19 +861,6 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
         if (vlanIdCriterion.vlanId() != VlanId.NONE) {
             selector.matchVlanId(vlanIdCriterion.vlanId());
             selector.matchInPort(p.port());
-            if (popVlan) {
-                // Pop outer tag
-                treatment.immediate().popVlan();
-            }
-            if (explicitlyAssignedVlan != null && (!popVlan || !vlanIdCriterion.vlanId().equals(assignedVlan))) {
-                // Modify VLAN ID on single tagged packet or modify remaining tag after popping
-                // In the first case, do not set VLAN ID again to the already existing value
-                treatment.immediate().setVlanId(explicitlyAssignedVlan);
-            }
-            if (pushVlan) {
-                // Push new tag
-                treatment.immediate().pushVlan().setVlanId(pushedVlan);
-            }
         } else {
             selector.matchInPort(p.port());
             treatment.immediate().pushVlan().setVlanId(assignedVlan);
@@ -936,61 +910,11 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
         }
 
         VlanId assignedVlan = null;
-        VlanId modifiedVlan = null;
-        VlanId pushedVlan = null;
-        boolean pushVlan = false;
-        boolean popVlan = false;
         if (vlanIdCriterion != null) {
-            if (filt.meta() != null) {
-                for (Instruction i : filt.meta().allInstructions()) {
-                    if (i instanceof L2ModificationInstruction) {
-                        if (((L2ModificationInstruction) i).subtype()
-                                .equals(L2ModificationInstruction.L2SubType.VLAN_PUSH)) {
-                            pushVlan = true;
-                        } else if (((L2ModificationInstruction) i).subtype()
-                                .equals(L2ModificationInstruction.L2SubType.VLAN_POP)) {
-                            if (modifiedVlan != null) {
-                                log.error("Pop tag is not allowed after modify VLAN operation " +
-                                        "in filtering objective", deviceId);
-                                fail(filt, ObjectiveError.BADPARAMS);
-                                return;
-                            }
-                            popVlan = true;
-                        }
-                    }
-                    if (i instanceof ModVlanIdInstruction) {
-                        if (pushVlan && vlanIdCriterion.vlanId() != VlanId.NONE) {
-                            // Modify VLAN should not appear after pushing a new tag
-                            if (pushedVlan != null) {
-                                log.error("Modify VLAN not allowed after push tag operation " +
-                                        "in filtering objective", deviceId);
-                                fail(filt, ObjectiveError.BADPARAMS);
-                                return;
-                            }
-                            pushedVlan = ((ModVlanIdInstruction) i).vlanId();
-                        } else if (vlanIdCriterion.vlanId() == VlanId.NONE) {
-                            // For untagged packets the pushed VLAN ID will be saved in assignedVlan
-                            // just to ensure the driver works as designed for the fabric use case
-                            assignedVlan = ((ModVlanIdInstruction) i).vlanId();
-                        } else {
-                            // For tagged packets modifiedVlan will contain the modified value of existing tag
-                            if (modifiedVlan != null) {
-                                log.error("Driver does not allow multiple modify VLAN operations " +
-                                        "in the same filtering objective", deviceId);
-                                fail(filt, ObjectiveError.BADPARAMS);
-                                return;
-                            }
-                            modifiedVlan = ((ModVlanIdInstruction) i).vlanId();
-                        }
-                    }
-                }
-            }
-
-            // For VLAN cross-connect packets, use the configured VLAN unless there is an explicitly provided VLAN ID
+            // For VLAN cross-connect packets, use the configured VLAN
             if (vlanIdCriterion.vlanId() != VlanId.NONE) {
-                if (assignedVlan == null) {
-                    assignedVlan = vlanIdCriterion.vlanId();
-                }
+                assignedVlan = vlanIdCriterion.vlanId();
+
             // For untagged packets, assign a VLAN ID
             } else {
                 if (filt.meta() == null) {
@@ -999,6 +923,11 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                     fail(filt, ObjectiveError.BADPARAMS);
                     return;
                 }
+                for (Instruction i : filt.meta().allInstructions()) {
+                    if (i instanceof ModVlanIdInstruction) {
+                        assignedVlan = ((ModVlanIdInstruction) i).vlanId();
+                    }
+                }
                 if (assignedVlan == null) {
                     log.error("Driver requires an assigned vlan-id to tag incoming "
                             + "untagged packets. Not processing vlan filters on "
@@ -1006,21 +935,6 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                     fail(filt, ObjectiveError.BADPARAMS);
                     return;
                 }
-            }
-            if (pushVlan && popVlan) {
-                log.error("Cannot push and pop vlan in the same filtering objective");
-                fail(filt, ObjectiveError.BADPARAMS);
-                return;
-            }
-            if (popVlan && vlanIdCriterion.vlanId() == VlanId.NONE) {
-                log.error("Cannot pop vlan for untagged packets");
-                fail(filt, ObjectiveError.BADPARAMS);
-                return;
-            }
-            if ((pushVlan && pushedVlan == null) && vlanIdCriterion.vlanId() != VlanId.NONE) {
-                log.error("No VLAN ID provided for push tag operation");
-                fail(filt, ObjectiveError.BADPARAMS);
-                return;
             }
         }
 
@@ -1044,8 +958,7 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
         } else {
             for (FlowRule vlanRule : processVlanIdFilter(vlanIdCriterion,
                                                          filt,
-                                                         assignedVlan, modifiedVlan, pushedVlan,
-                                                         pushVlan, popVlan,
+                                                         assignedVlan,
                                                          applicationId)) {
                 log.debug("adding VLAN filtering rule in VLAN table: {} for dev: {}",
                           vlanRule, deviceId);
@@ -1141,10 +1054,6 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
         }
     }
 
-    private void verifyPendingGroupLater() {
-        GROUP_CHECKER.schedule(new GroupChecker(), CHECK_DELAY, TimeUnit.MILLISECONDS);
-    }
-
     private class GroupChecker implements Runnable {
 
         @Override
@@ -1156,29 +1065,23 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
                     .filter(key -> groupService.getGroup(deviceId, key) != null)
                     .collect(Collectors.toSet());
 
-            keys.forEach(key -> {
-                NextObjective obj = pendingGroups
-                        .getIfPresent(key);
-                if (obj == null) {
-                    return;
-                }
-                log.debug("Group verified: dev:{} gid:{} <<->> nextId:{}",
-                        deviceId,
-                        groupService.getGroup(deviceId, key).id(),
-                        obj.id());
-                pass(obj);
-                pendingGroups.invalidate(key);
-                flowObjectiveStore.putNextGroup(
-                        obj.id(),
-                        new SpringOpenGroup(key, null));
-            });
-
-            if (!pendingGroups.asMap().isEmpty()) {
-                // Periodically execute only if entry remains in pendingGroups.
-                // Iterating pendingGroups trigger cleanUp and expiration,
-                // which will eventually empty the pendingGroups.
-                verifyPendingGroupLater();
-            }
+            keys.stream()
+                    .forEach(key -> {
+                                 NextObjective obj = pendingGroups
+                                         .getIfPresent(key);
+                                 if (obj == null) {
+                                     return;
+                                 }
+                                 log.debug("Group verified: dev:{} gid:{} <<->> nextId:{}",
+                                           deviceId,
+                                           groupService.getGroup(deviceId, key).id(),
+                                           obj.id());
+                                 pass(obj);
+                                 pendingGroups.invalidate(key);
+                                 flowObjectiveStore.putNextGroup(
+                                                        obj.id(),
+                                                        new SpringOpenGroup(key, null));
+                    });
         }
     }
 
@@ -1189,7 +1092,7 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
      * case, we refer to this as a dummy group.
      *
      */
-    protected class SpringOpenGroup implements NextGroup {
+    private class SpringOpenGroup implements NextGroup {
         private final boolean dummy;
         private final GroupKey key;
         private final TrafficTreatment treatment;
@@ -1212,16 +1115,9 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
             }
         }
 
+        @SuppressWarnings("unused")
         public GroupKey key() {
             return key;
-        }
-
-        public boolean dummy() {
-            return dummy;
-        }
-
-        public TrafficTreatment treatment() {
-            return treatment;
         }
 
         @Override
@@ -1229,11 +1125,5 @@ public class SpringOpenTTP extends AbstractHandlerBehaviour
             return appKryo.serialize(this);
         }
 
-    }
-
-    @Override
-    public List<String> getNextMappings(NextGroup nextGroup) {
-        // TODO Implementation deferred to vendor
-        return null;
     }
 }

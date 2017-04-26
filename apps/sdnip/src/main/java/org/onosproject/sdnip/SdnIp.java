@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package org.onosproject.sdnip;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -26,15 +25,13 @@ import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.incubator.component.ComponentService;
 import org.onosproject.incubator.net.intf.InterfaceService;
-import org.onosproject.net.config.ConfigFactory;
-import org.onosproject.net.config.NetworkConfigRegistry;
 import org.onosproject.net.config.NetworkConfigService;
-import org.onosproject.net.config.basics.SubjectFactories;
-import org.onosproject.intentsync.IntentSynchronizationService;
+import org.onosproject.routing.IntentSynchronizationAdminService;
+import org.onosproject.routing.IntentSynchronizationService;
 import org.onosproject.routing.RoutingService;
-import org.onosproject.sdnip.config.SdnIpConfig;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.slf4j.LoggerFactory.getLogger;
@@ -64,7 +61,7 @@ public class SdnIp {
     protected IntentSynchronizationService intentSynchronizer;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected NetworkConfigRegistry cfgRegistry;
+    protected IntentSynchronizationAdminService intentSynchronizerAdmin;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected ComponentService componentService;
@@ -73,28 +70,18 @@ public class SdnIp {
 
     private ApplicationId appId;
 
-    private final List<String> components = ImmutableList.of(
-            "org.onosproject.routing.bgp.BgpSessionManager",
-            "org.onosproject.routing.impl.BgpSpeakerNeighbourHandler",
-            org.onosproject.sdnip.SdnIpFib.class.getName()
-    );
-
-    private final List<ConfigFactory<?, ?>> factories = ImmutableList.of(
-            new ConfigFactory<ApplicationId, SdnIpConfig>(SubjectFactories.APP_SUBJECT_FACTORY,
-                                                          SdnIpConfig.class, SdnIpConfig.CONFIG_KEY) {
-                @Override
-                public SdnIpConfig createConfig() {
-                    return new SdnIpConfig();
-                }
-            });
+    private static List<String> components = new ArrayList<>();
+    static {
+        components.add("org.onosproject.routing.bgp.BgpSessionManager");
+        components.add("org.onosproject.routing.impl.Router");
+        components.add(org.onosproject.sdnip.SdnIpFib.class.getName());
+    }
 
     @Activate
     protected void activate() {
-        appId = coreService.registerApplication(SDN_IP_APP);
-
-        factories.forEach(cfgRegistry::registerConfigFactory);
-
         components.forEach(name -> componentService.activate(appId, name));
+
+        appId = coreService.registerApplication(SDN_IP_APP);
 
         peerConnectivity = new PeerConnectivityManager(appId,
                                                        intentSynchronizer,
@@ -103,20 +90,32 @@ public class SdnIp {
                                                        interfaceService);
         peerConnectivity.start();
 
+        // TODO fix removing intents
         applicationService.registerDeactivateHook(appId,
-                () -> intentSynchronizer.removeIntentsByAppId(appId));
+                intentSynchronizerAdmin::removeIntents);
 
-        log.info("Started");
+        log.info("SDN-IP started");
     }
 
     @Deactivate
     protected void deactivate() {
         components.forEach(name -> componentService.deactivate(appId, name));
 
-        factories.forEach(cfgRegistry::unregisterConfigFactory);
-
         peerConnectivity.stop();
 
-        log.info("Stopped");
+        log.info("SDN-IP Stopped");
     }
+
+    /**
+     * Converts DPIDs of the form xx:xx:xx:xx:xx:xx:xx to OpenFlow provider
+     * device URIs.
+     *
+     * @param dpid the DPID string to convert
+     * @return the URI string for this device
+     */
+    static String dpidToUri(String dpid) {
+        return "of:" + dpid.replace(":", "");
+    }
+
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,18 @@
  ONOS GUI -- Remote -- REST Service - Unit Tests
  */
 describe('factory: fw/remote/rest.js', function() {
-    var $log, $httpBackend, fs, rs;
+    var $log, $httpBackend, fs, rs, promise;
 
     beforeEach(module('onosUtil', 'onosRemote'));
 
     beforeEach(module(function($provide) {
-        $provide.factory('$location', function () {
+        $provide.factory('$location', function (){
             return {
                 protocol: function () { return 'http'; },
                 host: function () { return 'foo'; },
-                port: function () { return '80'; },
-                search: function() {
-                    return {debug: 'true'};
-                },
-                absUrl: function () {
-                    return 'http://foo:123/onos/ui/rs/path';
-                }
+                port: function () { return '80'; }
             };
-        });
+        })
     }));
 
     beforeEach(inject(function (_$log_, _$httpBackend_, FnService, RestService) {
@@ -51,8 +45,7 @@ describe('factory: fw/remote/rest.js', function() {
 
     it('should define api functions', function () {
         expect(fs.areFunctions(rs, [
-            'get',
-            'post'
+            'get'
         ])).toBeTruthy();
     });
 

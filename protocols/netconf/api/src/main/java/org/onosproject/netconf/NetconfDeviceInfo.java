@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,8 +39,6 @@ public class NetconfDeviceInfo {
     private String password;
     private IpAddress ipAddress;
     private int port;
-    private char[] key;
-    //File keyFile @deprecated 1.9.0
     private File keyFile;
     private DeviceId deviceId;
 
@@ -71,12 +69,7 @@ public class NetconfDeviceInfo {
      * @param password  the password for the device
      * @param ipAddress the ip address
      * @param port      the tcp port
-     * @param keyString the string containing a DSA or RSA private key
-     *                  of the user in OpenSSH key format
-     *                  <br>
-     *                  (Pre 1.9.0 behaviour: {@code keyString} can be file path
-     *                  to a file containing DSA or RSA private key of the user
-     *                  in OpenSSH key format)
+     * @param keyString the string containing the key.
      */
     public NetconfDeviceInfo(String name, String password, IpAddress ipAddress,
                              int port, String keyString) {
@@ -87,7 +80,6 @@ public class NetconfDeviceInfo {
         this.password = password;
         this.ipAddress = ipAddress;
         this.port = port;
-        this.key = keyString.toCharArray();
         this.keyFile = new File(keyString);
     }
 
@@ -128,25 +120,10 @@ public class NetconfDeviceInfo {
     }
 
     /**
-     * Exposes the key of the controller.
-     *
-     * @return {@code char[]} containing a DSA or RSA private key of the user
-     *         in OpenSSH key format
-     *         or null if device is not configured to use public key authentication
-     */
-    public char[] getKey() {
-        return key;
-    }
-
-    /**
      * Exposes the keyFile of the controller.
      *
-     * @return File object pointing to a file containing a DSA or RSA
-     *         private key of the user in OpenSSH key format,
-     *         or null if device is not configured to use public key authentication
-     * @deprecated 1.9.0
+     * @return int port address
      */
-    @Deprecated
     public File getKeyFile() {
         return keyFile;
     }
@@ -157,7 +134,6 @@ public class NetconfDeviceInfo {
      *
      * @return String device info
      */
-    @Override
     public String toString() {
         return "netconf:" + name + "@" + ipAddress + ":" + port;
     }

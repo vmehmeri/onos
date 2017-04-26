@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,9 +34,9 @@ import static org.onosproject.security.AppGuard.checkPermission;
 import static org.onosproject.security.AppPermission.Type.CLOCK_WRITE;
 
 /**
- * LogicalClockService implementation based on a {@link AtomicCounter}.
+ * LogicalClockService implementation based on a AtomicCounter.
  */
-@Component(immediate = true)
+@Component(immediate = true, enabled = true)
 @Service
 public class LogicalClockManager implements LogicalClockService {
 
@@ -50,7 +50,11 @@ public class LogicalClockManager implements LogicalClockService {
 
     @Activate
     public void activate() {
-        atomicCounter = storageService.getAtomicCounter(SYSTEM_LOGICAL_CLOCK_COUNTER_NAME);
+        atomicCounter = storageService.atomicCounterBuilder()
+                                      .withName(SYSTEM_LOGICAL_CLOCK_COUNTER_NAME)
+                                      .withPartitionsDisabled()
+                                      .build()
+                                      .asAtomicCounter();
         log.info("Started");
     }
 

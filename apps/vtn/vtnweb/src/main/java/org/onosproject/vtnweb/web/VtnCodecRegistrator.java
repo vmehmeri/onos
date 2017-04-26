@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import org.onosproject.vtnrsc.FlowClassifier;
 import org.onosproject.vtnrsc.PortChain;
 import org.onosproject.vtnrsc.PortPair;
 import org.onosproject.vtnrsc.PortPairGroup;
-import org.onosproject.vtnrsc.ServiceFunctionGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,7 @@ public class VtnCodecRegistrator {
         codecService.registerCodec(PortPairGroup.class, new PortPairGroupCodec());
         codecService.registerCodec(FlowClassifier.class, new FlowClassifierCodec());
         codecService.registerCodec(PortChain.class, new PortChainCodec());
-        codecService.registerCodec(ServiceFunctionGroup.class, new ServiceFunctionCodec());
+
         log.info("Started");
     }
 

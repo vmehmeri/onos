@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -123,7 +123,7 @@ public class LinkKeyTest {
         LinkKey k1 = LinkKey.linkKey(SRC1, DST1);
         String k1String = k1.toString();
         assertThat(k1String, allOf(containsString("LinkKey{"),
-                                   containsString("src=1/1"),
-                                   containsString("dst=2/1}")));
+                                   containsString("src=ConnectPoint{elementId=1, portNumber=1}"),
+                                   containsString("dst=ConnectPoint{elementId=2, portNumber=1}")));
     }
 }

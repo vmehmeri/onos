@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015,2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,10 @@
         bottom,
         iconDiv,
         wSize,
-        editingName = false,
-        device;
+        editingName = false;
 
     // constants
-    var topPdg = 28,
+    var topPdg = 13,
         ctnrPdg = 24,
         scrollSize = 17,
         portsTblPdg = 50,
@@ -47,7 +46,6 @@
         nameChangeReq = 'deviceNameChangeRequest',
         nameChangeResp = 'deviceNameChangeResponse',
 
-        propSplit = 4,
         propOrder = [
             'id', 'type', 'masterid', 'chassisid',
             'mfr', 'hw', 'sw', 'protocol', 'serial'
@@ -73,13 +71,14 @@
     }
 
     function addCloseBtn(div) {
-        is.loadEmbeddedIcon(div, 'close', 20);
+        is.loadEmbeddedIcon(div, 'plus', 30);
+        div.select('g').attr('transform', 'translate(25, 0) rotate(45)');
         div.on('click', closePanel);
     }
 
     function exitEditMode(nameH2, name) {
         nameH2.html(name);
-        nameH2.classed('editable clickable', true);
+        nameH2.classed('editable', true);
         editingName = false;
         ks.enableGlobalKeys(true);
     }
@@ -113,7 +112,7 @@
             tf, el;
 
         if (!editingName) {
-            nameH2.classed('editable clickable', false);
+            nameH2.classed('editable', false);
             nameH2.html('');
             tf = nameH2.append('input').classed('name-input', true)
                 .attr('type', 'text')
@@ -140,7 +139,7 @@
         closeBtn = top.append('div').classed('close-btn', true);
         addCloseBtn(closeBtn);
         iconDiv = top.append('div').classed('dev-icon', true);
-        top.append('h2').classed('editable clickable', true).on('click', editName);
+        top.append('h2').classed('editable', true).on('click', editName);
 
         tblDiv = top.append('div').classed('top-tables', true);
         tblDiv.append('div').classed('left', true).append('table');
@@ -174,21 +173,10 @@
         is.loadEmbeddedIcon(iconDiv, details._iconid_type, 40);
         top.select('h2').html(details.name);
 
-        // === demonstrate use of JsonCodec object see ONOS-5976
-        addProp(leftTbl,  0, device.id);
-        addProp(leftTbl,  1, device.type);
-        addProp(leftTbl,  2, details['masterid']);
-        addProp(leftTbl,  3, details['chassid']);
-        addProp(rightTbl, 4, device.mfr);
-        addProp(rightTbl, 5, device.hw);
-        addProp(rightTbl, 6, device.sw);
-        addProp(rightTbl, 7, details['protocol']);
-        addProp(rightTbl, 8, device.serial);
-
-        // propOrder.forEach(function (prop, i) {
-        //     // properties are split into two tables
-        //     addProp(i < propSplit ? leftTbl : rightTbl, i, details[prop]);
-        // });
+        propOrder.forEach(function (prop, i) {
+            // properties are split into two tables
+            addProp(i < 4 ? leftTbl : rightTbl, i, details[prop]);
+        });
     }
 
     function addPortRow(tbody, port) {
@@ -229,15 +217,23 @@
         detailsPanel.width(tbWidth + ctnrPdg);
     }
 
-    function populateDetails(details) {
-        var topTbs, btmTbl, ports;
+    function populateName(div, name) {
+        var lab = div.select('.label'),
+            val = div.select('.value');
+        lab.html('Friendly Name:');
+        val.html(name);
+    }
 
+    function populateDetails(details) {
+        var nameDiv, topTbs, btmTbl, ports;
         setUpPanel();
 
+        nameDiv = top.select('.name-div');
         topTbs = top.select('.top-tables');
         btmTbl = bottom.select('table');
         ports = details.ports;
 
+        populateName(nameDiv, details.name);
         populateTop(topTbs, details);
         populateBottom(btmTbl, ports);
 
@@ -246,7 +242,6 @@
 
     function respDetailsCb(data) {
         $scope.panelData = data.details;
-        device = data.device;
         $scope.$apply();
     }
 
@@ -271,29 +266,14 @@
         detailsPanel.hide();
     }
 
-    // Sample functions for detail panel creation
-    function popTop(div) {
-        $log.debug('populateTop');
-        // TODO: real work
-        // div.append(.....);
-        // div.append(.....);
-        // div.append(.....);
-    }
-
-    function popMid(div) {
-        $log.debug('populateMiddle');
-        // TODO: real work
-    }
-
     angular.module('ovDevice', [])
     .controller('OvDeviceCtrl',
-        ['$log', '$scope', '$location', 'TableBuilderService',
-            'TableDetailService', 'FnService',
+        ['$log', '$scope', '$location', 'TableBuilderService', 'FnService',
             'MastService', 'PanelService', 'WebSocketService', 'IconService',
             'NavService', 'KeyService',
 
         function (_$log_, _$scope_, _$location_,
-                  tbs, tds, _fs_, _mast_, _ps_, _wss_, _is_, _ns_, _ks_) {
+                  tbs, _fs_, _mast_, _ps_, _wss_, _is_, _ns_, _ks_) {
             var params,
                 handlers = {};
 
@@ -341,16 +321,6 @@
                 tag: 'device',
                 selCb: selCb
             });
-
-
-            // ==================== for testing for now ===============
-            // TODO: more than just an example
-            tds.buildBasePanel({
-                popTop: popTop,
-                popMid: popMid
-            });
-            // ==================== for testing for now ===============
-
 
             $scope.nav = function (path) {
                 if ($scope.selId) {

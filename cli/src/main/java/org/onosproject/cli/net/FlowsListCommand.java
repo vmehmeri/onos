@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.apache.karaf.shell.commands.Option;
-import org.onlab.util.StringFilter;
 import org.onosproject.cli.AbstractShellCommand;
-import org.onosproject.utils.Comparators;
+import org.onosproject.cli.Comparators;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.net.Device;
@@ -35,17 +34,14 @@ import org.onosproject.net.flow.FlowEntry.FlowEntryState;
 import org.onosproject.net.flow.FlowRuleService;
 import org.onosproject.net.flow.TrafficTreatment;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import static com.google.common.collect.Lists.newArrayList;
-
 
 /**
  * Lists all currently-known flows.
@@ -59,7 +55,7 @@ public class FlowsListCommand extends AbstractShellCommand {
     public static final String ANY = "any";
 
     private static final String LONG_FORMAT = "    id=%s, state=%s, bytes=%s, "
-            + "packets=%s, duration=%s, liveType=%s, priority=%s, tableId=%s, appId=%s, "
+            + "packets=%s, duration=%s, priority=%s, tableId=%s, appId=%s, "
             + "payLoad=%s, selector=%s, treatment=%s";
 
     private static final String SHORT_FORMAT = "    %s, bytes=%s, packets=%s, "
@@ -82,35 +78,22 @@ public class FlowsListCommand extends AbstractShellCommand {
             required = false, multiValued = false)
     private boolean shortOutput = false;
 
-    @Option(name = "-n", aliases = "--no-core-flows",
-            description = "Suppress core flows from output",
-            required = false, multiValued = false)
-    private boolean suppressCoreOutput = false;
-
     @Option(name = "-c", aliases = "--count",
             description = "Print flow count only",
             required = false, multiValued = false)
     private boolean countOnly = false;
 
-    @Option(name = "-f", aliases = "--filter",
-            description = "Filter flows by specific key",
-            required = false, multiValued = true)
-    private List<String> filter = new ArrayList<>();
-
     private Predicate<FlowEntry> predicate = TRUE_PREDICATE;
-
-    private StringFilter contentFilter;
 
     @Override
     protected void execute() {
         CoreService coreService = get(CoreService.class);
         DeviceService deviceService = get(DeviceService.class);
         FlowRuleService service = get(FlowRuleService.class);
-        contentFilter = new StringFilter(filter, StringFilter.Strategy.AND);
 
         compilePredicate();
 
-        SortedMap<Device, List<FlowEntry>> flows = getSortedFlows(deviceService, service, coreService);
+        SortedMap<Device, List<FlowEntry>> flows = getSortedFlows(deviceService, service);
 
         if (outputJson()) {
             print("%s", json(flows.keySet(), flows));
@@ -171,11 +154,10 @@ public class FlowsListCommand extends AbstractShellCommand {
      *
      * @param deviceService device service
      * @param service flow rule service
-     * @param coreService core service
      * @return sorted device list
      */
     protected SortedMap<Device, List<FlowEntry>> getSortedFlows(DeviceService deviceService,
-                                                          FlowRuleService service, CoreService coreService) {
+                                                          FlowRuleService service) {
         SortedMap<Device, List<FlowEntry>> flows = new TreeMap<>(Comparators.ELEMENT_COMPARATOR);
         List<FlowEntry> rules;
 
@@ -200,13 +182,6 @@ public class FlowsListCommand extends AbstractShellCommand {
                 }
             }
             rules.sort(Comparators.FLOW_RULE_COMPARATOR);
-
-            if (suppressCoreOutput) {
-                short coreAppId = coreService.getAppId("org.onosproject.core").id();
-                rules = rules.stream()
-                        .filter(f -> f.appId() != coreAppId)
-                        .collect(Collectors.toList());
-            }
             flows.put(d, rules);
         }
         return flows;
@@ -221,15 +196,13 @@ public class FlowsListCommand extends AbstractShellCommand {
      */
     protected void printFlows(Device d, List<FlowEntry> flows,
                               CoreService coreService) {
-        List<FlowEntry> filteredFlows = flows.stream().
-                filter(f -> contentFilter.filter(f)).collect(Collectors.toList());
-        boolean empty = filteredFlows == null || filteredFlows.isEmpty();
-        print("deviceId=%s, flowRuleCount=%d", d.id(), empty ? 0 : filteredFlows.size());
+        boolean empty = flows == null || flows.isEmpty();
+        print("deviceId=%s, flowRuleCount=%d", d.id(), empty ? 0 : flows.size());
         if (empty || countOnly) {
             return;
         }
 
-        for (FlowEntry f : filteredFlows) {
+        for (FlowEntry f : flows) {
             if (shortOutput) {
                 print(SHORT_FORMAT, f.state(), f.bytes(), f.packets(),
                         f.tableId(), f.priority(), f.selector().criteria(),
@@ -237,7 +210,7 @@ public class FlowsListCommand extends AbstractShellCommand {
             } else {
                 ApplicationId appId = coreService.getAppId(f.appId());
                 print(LONG_FORMAT, Long.toHexString(f.id().value()), f.state(),
-                        f.bytes(), f.packets(), f.life(), f.liveType(), f.priority(), f.tableId(),
+                        f.bytes(), f.packets(), f.life(), f.priority(), f.tableId(),
                         appId != null ? appId.name() : "<none>",
                         f.payLoad() == null ? null : f.payLoad().payLoad().toString(),
                         f.selector().criteria(), f.treatment());

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.Objects;
 
 import org.onlab.packet.IPv4;
 import org.onlab.packet.IpAddress;
-import org.onlab.packet.MacAddress;
 import org.onosproject.net.PortNumber;
 
 /**
@@ -30,8 +29,6 @@ import org.onosproject.net.PortNumber;
  */
 public final class DefaultFiveTuple implements FiveTuple {
 
-    private final MacAddress macSrc;
-    private final MacAddress macDst;
     private final IpAddress ipSrc;
     private final IpAddress ipDst;
     private final PortNumber portSrc;
@@ -49,7 +46,7 @@ public final class DefaultFiveTuple implements FiveTuple {
      * @param portDst destination port of the packet
      */
     private DefaultFiveTuple(byte protocol, IpAddress ipSrc, IpAddress ipDst, PortNumber portSrc, PortNumber portDst,
-                             TenantId tenantId, MacAddress macSrc, MacAddress macDst) {
+                             TenantId tenantId) {
 
         this.protocol = protocol;
         this.ipSrc = ipSrc;
@@ -57,8 +54,6 @@ public final class DefaultFiveTuple implements FiveTuple {
         this.portSrc = portSrc;
         this.portDst = portDst;
         this.tenantId = tenantId;
-        this.macSrc = macSrc;
-        this.macDst = macDst;
     }
 
     @Override
@@ -84,16 +79,6 @@ public final class DefaultFiveTuple implements FiveTuple {
     @Override
     public PortNumber portDst() {
         return portDst;
-    }
-
-    @Override
-    public MacAddress macSrc() {
-        return macSrc;
-    }
-
-    @Override
-    public MacAddress macDst() {
-        return macDst;
     }
 
     @Override
@@ -154,8 +139,6 @@ public final class DefaultFiveTuple implements FiveTuple {
         private PortNumber portDst;
         private byte protocol;
         private TenantId tenantId;
-        private MacAddress macSrc;
-        private MacAddress macDst;
 
         @Override
         public Builder setIpSrc(IpAddress ipSrc) {
@@ -188,20 +171,8 @@ public final class DefaultFiveTuple implements FiveTuple {
         }
 
         @Override
-        public Builder setTenantId(TenantId tenantId) {
+        public org.onosproject.vtnrsc.FiveTuple.Builder setTenantId(TenantId tenantId) {
             this.tenantId = tenantId;
-            return this;
-        }
-
-        @Override
-        public Builder setMacSrc(MacAddress macSrc) {
-            this.macSrc = macSrc;
-            return this;
-        }
-
-        @Override
-        public Builder setMacDst(MacAddress macDst) {
-            this.macDst = macDst;
             return this;
         }
 
@@ -210,7 +181,7 @@ public final class DefaultFiveTuple implements FiveTuple {
             checkArgument(protocol == IPv4.PROTOCOL_TCP || protocol == IPv4.PROTOCOL_UDP ||
                     protocol == IPv4.PROTOCOL_ICMP, "Unsupported value for protocol while creating five tuple");
 
-            return new DefaultFiveTuple(protocol, ipSrc, ipDst, portSrc, portDst, tenantId, macSrc, macDst);
+            return new DefaultFiveTuple(protocol, ipSrc, ipDst, portSrc, portDst, tenantId);
         }
     }
 }

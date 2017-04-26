@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,12 +29,9 @@ import org.apache.commons.lang3.concurrent.ConcurrentInitializer;
  *
  * @param <K> ConcurrentHashMap key type
  * @param <V> ConcurrentHashMap value type
- *
- * @deprecated in Hummingbird (1.7.0)
  */
-@Deprecated
 public final class NewConcurrentHashMap<K, V>
-    implements ConcurrentInitializer<ConcurrentMap<K, V>> {
+    implements  ConcurrentInitializer<ConcurrentMap<K, V>> {
 
     public static final NewConcurrentHashMap<?, ?> INSTANCE = new NewConcurrentHashMap<>();
 

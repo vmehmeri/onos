@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,20 +24,19 @@
 
     // injected refs
     var $log, $timeout, fs, sus, ts, flash, wss, tov,
-        tis, tms, td3, tss, tts, tos, fltr, tls, uplink, svg, tpis;
+        tis, tms, td3, tss, tts, tos, fltr, tls, uplink, svg;
 
     // configuration
     var linkConfig = {
         light: {
-            baseColor: '#939598',
+            baseColor: '#666',
             inColor: '#66f',
             outColor: '#f00'
         },
         dark: {
-            // TODO : theme
-            baseColor: '#939598',
+            baseColor: '#aaa',
             inColor: '#66f',
-            outColor: '#f00'
+            outColor: '#f66'
         },
         inWidth: 12,
         outWidth: 10
@@ -338,7 +337,7 @@
             modeCls = ldata.expected() ? 'inactive' : 'not-permitted',
             delay = immediate ? 0 : 1000;
 
-        // NOTE: understand why el is sometimes undefined on addLink events...
+        // FIXME: understand why el is sometimes undefined on addLink events...
         // Investigated:
         // el is undefined when it's a reverse link that is being added.
         // updateLinks (which sets ldata.el) isn't called before this is called.
@@ -844,7 +843,7 @@
             transform: function (d) {
                 var lnk = tms.findLinkById(d.key);
                 if (lnk) {
-                    return td3.transformLabel(lnk.position, d.key);
+                    return td3.transformLabel(lnk.position);
                 }
             }
         }
@@ -971,7 +970,7 @@
             node: function () { return node; },
             zoomingOrPanning: zoomingOrPanning,
             updateDeviceColors: td3.updateDeviceColors,
-            deselectAllLinks: tls.deselectAllLinks
+            deselectLink: tls.deselectLink
         };
     }
 
@@ -1040,11 +1039,6 @@
         };
     }
 
-    function updateLinksAndNodes() {
-        updateLinks();
-        updateNodes();
-    }
-
     angular.module('ovTopo')
     .factory('TopoForceService',
         ['$log', '$timeout', 'FnService', 'SvgUtilService',
@@ -1052,10 +1046,9 @@
             'TopoOverlayService', 'TopoInstService', 'TopoModelService',
             'TopoD3Service', 'TopoSelectService', 'TopoTrafficService',
             'TopoObliqueService', 'TopoFilterService', 'TopoLinkService',
-            'TopoProtectedIntentsService',
 
         function (_$log_, _$timeout_, _fs_, _sus_, _ts_, _flash_, _wss_, _tov_,
-                  _tis_, _tms_, _td3_, _tss_, _tts_, _tos_, _fltr_, _tls_, _tpis_) {
+                  _tis_, _tms_, _td3_, _tss_, _tts_, _tos_, _fltr_, _tls_) {
             $log = _$log_;
             $timeout = _$timeout_;
             fs = _fs_;
@@ -1072,9 +1065,11 @@
             tos = _tos_;
             fltr = _fltr_;
             tls = _tls_;
-            tpis = _tpis_;
 
-            ts.addListener(updateLinksAndNodes);
+            var themeListener = ts.addListener(function () {
+                updateLinks();
+                updateNodes();
+            });
 
             // forceG is the SVG group to display the force layout in
             // uplink is the api from the main topo source file
@@ -1095,7 +1090,6 @@
                 td3.initD3(mkD3Api());
                 tss.initSelect(mkSelectApi());
                 tts.initTraffic(mkTrafficApi());
-                tpis.initProtectedIntents(mkTrafficApi());
                 tos.initOblique(mkObliqueApi(uplink, fltr));
                 fltr.initFilter(mkFilterApi());
                 tls.initLink(mkLinkApi(svg, uplink), td3);
@@ -1139,12 +1133,12 @@
                 tls.destroyLink();
                 tos.destroyOblique();
                 tts.destroyTraffic();
-                tpis.destroyProtectedIntents();
                 tss.destroySelect();
                 td3.destroyD3();
                 tms.destroyModel();
                 // note: no need to destroy overlay service
-                ts.removeListener(updateLinksAndNodes);
+                ts.removeListener(themeListener);
+                themeListener = null;
 
                 // clean up the DOM
                 svg.selectAll('g').remove();

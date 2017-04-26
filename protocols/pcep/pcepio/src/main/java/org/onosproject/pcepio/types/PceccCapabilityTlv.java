@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,25 +29,27 @@ import com.google.common.base.MoreObjects;
 public class PceccCapabilityTlv implements PcepValueType {
 
     /*          PCECC CAPABILITY TLV
-     * Reference : draft-zhao-pce-pcep-extension-for-pce-controller-03, section-7.1.1
+     * Reference : draft-zhao-pce-pcep-extension-for-pce-controller-01, section-7.1.1
 
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |               Type=[TBD]      |            Length=4           |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                             Flags                           |S|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |               Type=32         |            Length=4           |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                             Flags                         |G|L|
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
      */
     protected static final Logger log = LoggerFactory.getLogger(PceccCapabilityTlv.class);
 
-    public static final short TYPE = (short) 65287;
+    public static final short TYPE = 32;
     public static final short LENGTH = 4;
     public static final int SET = 1;
-    public static final byte SBIT_CHECK = 0x01;
+    public static final byte LFLAG_CHECK = 0x01;
+    public static final byte GFLAG_CHECK = 0x02;
 
-    private final boolean sBit;
+    private final boolean bGFlag;
+    private final boolean bLFlag;
 
     private final int rawValue;
     private final boolean isRawValueSet;
@@ -61,16 +63,18 @@ public class PceccCapabilityTlv implements PcepValueType {
         this.rawValue = rawValue;
         this.isRawValueSet = true;
 
-        sBit = (rawValue & SBIT_CHECK) == SBIT_CHECK;
+        bLFlag = (rawValue & LFLAG_CHECK) == LFLAG_CHECK;
+        bGFlag = (rawValue & GFLAG_CHECK) == GFLAG_CHECK;
     }
 
     /**
      * Constructor to initialize G-flag L-flag.
-     *
-     * @param sBit pcecc sr capbaility bit
+     * @param bGFlag G-flag
+     * @param bLFlag L-flag
      */
-    public PceccCapabilityTlv(boolean sBit) {
-        this.sBit = sBit;
+    public PceccCapabilityTlv(boolean bGFlag, boolean bLFlag) {
+        this.bGFlag = bGFlag;
+        this.bLFlag = bLFlag;
         this.rawValue = 0;
         this.isRawValueSet = false;
     }
@@ -91,17 +95,23 @@ public class PceccCapabilityTlv implements PcepValueType {
     }
 
     /**
-     * Returns sBit.
-     *
-     * @return sBit S bit
+     * Returns G-flag.
+     * @return bGFlag G-flag
      */
-    public boolean sBit() {
-        return sBit;
+    public boolean getGFlag() {
+        return bGFlag;
+    }
+
+    /**
+     * Returns L-flag.
+     * @return bLFlag L-flag
+     */
+    public boolean getLFlag() {
+        return bLFlag;
     }
 
     /**
      * Returns the raw value.
-     *
      * @return rawValue Flags
      */
     public int getInt() {
@@ -123,7 +133,7 @@ public class PceccCapabilityTlv implements PcepValueType {
         if (isRawValueSet) {
             return Objects.hash(rawValue);
         } else {
-            return Objects.hash(sBit);
+            return Objects.hash(bLFlag, bGFlag);
         }
     }
 
@@ -137,7 +147,7 @@ public class PceccCapabilityTlv implements PcepValueType {
             if (isRawValueSet) {
                 return Objects.equals(this.rawValue, other.rawValue);
             } else {
-                return Objects.equals(this.sBit, other.sBit);
+                return Objects.equals(this.bGFlag, other.bGFlag) && Objects.equals(this.bLFlag, other.bLFlag);
             }
         }
         return false;
@@ -152,8 +162,11 @@ public class PceccCapabilityTlv implements PcepValueType {
         if (isRawValueSet) {
             c.writeInt(rawValue);
         } else {
-            if (sBit) {
-                temp = temp | SBIT_CHECK;
+            if (bGFlag) {
+                temp = temp | GFLAG_CHECK;
+            }
+            if (bLFlag) {
+                temp = temp | LFLAG_CHECK;
             }
             c.writeInt(temp);
         }
@@ -175,7 +188,7 @@ public class PceccCapabilityTlv implements PcepValueType {
         return MoreObjects.toStringHelper(getClass())
                 .add("Type", TYPE)
                 .add("Length", LENGTH)
-                .add("rawValue", rawValue)
+                .add("Value", rawValue)
                 .toString();
     }
 }

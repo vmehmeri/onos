@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,8 @@
 package org.onosproject.net.intent;
 
 import com.google.common.annotations.Beta;
-
-import static com.google.common.base.Preconditions.checkArgument;
-
 import org.onlab.util.Identifier;
-import org.onosproject.net.resource.ResourceConsumer;
-import org.onosproject.net.resource.ResourceConsumerId;
+import org.onosproject.net.newresource.ResourceConsumer;
 
 /**
  * Intent identifier suitable as an external key.
@@ -29,8 +25,6 @@ import org.onosproject.net.resource.ResourceConsumerId;
  */
 @Beta
 public final class IntentId extends Identifier<Long> implements ResourceConsumer {
-
-    private static final String HEX_PREFIX = "0x";
 
     /**
      * Creates an intent identifier from the specified long representation.
@@ -40,17 +34,6 @@ public final class IntentId extends Identifier<Long> implements ResourceConsumer
      */
     public static IntentId valueOf(long value) {
         return new IntentId(value);
-    }
-
-    /**
-     * Creates an intent identifier from the specified String representation.
-     *
-     * @param id hexadecimal String prefixed with 0x
-     * @return intent identifier
-     */
-    public static IntentId valueOf(String id) {
-        checkArgument(id.startsWith(HEX_PREFIX), "Invalid id: %s", id);
-        return valueOf(Long.parseUnsignedLong(id.substring(2), 16));
     }
 
     /**
@@ -80,11 +63,7 @@ public final class IntentId extends Identifier<Long> implements ResourceConsumer
 
     @Override
     public String toString() {
-        return HEX_PREFIX + Long.toHexString(identifier);
+        return "0x" + Long.toHexString(identifier);
     }
 
-    @Override
-    public ResourceConsumerId consumerId() {
-        return ResourceConsumerId.of(this);
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.onosproject.net.region.impl;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -25,13 +24,7 @@ import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
 import org.onosproject.cluster.NodeId;
 import org.onosproject.event.AbstractListenerManager;
-import org.onosproject.net.Annotations;
-import org.onosproject.net.DefaultAnnotations;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.HostId;
-import org.onosproject.net.config.NetworkConfigService;
-import org.onosproject.net.config.basics.BasicElementConfig;
-import org.onosproject.net.config.basics.BasicRegionConfig;
 import org.onosproject.net.region.Region;
 import org.onosproject.net.region.RegionAdminService;
 import org.onosproject.net.region.RegionEvent;
@@ -49,9 +42,9 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.of;
+import static org.slf4j.LoggerFactory.getLogger;
 import static org.onosproject.security.AppGuard.checkPermission;
 import static org.onosproject.security.AppPermission.Type.REGION_READ;
-import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Provides implementation of the region service APIs.
@@ -75,9 +68,6 @@ public class RegionManager extends AbstractListenerManager<RegionEvent, RegionLi
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected RegionStore store;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected NetworkConfigService networkConfigService;
-
     @Activate
     public void activate() {
         store.setDelegate(delegate);
@@ -92,41 +82,13 @@ public class RegionManager extends AbstractListenerManager<RegionEvent, RegionLi
         log.info("Stopped");
     }
 
-    private String dstr(double d) {
-        return Double.toString(d);
-    }
-
-    private Annotations genAnnots(RegionId id) {
-        BasicRegionConfig cfg =
-                networkConfigService.getConfig(id, BasicRegionConfig.class);
-
-        if (cfg == null) {
-            return DefaultAnnotations.builder().build();
-        }
-
-        DefaultAnnotations.Builder builder = DefaultAnnotations.builder()
-                .set(BasicElementConfig.NAME, cfg.name())
-                .set(BasicElementConfig.LATITUDE, dstr(cfg.latitude()))
-                .set(BasicElementConfig.LONGITUDE, dstr(cfg.longitude()));
-
-        // only set the UI_TYPE annotation if it is not null in the config
-        String uiType = cfg.uiType();
-        if (uiType != null) {
-            builder.set(BasicElementConfig.UI_TYPE, uiType);
-        }
-
-        return builder.build();
-    }
-
     @Override
     public Region createRegion(RegionId regionId, String name, Region.Type type,
                                List<Set<NodeId>> masterNodeIds) {
         checkNotNull(regionId, REGION_ID_NULL);
         checkNotNull(name, NAME_NULL);
         checkNotNull(name, REGION_TYPE_NULL);
-
-        return store.createRegion(regionId, name, type, genAnnots(regionId),
-                masterNodeIds == null ? of() : masterNodeIds);
+        return store.createRegion(regionId, name, type, masterNodeIds == null ? of() : masterNodeIds);
     }
 
     @Override
@@ -135,9 +97,7 @@ public class RegionManager extends AbstractListenerManager<RegionEvent, RegionLi
         checkNotNull(regionId, REGION_ID_NULL);
         checkNotNull(name, NAME_NULL);
         checkNotNull(name, REGION_TYPE_NULL);
-
-        return store.updateRegion(regionId, name, type, genAnnots(regionId),
-                masterNodeIds == null ? of() : masterNodeIds);
+        return store.updateRegion(regionId, name, type, masterNodeIds == null ? of() : masterNodeIds);
     }
 
     @Override
@@ -187,14 +147,6 @@ public class RegionManager extends AbstractListenerManager<RegionEvent, RegionLi
         checkPermission(REGION_READ);
         checkNotNull(regionId, REGION_ID_NULL);
         return store.getRegionDevices(regionId);
-    }
-
-    @Override
-    public Set<HostId> getRegionHosts(RegionId regionId) {
-        checkPermission(REGION_READ);
-        checkNotNull(regionId, REGION_ID_NULL);
-        // TODO: compute hosts from region devices
-        return ImmutableSet.of();
     }
 
 }

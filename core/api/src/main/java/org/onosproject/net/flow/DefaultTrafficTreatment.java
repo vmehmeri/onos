@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -188,7 +188,6 @@ public final class DefaultTrafficTreatment implements TrafficTreatment {
                 .add("immediate", immediate)
                 .add("deferred", deferred)
                 .add("transition", table == null ? "None" : table.toString())
-                .add("meter", meter == null ? "None" : meter.toString())
                 .add("cleared", hasClear)
                 .add("metadata", meta)
                 .toString();
@@ -236,6 +235,7 @@ public final class DefaultTrafficTreatment implements TrafficTreatment {
         public Builder add(Instruction instruction) {
 
             switch (instruction.type()) {
+                case DROP:
                 case NOACTION:
                 case OUTPUT:
                 case GROUP:
@@ -401,11 +401,6 @@ public final class DefaultTrafficTreatment implements TrafficTreatment {
         }
 
         @Override
-        public Builder pushVlan(EthType ethType) {
-            return add(Instructions.pushVlan(ethType));
-        }
-
-        @Override
         public Builder transition(Integer tableId) {
             return add(Instructions.transition(tableId));
         }
@@ -480,25 +475,8 @@ public final class DefaultTrafficTreatment implements TrafficTreatment {
         }
 
         @Override
-        public TrafficTreatment.Builder addTreatment(TrafficTreatment treatment) {
-            List<Instruction> previous = current;
-            deferred();
-            treatment.deferred().forEach(i -> add(i));
-
-            immediate();
-            treatment.immediate().stream()
-                    // NOACTION will get re-added if there are no other actions
-                    .filter(i -> i.type() != Instruction.Type.NOACTION)
-                    .forEach(i -> add(i));
-
-            clear = treatment.clearedDeferred();
-            current = previous;
-            return this;
-        }
-
-        @Override
         public TrafficTreatment build() {
-            if (deferred.isEmpty() && immediate.isEmpty()
+            if (deferred.size() == 0 && immediate.size() == 0
                     && table == null && !clear) {
                 immediate();
                 noAction();

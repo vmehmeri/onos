@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.onosproject.net.packet.impl;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -33,8 +34,8 @@ import org.onosproject.net.device.DeviceEvent;
 import org.onosproject.net.device.DeviceListener;
 import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
+import org.onosproject.net.flow.FlowRuleService;
 import org.onosproject.net.flow.TrafficSelector;
-import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.flowobjective.DefaultForwardingObjective;
 import org.onosproject.net.flowobjective.FlowObjectiveService;
 import org.onosproject.net.flowobjective.ForwardingObjective;
@@ -67,9 +68,7 @@ import java.util.concurrent.Executors;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.onlab.util.Tools.groupedThreads;
 import static org.onosproject.security.AppGuard.checkPermission;
-import static org.onosproject.security.AppPermission.Type.PACKET_EVENT;
-import static org.onosproject.security.AppPermission.Type.PACKET_READ;
-import static org.onosproject.security.AppPermission.Type.PACKET_WRITE;
+import static org.onosproject.security.AppPermission.Type.*;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -83,10 +82,9 @@ public class PacketManager
 
     private final Logger log = getLogger(getClass());
 
-    private static final String ERROR_NULL_PROCESSOR = "Processor cannot be null";
-    private static final String ERROR_NULL_SELECTOR = "Selector cannot be null";
-    private static final String ERROR_NULL_APP_ID = "Application ID cannot be null";
-    private static final String ERROR_NULL_DEVICE_ID = "Device ID cannot be null";
+    private static final String TABLE_TYPE_MSG =
+            "Table Type cannot be null. For requesting packets without " +
+                    "table hints, use other methods in the packetService API";
 
     private final PacketStoreDelegate delegate = new InternalStoreDelegate();
 
@@ -100,10 +98,13 @@ public class PacketManager
     protected DeviceService deviceService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    protected FlowRuleService flowService;
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected PacketStore store;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected FlowObjectiveService objectiveService;
+    private FlowObjectiveService objectiveService;
 
     private ExecutorService eventHandlingExecutor;
 
@@ -119,7 +120,7 @@ public class PacketManager
     @Activate
     public void activate() {
         eventHandlingExecutor = Executors.newSingleThreadExecutor(
-                groupedThreads("onos/net/packet", "event-handler", log));
+                groupedThreads("onos/net/packet", "event-handler"));
         localNodeId = clusterService.getLocalNode().id();
         appId = coreService.getAppId(CoreService.CORE_APP_NAME);
         store.setDelegate(delegate);
@@ -145,7 +146,7 @@ public class PacketManager
     @Override
     public void addProcessor(PacketProcessor processor, int priority) {
         checkPermission(PACKET_EVENT);
-        checkNotNull(processor, ERROR_NULL_PROCESSOR);
+        checkNotNull(processor, "Processor cannot be null");
         ProcessorEntry entry = new ProcessorEntry(processor, priority);
 
         // Insert the new processor according to its priority.
@@ -161,7 +162,7 @@ public class PacketManager
     @Override
     public void removeProcessor(PacketProcessor processor) {
         checkPermission(PACKET_EVENT);
-        checkNotNull(processor, ERROR_NULL_PROCESSOR);
+        checkNotNull(processor, "Processor cannot be null");
 
         // Remove the processor entry.
         for (int i = 0; i < processors.size(); i++) {
@@ -182,8 +183,8 @@ public class PacketManager
     public void requestPackets(TrafficSelector selector, PacketPriority priority,
                                ApplicationId appId) {
         checkPermission(PACKET_READ);
-        checkNotNull(selector, ERROR_NULL_SELECTOR);
-        checkNotNull(appId, ERROR_NULL_APP_ID);
+        checkNotNull(selector, "Selector cannot be null");
+        checkNotNull(appId, "Application ID cannot be null");
 
         PacketRequest request = new DefaultPacketRequest(selector, priority, appId,
                                                          localNodeId, Optional.empty());
@@ -194,9 +195,8 @@ public class PacketManager
     public void requestPackets(TrafficSelector selector, PacketPriority priority,
                                ApplicationId appId, Optional<DeviceId> deviceId) {
         checkPermission(PACKET_READ);
-        checkNotNull(selector, ERROR_NULL_SELECTOR);
-        checkNotNull(appId, ERROR_NULL_APP_ID);
-        checkNotNull(deviceId, ERROR_NULL_DEVICE_ID);
+        checkNotNull(selector, "Selector cannot be null");
+        checkNotNull(appId, "Application ID cannot be null");
 
         PacketRequest request =
                 new DefaultPacketRequest(selector, priority, appId,
@@ -210,8 +210,8 @@ public class PacketManager
     public void cancelPackets(TrafficSelector selector, PacketPriority priority,
                               ApplicationId appId) {
         checkPermission(PACKET_READ);
-        checkNotNull(selector, ERROR_NULL_SELECTOR);
-        checkNotNull(appId, ERROR_NULL_APP_ID);
+        checkNotNull(selector, "Selector cannot be null");
+        checkNotNull(appId, "Application ID cannot be null");
 
 
         PacketRequest request = new DefaultPacketRequest(selector, priority, appId,
@@ -223,9 +223,8 @@ public class PacketManager
     public void cancelPackets(TrafficSelector selector, PacketPriority priority,
                               ApplicationId appId, Optional<DeviceId> deviceId) {
         checkPermission(PACKET_READ);
-        checkNotNull(selector, ERROR_NULL_SELECTOR);
-        checkNotNull(appId, ERROR_NULL_APP_ID);
-        checkNotNull(deviceId, ERROR_NULL_DEVICE_ID);
+        checkNotNull(selector, "Selector cannot be null");
+        checkNotNull(appId, "Application ID cannot be null");
 
         PacketRequest request = new DefaultPacketRequest(selector, priority,
                                                          appId, localNodeId,
@@ -322,17 +321,12 @@ public class PacketManager
     }
 
     private DefaultForwardingObjective.Builder createBuilder(PacketRequest request) {
-        TrafficTreatment treatment = DefaultTrafficTreatment.builder()
-                .punt()
-                .wipeDeferred()
-                .build();
-
         return DefaultForwardingObjective.builder()
                 .withPriority(request.priority().priorityValue())
                 .withSelector(request.selector())
                 .fromApp(appId)
                 .withFlag(ForwardingObjective.Flag.VERSATILE)
-                .withTreatment(treatment)
+                .withTreatment(DefaultTrafficTreatment.builder().punt().build())
                 .makePermanent();
     }
 

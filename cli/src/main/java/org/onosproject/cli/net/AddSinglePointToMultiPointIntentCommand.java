@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.onosproject.cli.net;
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.onosproject.net.ConnectPoint;
+import org.onosproject.net.flow.DefaultTrafficTreatment;
 import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 import org.onosproject.net.intent.Constraint;
@@ -58,7 +59,7 @@ public class AddSinglePointToMultiPointIntentCommand extends ConnectivityIntentC
         }
 
         TrafficSelector selector = buildTrafficSelector();
-        TrafficTreatment treatment = buildTrafficTreatment();
+        TrafficTreatment treatment = DefaultTrafficTreatment.emptyTreatment();
         List<Constraint> constraints = buildConstraints();
 
         SinglePointToMultiPointIntent intent =
@@ -71,7 +72,6 @@ public class AddSinglePointToMultiPointIntentCommand extends ConnectivityIntentC
                         .egressPoints(egressPoints)
                         .constraints(constraints)
                         .priority(priority())
-                        .resourceGroup(resourceGroup())
                         .build();
         service.submit(intent);
         print("Single point to multipoint intent submitted:\n%s", intent.toString());

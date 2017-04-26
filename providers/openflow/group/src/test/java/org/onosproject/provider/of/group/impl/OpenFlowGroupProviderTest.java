@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,6 @@ import org.onosproject.net.provider.ProviderId;
 import org.onosproject.openflow.controller.Dpid;
 import org.onosproject.openflow.controller.OpenFlowController;
 import org.onosproject.openflow.controller.OpenFlowEventListener;
-import org.onosproject.openflow.controller.OpenFlowMessageListener;
 import org.onosproject.openflow.controller.OpenFlowSwitch;
 import org.onosproject.openflow.controller.OpenFlowSwitchListener;
 import org.onosproject.openflow.controller.PacketListener;
@@ -54,7 +53,6 @@ import org.projectfloodlight.openflow.protocol.OFGroupModFailedCode;
 import org.projectfloodlight.openflow.protocol.OFGroupStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFMeterFeatures;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.errormsg.OFGroupModFailedErrorMsg;
@@ -202,10 +200,6 @@ public class OpenFlowGroupProviderTest {
             this.groups = groupEntries;
         }
 
-        @Override
-        public void notifyOfFailovers(Collection<Group> groups) {
-        }
-
         public Collection<Group> getGroupEntries() {
             return groups;
         }
@@ -227,16 +221,6 @@ public class OpenFlowGroupProviderTest {
 
         @Override
         public void removeListener(OpenFlowSwitchListener listener) {
-
-        }
-
-        @Override
-        public void addMessageListener(OpenFlowMessageListener listener) {
-
-        }
-
-        @Override
-        public void removeMessageListener(OpenFlowMessageListener listener) {
 
         }
 
@@ -304,6 +288,11 @@ public class OpenFlowGroupProviderTest {
         public OpenFlowSwitch getEqualSwitch(Dpid dpid) {
             return null;
         }
+
+        @Override
+        public void monitorAllEvents(boolean monitor) {
+        }
+
     }
 
     private class TestGroupProviderRegistry implements GroupProviderRegistry {
@@ -355,11 +344,6 @@ public class OpenFlowGroupProviderTest {
 
         @Override
         public List<OFPortDesc> getPorts() {
-            return null;
-        }
-
-        @Override
-        public OFMeterFeatures getMeterFeatures() {
             return null;
         }
 
@@ -427,5 +411,14 @@ public class OpenFlowGroupProviderTest {
         public String channelId() {
             return null;
         }
+
+        @Override
+        public void addEventListener(OpenFlowEventListener listener) {
+        }
+
+        @Override
+        public void removeEventListener(OpenFlowEventListener listener) {
+        }
+
     }
 }

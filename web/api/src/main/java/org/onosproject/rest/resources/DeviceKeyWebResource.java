@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ import static org.onlab.util.Tools.nullIsNotFound;
 public class DeviceKeyWebResource extends AbstractWebResource {
 
     @Context
-    private UriInfo uriInfo;
+    UriInfo uriInfo;
 
     private static final String DEVICE_KEY_NOT_FOUND = "Device key was not found";
 
@@ -55,27 +55,25 @@ public class DeviceKeyWebResource extends AbstractWebResource {
      * Gets all device keys.
      * Returns array of all device keys.
      *
-     * @return 200 OK with a collection of device keys
+     * @return 200 OK
      * @onos.rsModel Devicekeys
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
     public Response getDeviceKeys() {
         Iterable<DeviceKey> deviceKeys = get(DeviceKeyService.class).getDeviceKeys();
         return ok(encodeArray(DeviceKey.class, "keys", deviceKeys)).build();
     }
 
     /**
-     * Gets a single device key by device key unique identifier.
+     * Get a single device key by device key unique identifier.
      * Returns the specified device key.
      *
      * @param id device key identifier
-     * @return 200 OK with a device key, 404 not found
+     * @return 200 OK, 404 not found
      * @onos.rsModel Devicekey
      */
     @GET
     @Path("{id}")
-    @Produces(MediaType.APPLICATION_JSON)
     public Response getDeviceKey(@PathParam("id") String id) {
         DeviceKey deviceKey = nullIsNotFound(get(DeviceKeyService.class).getDeviceKey(DeviceKeyId.deviceKeyId(id)),
                                              DEVICE_KEY_NOT_FOUND);
@@ -117,11 +115,10 @@ public class DeviceKeyWebResource extends AbstractWebResource {
      * Removes a device key by device key identifier.
      *
      * @param id device key identifier
-     * @return 200 OK with a removed device key, 404 not found
+     * @return 200 OK, 404 not found
      */
     @DELETE
     @Path("{id}")
-    @Produces(MediaType.APPLICATION_JSON)
     public Response removeDeviceKey(@PathParam("id") String id) {
         DeviceKey deviceKey = nullIsNotFound(get(DeviceKeyService.class).getDeviceKey(DeviceKeyId.deviceKeyId(id)),
                                              DEVICE_KEY_NOT_FOUND);

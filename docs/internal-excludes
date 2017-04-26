@@ -1,7 +1,7 @@
 org.onlab.jdvue*
 org.onlab.stc*
 org.onlab.catalyst*
-org.onlab.atomix
+org.onlab.thirdparty
 org.onosproject.oecfg
 org.onosproject.maven
 org.onosproject.grpc*

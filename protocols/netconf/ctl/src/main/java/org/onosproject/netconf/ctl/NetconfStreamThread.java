@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,8 +34,6 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Thread that gets spawned each time a session is established and handles all the input
@@ -50,9 +48,8 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
     private static final String END_PATTERN = "]]>]]>";
     private static final String RPC_REPLY = "rpc-reply";
     private static final String RPC_ERROR = "rpc-error";
-    private static final String NOTIFICATION_LABEL = "<notification";
+    private static final String NOTIFICATION_LABEL = "<notification>";
     private static final String MESSAGE_ID = "message-id=";
-    private static final Pattern MSGID_PATTERN = Pattern.compile(MESSAGE_ID + "\"(\\d+)\"");
 
     private PrintWriter outputStream;
     private final InputStream err;
@@ -60,9 +57,8 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
     private NetconfDeviceInfo netconfDeviceInfo;
     private NetconfSessionDelegate sessionDelegate;
     private NetconfMessageState state;
-    private List<NetconfDeviceOutputEventListener> netconfDeviceEventListeners
-            = Lists.newCopyOnWriteArrayList();
-    private boolean enableNotifications = true;
+    private  List<NetconfDeviceOutputEventListener> netconfDeviceEventListeners
+            = Lists.newArrayList();
 
     public NetconfStreamThread(final InputStream in, final OutputStream out,
                                final InputStream err, NetconfDeviceInfo deviceInfo,
@@ -173,7 +169,6 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
                         netconfDeviceEventListeners.forEach(
                                 listener -> listener.event(event));
                         socketClosed = true;
-                        log.debug("Netconf device {} ERROR cInt == -1 socketClosed = true", netconfDeviceInfo);
                     }
                     char c = (char) cInt;
                     state = state.evaluateChar(c);
@@ -182,8 +177,6 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
                         String deviceReply = deviceReplyBuilder.toString();
                         if (deviceReply.equals(END_PATTERN)) {
                             socketClosed = true;
-                            log.debug("Netconf device {} socketClosed = true DEVICE_UNREGISTERED {}",
-                                     netconfDeviceInfo, deviceReply);
                             NetconfDeviceOutputEvent event = new NetconfDeviceOutputEvent(
                                     NetconfDeviceOutputEvent.Type.DEVICE_UNREGISTERED,
                                     null, null, Optional.of(-1), netconfDeviceInfo);
@@ -195,8 +188,6 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
                             if (deviceReply.contains(RPC_REPLY) ||
                                     deviceReply.contains(RPC_ERROR) ||
                                     deviceReply.contains(HELLO)) {
-                                log.debug("Netconf device {} sessionDelegate.notify() DEVICE_REPLY {} {}",
-                                    netconfDeviceInfo, getMsgId(deviceReply), deviceReply);
                                 NetconfDeviceOutputEvent event = new NetconfDeviceOutputEvent(
                                         NetconfDeviceOutputEvent.Type.DEVICE_REPLY,
                                         null, deviceReply, getMsgId(deviceReply), netconfDeviceInfo);
@@ -204,19 +195,14 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
                                 netconfDeviceEventListeners.forEach(
                                         listener -> listener.event(event));
                             } else if (deviceReply.contains(NOTIFICATION_LABEL)) {
-                                log.debug("Netconf device {} DEVICE_NOTIFICATION {} {} {}",
-                                         netconfDeviceInfo, enableNotifications,
-                                         getMsgId(deviceReply), deviceReply);
-                                if (enableNotifications) {
-                                    final String finalDeviceReply = deviceReply;
-                                    netconfDeviceEventListeners.forEach(
-                                            listener -> listener.event(new NetconfDeviceOutputEvent(
-                                                    NetconfDeviceOutputEvent.Type.DEVICE_NOTIFICATION,
-                                                    null, finalDeviceReply, getMsgId(finalDeviceReply),
-                                                    netconfDeviceInfo)));
-                                }
+                                final String finalDeviceReply = deviceReply;
+                                netconfDeviceEventListeners.forEach(
+                                        listener -> listener.event(new NetconfDeviceOutputEvent(
+                                                NetconfDeviceOutputEvent.Type.DEVICE_NOTIFICATION,
+                                                null, finalDeviceReply, getMsgId(finalDeviceReply),
+                                                netconfDeviceInfo)));
                             } else {
-                                log.debug("Error on reply from device {} {}", netconfDeviceInfo, deviceReply);
+                                log.info("Error on replay from device {} ", deviceReply);
                             }
                             deviceReplyBuilder.setLength(0);
                         }
@@ -231,13 +217,15 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
     }
 
     private static Optional<Integer> getMsgId(String reply) {
-        Matcher matcher = MSGID_PATTERN.matcher(reply);
-        if (matcher.find()) {
-            Integer messageId = Integer.parseInt(matcher.group(1));
-            Preconditions.checkNotNull(messageId, "Error in retrieving the message id");
-            return Optional.of(messageId);
-        }
-        if (reply.contains(HELLO)) {
+        if (reply.contains(MESSAGE_ID)) {
+            String[] outer = reply.split(MESSAGE_ID);
+            Preconditions.checkArgument(outer.length != 1,
+                                        "Error in retrieving the message id");
+            String messageID = outer[1].substring(0, 3).replace("\"", "");
+            Preconditions.checkNotNull(Integer.parseInt(messageID),
+                                       "Error in retrieving the message id");
+            return Optional.of(Integer.parseInt(messageID));
+        } else if (reply.contains(HELLO)) {
             return Optional.of(0);
         }
         return Optional.empty();
@@ -251,9 +239,5 @@ public class NetconfStreamThread extends Thread implements NetconfStreamHandler 
 
     public void removeDeviceEventListener(NetconfDeviceOutputEventListener listener) {
         netconfDeviceEventListeners.remove(listener);
-    }
-
-    public void setEnableNotifications(boolean enableNotifications) {
-        this.enableNotifications = enableNotifications;
     }
 }

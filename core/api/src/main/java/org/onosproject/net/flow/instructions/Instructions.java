@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,14 @@ import org.onlab.packet.TpPort;
 import org.onlab.packet.VlanId;
 import org.onosproject.core.GroupId;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.Lambda;
 import org.onosproject.net.IndexedLambda;
+import org.onosproject.net.Lambda;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OduSignalId;
 import org.onosproject.net.PortNumber;
-import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModOchSignalInstruction;
-import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModLambdaInstruction;
 import org.onosproject.net.flow.instructions.L0ModificationInstruction.L0SubType;
+import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModLambdaInstruction;
+import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModOchSignalInstruction;
 import org.onosproject.net.flow.instructions.L1ModificationInstruction.ModOduSignalIdInstruction;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.L3SubType;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.ModIPInstruction;
@@ -338,7 +338,7 @@ public final class Instructions {
      * @return a L2 modification.
      */
     public static Instruction pushMpls() {
-        return new L2ModificationInstruction.ModMplsHeaderInstruction(
+        return new L2ModificationInstruction.PushHeaderInstructions(
                 L2ModificationInstruction.L2SubType.MPLS_PUSH,
                                           EthType.EtherType.MPLS_UNICAST.ethType());
     }
@@ -349,7 +349,7 @@ public final class Instructions {
      * @return a L2 modification.
      */
     public static Instruction popMpls() {
-        return new L2ModificationInstruction.ModMplsHeaderInstruction(
+        return new L2ModificationInstruction.PushHeaderInstructions(
                 L2ModificationInstruction.L2SubType.MPLS_POP,
                 EthType.EtherType.MPLS_UNICAST.ethType());
     }
@@ -362,7 +362,7 @@ public final class Instructions {
      */
     public static Instruction popMpls(EthType etherType) {
         checkNotNull(etherType, "Ethernet type cannot be null");
-        return new L2ModificationInstruction.ModMplsHeaderInstruction(
+        return new L2ModificationInstruction.PushHeaderInstructions(
                 L2ModificationInstruction.L2SubType.MPLS_POP, etherType);
     }
 
@@ -372,7 +372,7 @@ public final class Instructions {
      * @return a L2 modification
      */
     public static Instruction popVlan() {
-        return new L2ModificationInstruction.ModVlanHeaderInstruction(
+        return new L2ModificationInstruction.PopVlanInstruction(
                 L2ModificationInstruction.L2SubType.VLAN_POP);
     }
 
@@ -382,21 +382,9 @@ public final class Instructions {
      * @return a L2 modification
      */
     public static Instruction pushVlan() {
-        return new L2ModificationInstruction.ModVlanHeaderInstruction(
+        return new L2ModificationInstruction.PushHeaderInstructions(
                 L2ModificationInstruction.L2SubType.VLAN_PUSH,
                 EthType.EtherType.VLAN.ethType());
-    }
-
-    /**
-     * Creates a push VLAN header instruction using the supplied Ethernet type.
-     *
-     * @param ethType the Ethernet type to use
-     * @return a L2 modification
-     */
-    public static Instruction pushVlan(EthType ethType) {
-        return new L2ModificationInstruction.ModVlanHeaderInstruction(
-                L2ModificationInstruction.L2SubType.VLAN_PUSH,
-                ethType);
     }
 
     /**

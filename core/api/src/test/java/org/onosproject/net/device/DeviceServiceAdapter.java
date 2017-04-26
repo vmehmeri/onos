@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,7 @@
  */
 package org.onosproject.net.device;
 
-import java.util.Collections;
-import java.util.List;
+import com.google.common.collect.FluentIterable;
 
 import org.onosproject.net.Device;
 import org.onosproject.net.Device.Type;
@@ -25,31 +24,13 @@ import org.onosproject.net.MastershipRole;
 import org.onosproject.net.Port;
 import org.onosproject.net.PortNumber;
 
-import com.google.common.collect.FluentIterable;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Test adapter for device service.
  */
 public class DeviceServiceAdapter implements DeviceService {
-
-    private List<Port> portList;
-
-    /**
-     * Constructor with port list.
-     *
-     * @param portList port list
-     */
-    public DeviceServiceAdapter(List<Port> portList) {
-        this.portList = portList;
-    }
-
-    /**
-     * Default constructor.
-     */
-    public DeviceServiceAdapter() {
-
-    }
-
     @Override
     public int getDeviceCount() {
         return 0;
@@ -78,7 +59,7 @@ public class DeviceServiceAdapter implements DeviceService {
 
     @Override
     public List<Port> getPorts(DeviceId deviceId) {
-        return portList;
+        return Collections.emptyList();
     }
 
     @Override
@@ -92,21 +73,8 @@ public class DeviceServiceAdapter implements DeviceService {
     }
 
     @Override
-    public PortStatistics getStatisticsForPort(DeviceId deviceId, PortNumber portNumber) {
-        return null;
-    }
-
-    @Override
-    public PortStatistics getDeltaStatisticsForPort(DeviceId deviceId, PortNumber portNumber) {
-        return null;
-    }
-
-    @Override
     public Port getPort(DeviceId deviceId, PortNumber portNumber) {
-        return getPorts(deviceId).stream()
-                   .filter(port -> deviceId.equals(port.element().id()))
-                   .filter(port -> portNumber.equals(port.number()))
-                   .findFirst().orElse(null);
+        return null;
     }
 
     @Override
@@ -130,11 +98,6 @@ public class DeviceServiceAdapter implements DeviceService {
     @Override
     public Iterable<Device> getAvailableDevices(Type type) {
         return Collections.emptyList();
-    }
-
-    @Override
-    public String localStatus(DeviceId deviceId) {
-        return null;
     }
 
 }

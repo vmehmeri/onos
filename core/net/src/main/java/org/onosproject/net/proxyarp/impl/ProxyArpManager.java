@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,12 +63,7 @@ import static org.onosproject.security.AppGuard.checkPermission;
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.onosproject.security.AppPermission.Type.*;
 
-/**
- * Implementation of the proxy ARP service.
- *
- * @deprecated in Hummingbird release
- */
-@Deprecated
+
 @Component(immediate = true)
 @Service
 public class ProxyArpManager implements ProxyArpService {

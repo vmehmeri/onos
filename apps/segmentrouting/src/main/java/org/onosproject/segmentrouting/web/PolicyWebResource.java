@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ public class PolicyWebResource extends AbstractWebResource {
      *
      * @param input JSON stream for policy to create
      * @return status of the request - OK if the policy is created,
+     * INTERNAL_SERVER_ERROR if the JSON is invalid or the policy cannot be created
      * @throws IOException if JSON processing fails
      */
     @POST
@@ -86,7 +87,8 @@ public class PolicyWebResource extends AbstractWebResource {
      * Delete a segment routing policy.
      *
      * @param input JSON stream for policy to delete
-     * @return 204 NO CONTENT if the policy is removed
+     * @return status of the request - OK if the policy is removed,
+     * INTERNAL_SERVER_ERROR otherwise
      * @throws IOException if JSON is invalid
      */
     @DELETE
@@ -99,7 +101,8 @@ public class PolicyWebResource extends AbstractWebResource {
         // TODO: Check the result
         srService.removePolicy(policyInfo);
 
-        return Response.noContent().build();
+        return Response.ok().build();
+
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ public final class BasicLinkOperator implements ConfigOperator {
         if (cfg.metric() != DEF_METRIC) {
             b.set(AnnotationKeys.METRIC, String.valueOf(cfg.metric()));
         }
-        if (!cfg.latency().equals(DEF_DURATION)) {
+        if (cfg.latency() != DEF_DURATION) {
             b.set(AnnotationKeys.LATENCY, cfg.latency().toString());
         }
         if (cfg.bandwidth() != DEF_BANDWIDTH) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,11 @@ public final class AtomixConsistentMapCommands {
      */
     @SuppressWarnings("serial")
     public abstract static class MapCommand<V> implements Command<V>, CatalystSerializable {
+
+        @Override
+        public ConsistencyLevel consistency() {
+          return ConsistencyLevel.SEQUENTIAL;
+        }
 
         @Override
         public String toString() {
@@ -134,7 +139,7 @@ public final class AtomixConsistentMapCommands {
     }
 
     /**
-     * Abstract value-based query.
+     * Abstract key-based query.
      */
     @SuppressWarnings("serial")
     public abstract static class ValueQuery<V> extends MapQuery<V> {
@@ -148,18 +153,11 @@ public final class AtomixConsistentMapCommands {
         }
 
         /**
-         * Returns the value.
-         * @return value
+         * Returns the key.
+         * @return key
          */
         public byte[] value() {
             return value;
-        }
-
-        @Override
-        public String toString() {
-            return MoreObjects.toStringHelper(getClass())
-                    .add("value", value)
-                    .toString();
         }
 
         @Override
@@ -189,7 +187,7 @@ public final class AtomixConsistentMapCommands {
     }
 
     /**
-     * Contains value command.
+     * Contains key command.
      */
     @SuppressWarnings("serial")
     public static class ContainsValue extends ValueQuery<Boolean> {
@@ -198,6 +196,13 @@ public final class AtomixConsistentMapCommands {
 
         public ContainsValue(byte[] value) {
             super(value);
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(getClass())
+                    .add("value", value)
+                    .toString();
         }
     }
 
@@ -240,24 +245,6 @@ public final class AtomixConsistentMapCommands {
     }
 
     /**
-     * Map prepareAndCommit command.
-     */
-    @SuppressWarnings("serial")
-    public static class TransactionPrepareAndCommit extends TransactionPrepare {
-        public TransactionPrepareAndCommit() {
-        }
-
-        public TransactionPrepareAndCommit(MapTransaction<String, byte[]> mapTransaction) {
-            super(mapTransaction);
-        }
-
-        @Override
-        public CompactionMode compaction() {
-            return CompactionMode.QUORUM;
-        }
-    }
-
-    /**
      * Map transaction commit command.
      */
     @SuppressWarnings("serial")
@@ -289,11 +276,6 @@ public final class AtomixConsistentMapCommands {
         public void readObject(BufferInput<?> buffer, Serializer serializer) {
             super.readObject(buffer, serializer);
             transactionId = serializer.readObject(buffer);
-        }
-
-        @Override
-        public CompactionMode compaction() {
-            return CompactionMode.TOMBSTONE;
         }
 
         @Override
@@ -336,11 +318,6 @@ public final class AtomixConsistentMapCommands {
         public void readObject(BufferInput<?> buffer, Serializer serializer) {
             super.readObject(buffer, serializer);
             transactionId = serializer.readObject(buffer);
-        }
-
-        @Override
-        public CompactionMode compaction() {
-            return CompactionMode.TOMBSTONE;
         }
 
         @Override
@@ -408,7 +385,7 @@ public final class AtomixConsistentMapCommands {
 
         @Override
         public CompactionMode compaction() {
-          return value == null ? CompactionMode.TOMBSTONE : CompactionMode.QUORUM;
+          return value == null ? CompactionMode.FULL : CompactionMode.QUORUM;
         }
 
         @Override
@@ -468,14 +445,14 @@ public final class AtomixConsistentMapCommands {
     }
 
     /**
-     * ValueSet query.
+     * KeySet query.
      */
     @SuppressWarnings("serial")
     public static class Values extends MapQuery<Collection<Versioned<byte[]>>> {
     }
 
     /**
-     * EntrySet query.
+     * KeySet query.
      */
     @SuppressWarnings("serial")
     public static class EntrySet extends MapQuery<Set<Map.Entry<String, Versioned<byte[]>>>> {
@@ -493,9 +470,10 @@ public final class AtomixConsistentMapCommands {
      */
     @SuppressWarnings("serial")
     public static class Clear extends MapCommand<MapEntryUpdateResult.Status> {
+
         @Override
         public CompactionMode compaction() {
-          return CompactionMode.TOMBSTONE;
+          return CompactionMode.FULL;
         }
     }
 
@@ -513,8 +491,9 @@ public final class AtomixConsistentMapCommands {
         }
 
         @Override
-        public CompactionMode compaction() {
-            return CompactionMode.QUORUM;
+        public String toString() {
+            return MoreObjects.toStringHelper(getClass())
+                    .toString();
         }
     }
 
@@ -532,8 +511,9 @@ public final class AtomixConsistentMapCommands {
         }
 
         @Override
-        public CompactionMode compaction() {
-            return CompactionMode.TOMBSTONE;
+        public String toString() {
+            return MoreObjects.toStringHelper(getClass())
+                    .toString();
         }
     }
 
@@ -557,8 +537,7 @@ public final class AtomixConsistentMapCommands {
             registry.register(TransactionPrepare.class, -772);
             registry.register(TransactionCommit.class, -773);
             registry.register(TransactionRollback.class, -774);
-            registry.register(TransactionPrepareAndCommit.class, -775);
-            registry.register(UpdateAndGet.class, -776);
+            registry.register(UpdateAndGet.class, -775);
         }
     }
 }

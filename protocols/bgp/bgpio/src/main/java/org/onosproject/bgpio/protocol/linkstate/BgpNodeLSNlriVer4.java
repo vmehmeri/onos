@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -135,7 +135,7 @@ public class BgpNodeLSNlriVer4 implements BgpNodeLSNlri {
         byte protocolId = cb.readByte();
         long identifier = cb.readLong();
 
-        log.debug("Parse local node descriptors");
+        // Parse Local Node Descriptors
         BgpNodeLSIdentifier localNodeDescriptors = new BgpNodeLSIdentifier();
         localNodeDescriptors = BgpNodeLSIdentifier.parseLocalNodeDescriptors(cb, protocolId);
         return new BgpNodeLSNlriVer4(identifier, protocolId, localNodeDescriptors, isVpn, routeDistinguisher);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package org.onosproject.net.intent.constraint;
 
 import org.onosproject.net.EncapsulationType;
 import org.onosproject.net.Link;
-import org.onosproject.net.intent.ResourceContext;
+import org.onosproject.net.resource.link.LinkResourceService;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -42,9 +42,8 @@ public class EncapsulationConstraint extends BooleanConstraint {
     }
 
 
-    // doesn't use LinkResourceService
     @Override
-    public boolean isValid(Link link, ResourceContext context) {
+    public boolean isValid(Link link, LinkResourceService resourceService) {
         //TODO: validate the availability of the resources for each link in the path.
         //e.g., availability of MPLSlabels, VLANID
 

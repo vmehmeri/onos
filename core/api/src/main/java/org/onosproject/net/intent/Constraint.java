@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.onosproject.net.intent;
 import com.google.common.annotations.Beta;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
+import org.onosproject.net.resource.link.LinkResourceService;
 
 /**
  * Representation of a connectivity constraint capable of evaluating a link
@@ -32,19 +33,21 @@ public interface Constraint {
     /**
      * Evaluates the specified link and provides the cost for its traversal.
      *
-     * @param link    link to be evaluated
-     * @param context resource context for validating availability of resources
+     * @param link            link to be evaluated
+     * @param resourceService resource service for validating availability of
+     *                        link resources
      * @return cost of link traversal
      */
-    double cost(Link link, ResourceContext context);
+    double cost(Link link, LinkResourceService resourceService);
 
     /**
      * Validates that the specified path satisfies the constraint.
      *
      * @param path            path to be validated
-     * @param context resource context for validating availability of resources
+     * @param resourceService resource service for validating availability of
+     *                        link resources
      * @return cost of link traversal
      */
-    boolean validate(Path path, ResourceContext context);
+    boolean validate(Path path, LinkResourceService resourceService);
 
 }

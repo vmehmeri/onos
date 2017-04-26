@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,40 +23,17 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Service;
 import org.onlab.packet.Ethernet;
 import org.onosproject.cluster.ControllerNode;
-import org.onosproject.cluster.RoleInfo;
 import org.onosproject.codec.CodecService;
 import org.onosproject.codec.JsonCodec;
 import org.onosproject.core.Application;
-import org.onosproject.core.ApplicationId;
-import org.onosproject.incubator.net.dpi.DpiStatInfo;
-import org.onosproject.incubator.net.dpi.DpiStatInfoCodec;
-import org.onosproject.incubator.net.dpi.DpiStatistics;
-import org.onosproject.incubator.net.dpi.DpiStatisticsCodec;
-import org.onosproject.incubator.net.dpi.FlowStatInfo;
-import org.onosproject.incubator.net.dpi.FlowStatInfoCodec;
-import org.onosproject.incubator.net.dpi.ProtocolStatInfo;
-import org.onosproject.incubator.net.dpi.ProtocolStatInfoCodec;
-import org.onosproject.incubator.net.dpi.TrafficStatInfo;
-import org.onosproject.incubator.net.dpi.TrafficStatInfoCodec;
-import org.onosproject.incubator.net.virtual.TenantId;
-import org.onosproject.incubator.net.virtual.VirtualDevice;
-import org.onosproject.incubator.net.virtual.VirtualHost;
-import org.onosproject.incubator.net.virtual.VirtualLink;
-import org.onosproject.incubator.net.virtual.VirtualNetwork;
-import org.onosproject.incubator.net.virtual.VirtualPort;
-import org.onosproject.mastership.MastershipTerm;
 import org.onosproject.net.Annotations;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.Device;
 import org.onosproject.net.Host;
 import org.onosproject.net.HostLocation;
 import org.onosproject.net.Link;
-import org.onosproject.net.MastershipRole;
 import org.onosproject.net.Path;
-import org.onosproject.net.DisjointPath;
-import org.onosproject.net.FilteredConnectPoint;
 import org.onosproject.net.Port;
-import org.onosproject.net.behaviour.protection.TransportEndpointDescription;
 import org.onosproject.net.device.PortStatistics;
 import org.onosproject.net.driver.Driver;
 import org.onosproject.net.flow.FlowEntry;
@@ -76,7 +53,6 @@ import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.HostToHostIntent;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.PointToPointIntent;
-import org.onosproject.net.intent.SinglePointToMultiPointIntent;
 import org.onosproject.net.key.DeviceKey;
 import org.onosproject.net.mcast.McastRoute;
 import org.onosproject.net.meter.Band;
@@ -111,7 +87,6 @@ public class CodecManager implements CodecService {
     public void activate() {
         codecs.clear();
         registerCodec(Application.class, new ApplicationCodec());
-        registerCodec(ApplicationId.class, new ApplicationIdCodec());
         registerCodec(ControllerNode.class, new ControllerNodeCodec());
         registerCodec(Annotations.class, new AnnotationsCodec());
         registerCodec(Device.class, new DeviceCodec());
@@ -122,7 +97,6 @@ public class CodecManager implements CodecService {
         registerCodec(HostLocation.class, new HostLocationCodec());
         registerCodec(HostToHostIntent.class, new HostToHostIntentCodec());
         registerCodec(PointToPointIntent.class, new PointToPointIntentCodec());
-        registerCodec(SinglePointToMultiPointIntent.class, new SinglePointToMultiPointIntentCodec());
         registerCodec(Intent.class, new IntentCodec());
         registerCodec(ConnectivityIntent.class, new ConnectivityIntentCodec());
         registerCodec(FlowEntry.class, new FlowEntryCodec());
@@ -136,7 +110,6 @@ public class CodecManager implements CodecService {
         registerCodec(Topology.class, new TopologyCodec());
         registerCodec(TopologyCluster.class, new TopologyClusterCodec());
         registerCodec(Path.class, new PathCodec());
-        registerCodec(DisjointPath.class, new DisjointPathCodec());
         registerCodec(Group.class, new GroupCodec());
         registerCodec(Driver.class, new DriverCodec());
         registerCodec(GroupBucket.class, new GroupBucketCodec());
@@ -153,22 +126,6 @@ public class CodecManager implements CodecService {
         registerCodec(McastRoute.class, new McastRouteCodec());
         registerCodec(DeviceKey.class, new DeviceKeyCodec());
         registerCodec(Region.class, new RegionCodec());
-        registerCodec(TenantId.class, new TenantIdCodec());
-        registerCodec(VirtualNetwork.class, new VirtualNetworkCodec());
-        registerCodec(VirtualDevice.class, new VirtualDeviceCodec());
-        registerCodec(VirtualPort.class, new VirtualPortCodec());
-        registerCodec(VirtualLink.class, new VirtualLinkCodec());
-        registerCodec(VirtualHost.class, new VirtualHostCodec());
-        registerCodec(MastershipTerm.class, new MastershipTermCodec());
-        registerCodec(MastershipRole.class, new MastershipRoleCodec());
-        registerCodec(RoleInfo.class, new RoleInfoCodec());
-        registerCodec(DpiStatistics.class, new DpiStatisticsCodec());
-        registerCodec(DpiStatInfo.class, new DpiStatInfoCodec());
-        registerCodec(TrafficStatInfo.class, new TrafficStatInfoCodec());
-        registerCodec(ProtocolStatInfo.class, new ProtocolStatInfoCodec());
-        registerCodec(FlowStatInfo.class, new FlowStatInfoCodec());
-        registerCodec(FilteredConnectPoint.class, new FilteredConnectPointCodec());
-        registerCodec(TransportEndpointDescription.class, new TransportEndpointDescriptionCodec());
         log.info("Started");
     }
 

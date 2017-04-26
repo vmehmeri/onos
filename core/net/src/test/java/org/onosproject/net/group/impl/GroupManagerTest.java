@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -188,21 +188,6 @@ public class GroupManagerTest {
     }
 
     /**
-     * Tests group Purge Operation.
-     */
-    @Test
-    public void testPurgeGroups() {
-        //Test Group creation before AUDIT process
-        testGroupCreationBeforeAudit(DID);
-        programmableTestCleanUp();
-        testAuditWithExtraneousMissingGroups(DID);
-        // Test group add bucket operations
-        testAddBuckets(DID);
-        // Test group Purge operations
-        testPurgeGroupEntry(DID);
-    }
-
-    /**
      * Tests group bucket modifications (additions and deletions) and
      * Tests group deletion.
      */
@@ -361,8 +346,8 @@ public class GroupManagerTest {
         GroupKey key = new DefaultGroupKey("group1BeforeAudit".getBytes());
         Group createdGroup = groupService.getGroup(deviceId, key);
         int createdGroupId = createdGroup.id().id();
-        assertNotEquals(gId1.id().intValue(), createdGroupId);
-        assertNotEquals(gId2.id().intValue(), createdGroupId);
+        assertNotEquals(gId1.id(), createdGroupId);
+        assertNotEquals(gId2.id(), createdGroupId);
 
         List<GroupOperation> expectedGroupOps = Arrays.asList(
                 GroupOperation.createDeleteGroupOperation(gId1,
@@ -520,13 +505,6 @@ public class GroupManagerTest {
         List<Group> groupEntries = Collections.singletonList(existingGroup);
         providerService.pushGroupMetrics(deviceId, groupEntries);
         internalListener.validateEvent(Collections.singletonList(GroupEvent.Type.GROUP_UPDATED));
-    }
-
-    // Test purge group entry operations
-    private void testPurgeGroupEntry(DeviceId deviceId) {
-        assertEquals(1, Iterables.size(groupService.getGroups(deviceId, appId)));
-        groupService.purgeGroupEntries(deviceId);
-        assertEquals(0, Iterables.size(groupService.getGroups(deviceId, appId)));
     }
 
     // Test group remove operations
@@ -773,8 +751,8 @@ public class GroupManagerTest {
         }
 
         assertEquals(lastDeviceIdProgrammable, expectedDeviceId);
-        assertTrue(groupOperations.containsAll(expectedGroupOps) &&
-                   expectedGroupOps.containsAll(groupOperations));
+        assertTrue((this.groupOperations.containsAll(expectedGroupOps) &&
+                expectedGroupOps.containsAll(groupOperations)));
 
         groupOperations.clear();
         lastDeviceIdProgrammable = null;

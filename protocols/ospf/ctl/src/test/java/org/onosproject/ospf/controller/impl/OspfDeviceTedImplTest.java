@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.onlab.packet.Ip4Address;
 import org.onlab.packet.Ip6Address;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -126,10 +127,10 @@ public class OspfDeviceTedImplTest {
     /**
      * Tests ipv6RouterIds() getter method.
      */
-    @Test
+    @Test(expected = Exception.class)
     public void testIpv6RouterIds() throws Exception {
         List list = new ArrayList();
-        list.add(Ip6Address.valueOf(1));
+        list.add(Ip6Address.valueOf(InetAddress.getLocalHost()));
         ospfDeviceTed.setIpv6RouterIds(list);
         assertThat(ospfDeviceTed.ipv6RouterIds().size(), is(1));
     }
@@ -137,10 +138,10 @@ public class OspfDeviceTedImplTest {
     /**
      * Tests ipv6RouterIds() setter method.
      */
-    @Test
+    @Test(expected = Exception.class)
     public void testSetIpv6RouterIds() throws Exception {
         List list = new ArrayList();
-        list.add(Ip6Address.valueOf(1));
+        list.add(Ip6Address.valueOf(InetAddress.getLocalHost()));
         ospfDeviceTed.setIpv6RouterIds(list);
         assertThat(ospfDeviceTed.ipv6RouterIds().size(), is(1));
     }

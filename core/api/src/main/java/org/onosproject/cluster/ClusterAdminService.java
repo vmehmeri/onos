@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import java.util.Set;
 /**
  * Service for administering the cluster node membership.
  */
-public interface ClusterAdminService extends ClusterService {
+public interface ClusterAdminService {
 
     /**
      * Forms cluster configuration based on the specified set of node
@@ -32,16 +32,6 @@ public interface ClusterAdminService extends ClusterService {
      * @param nodes    set of nodes that form the cluster
      */
     void formCluster(Set<ControllerNode> nodes);
-
-    /**
-     * Forms cluster configuration based on the specified set of node
-     * information.&nbsp; This method resets and restarts the controller
-     * instance.
-     *
-     * @param nodes    set of nodes that form the cluster
-     * @param partitionSize number of nodes to compose a partition
-     */
-    void formCluster(Set<ControllerNode> nodes, int partitionSize);
 
     /**
      * Adds a new controller node to the cluster.
@@ -59,12 +49,5 @@ public interface ClusterAdminService extends ClusterService {
      * @param nodeId controller node identifier
      */
     void removeNode(NodeId nodeId);
-
-    /**
-     * Marks the current node as fully started or not.
-     *
-     * @param started true indicates all components have been started
-     */
-    void markFullyStarted(boolean started);
 
 }

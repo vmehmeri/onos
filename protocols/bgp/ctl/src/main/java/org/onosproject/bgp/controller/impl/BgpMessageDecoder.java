@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ public class BgpMessageDecoder extends FrameDecoder {
                 BgpMessage message = reader.readFrom(buffer, bgpHeader);
                 msgList.add(message);
             }
-            ctx.setAttachment(null);
+
             return msgList;
         } catch (Exception e) {
             log.debug("Bgp protocol message decode error");

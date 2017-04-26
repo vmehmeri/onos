@@ -1,5 +1,6 @@
+
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,8 +53,6 @@ import com.google.common.collect.Lists;
          description = "Installs a number of test flow rules - for testing only")
 public class AddTestFlowsCommand extends AbstractShellCommand {
 
-    private static final int MAX_OUT_PORT = 65279;
-
     private CountDownLatch latch;
 
     @Argument(index = 0, name = "flowPerDevice", description = "Number of flows to add per device",
@@ -79,7 +78,7 @@ public class AddTestFlowsCommand extends AbstractShellCommand {
         ArrayList<Long> results = Lists.newArrayList();
         Iterable<Device> devices = deviceService.getDevices();
         TrafficTreatment treatment = DefaultTrafficTreatment.builder()
-                .setOutput(PortNumber.portNumber(RandomUtils.nextInt(MAX_OUT_PORT))).build();
+                .setOutput(PortNumber.portNumber(RandomUtils.nextInt())).build();
         TrafficSelector.Builder sbuilder;
         FlowRuleOperations.Builder rules = FlowRuleOperations.builder();
         FlowRuleOperations.Builder remove = FlowRuleOperations.builder();
@@ -92,8 +91,7 @@ public class AddTestFlowsCommand extends AbstractShellCommand {
                         .matchEthDst(MacAddress.valueOf((Integer.MAX_VALUE - i) * RandomUtils.nextInt()));
 
 
-                int randomPriority = RandomUtils.nextInt(
-                        FlowRule.MAX_PRIORITY - FlowRule.MIN_PRIORITY + 1) + FlowRule.MIN_PRIORITY;
+                int randomPriority = RandomUtils.nextInt();
 
                 FlowRule addRule = DefaultFlowRule.builder()
                         .forDevice(d.id())

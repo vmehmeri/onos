@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import static org.slf4j.LoggerFactory.getLogger;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
-import java.util.UUID;
 
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -103,8 +102,7 @@ public class FloatingIpManager implements FloatingIpService {
                 .register(FloatingIp.class, FloatingIpId.class,
                           TenantNetworkId.class, TenantId.class,
                           FloatingIp.Status.class, RouterId.class,
-                          VirtualPortId.class, DefaultFloatingIp.class,
-                          UUID.class);
+                          VirtualPortId.class, DefaultFloatingIp.class);
         floatingIpStore = storageService
                 .<FloatingIpId, FloatingIp>eventuallyConsistentMapBuilder()
                 .withName(FLOATINGIPSTORE).withSerializer(serializer)
@@ -246,7 +244,7 @@ public class FloatingIpManager implements FloatingIpService {
     @Override
     public void removeListener(FloatingIpListener listener) {
         checkNotNull(listener, LISTENER_NOT_NULL);
-        listeners.remove(listener);
+        listeners.add(listener);
     }
 
     /**

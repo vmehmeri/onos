@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,8 +104,6 @@
                 }
             })
             .on('dragend', function(d) {
-                d3.event.sourceEvent.preventDefault();
-
                 if (d.dragStarted) {
                     d.dragStarted = false;
                     if (!dragged(d)) {
@@ -161,13 +159,12 @@
 
     // --- Ordinal scales for 7 values.
 
-    // Colors per Mojo-Design's color palette..
-    //               blue       red        dk grey    steel      lt blue    lt red     lt grey
-    var lightNorm = ['#5b99d2', '#d05a55', '#716b6b', '#7e9aa8', '#66cef6', '#db7773', '#aeada8' ],
-        lightMute = ['#a8cceb', '#f1a7a7', '#b9b5b5', '#bdcdd5', '#a8e9fd', '#f8c9c9', '#d7d6d4' ],
-        // TODO: dark theme
-        darkNorm  = ['#5b99d2', '#d05a55', '#716b6b', '#7e9aa8', '#66cef6', '#db7773', '#aeada8' ],
-        darkMute  = ['#a8cceb', '#f1a7a7', '#b9b5b5', '#bdcdd5', '#a8e9fd', '#f8c9c9', '#d7d6d4' ];
+    //               blue       brown      brick red  sea green  purple     dark teal  lime
+    var lightNorm = ['#3E5780', '#78533B', '#CB4D28', '#018D61', '#8A2979', '#006D73', '#56AF00'],
+        lightMute = ['#A8B8CC', '#CCB3A8', '#FFC2BD', '#96D6BF', '#D19FCE', '#8FCCCA', '#CAEAA4'],
+
+        darkNorm  = ['#304860', '#664631', '#A8391B', '#00754B', '#77206D', '#005959', '#428700'],
+        darkMute  = ['#304860', '#664631', '#A8391B', '#00754B', '#77206D', '#005959', '#428700'];
 
     var colors= {
         light: {
@@ -218,7 +215,7 @@
                     dom.forEach(function (id, i) {
                         var x = i * 20,
                             y = k * 20,
-                            f = getColor(id, muted, theme);
+                            f = get(id, muted, theme);
                         g.append('circle').attr({
                             cx: x,
                             cy: y,

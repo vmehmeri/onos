@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -171,17 +171,15 @@ public class As4Path implements BgpValueType {
         if ((as4pathSet != null) && (as4pathSeq != null)) {
             int iAsLenIndex = cb.writerIndex();
             cb.writeByte(0);
-            if (!as4pathSeq.isEmpty()) {
-                cb.writeByte(AsPath.ASPATH_SEQ_TYPE);
-                cb.writeByte(as4pathSeq.size());
+            cb.writeByte(AsPath.ASPATH_SEQ_TYPE);
+            cb.writeByte(as4pathSeq.size());
 
-                for (int j = 0; j < as4pathSeq.size(); j++) {
-                    cb.writeInt(as4pathSeq.get(j));
-                }
-
-                int asLen = cb.writerIndex() - iAsLenIndex;
-                cb.setByte(iAsLenIndex, (byte) (asLen - 1));
+            for (int j = 0; j < as4pathSeq.size(); j++) {
+                cb.writeInt(as4pathSeq.get(j));
             }
+
+            int asLen = cb.writerIndex() - iAsLenIndex;
+            cb.setByte(iAsLenIndex, (byte) (asLen - 1));
         } else {
             cb.writeByte(0);
         }

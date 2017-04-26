@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class DefaultMutablePath<V extends Vertex, E extends Edge<V>> implements MutablePath<V, E> {
 
     private final List<E> edges = new ArrayList<>();
-    private Weight cost;
+    private double cost = 0.0;
 
     /**
      * Creates a new empty path.
@@ -61,7 +61,7 @@ public class DefaultMutablePath<V extends Vertex, E extends Edge<V>> implements 
     }
 
     @Override
-    public Weight cost() {
+    public double cost() {
         return cost;
     }
 
@@ -71,7 +71,7 @@ public class DefaultMutablePath<V extends Vertex, E extends Edge<V>> implements 
     }
 
     @Override
-    public void setCost(Weight cost) {
+    public void setCost(double cost) {
         this.cost = cost;
     }
 

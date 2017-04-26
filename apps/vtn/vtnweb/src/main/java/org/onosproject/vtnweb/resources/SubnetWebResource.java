@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,7 +75,6 @@ public class SubnetWebResource extends AbstractWebResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
     public Response listSubnets() {
         Iterable<Subnet> subnets = get(SubnetService.class).getSubnets();
         ObjectNode result = new ObjectMapper().createObjectNode();
@@ -86,7 +85,6 @@ public class SubnetWebResource extends AbstractWebResource {
     @GET
     @Path("{subnetUUID}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
     public Response getSubnet(@PathParam("subnetUUID") String id) {
 
         if (!get(SubnetService.class).exists(SubnetId.subnetId(id))) {
@@ -149,10 +147,8 @@ public class SubnetWebResource extends AbstractWebResource {
         }
     }
 
-    @DELETE
     @Path("{subnetUUID}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @DELETE
     public Response deleteSingleSubnet(@PathParam("subnetUUID") String id)
             throws IOException {
         try {
@@ -160,7 +156,7 @@ public class SubnetWebResource extends AbstractWebResource {
             Set<SubnetId> subIds = new HashSet<>();
             subIds.add(subId);
             get(SubnetService.class).removeSubnets(subIds);
-            return Response.noContent().entity("SUCCESS").build();
+            return Response.status(201).entity("SUCCESS").build();
         } catch (Exception e) {
             return Response.status(INTERNAL_SERVER_ERROR).entity(e.toString())
                     .build();

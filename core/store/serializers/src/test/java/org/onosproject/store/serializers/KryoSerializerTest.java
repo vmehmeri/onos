@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,9 +44,10 @@ import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.GridType;
 import org.onosproject.net.HostLocation;
+import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.Link;
+import org.onosproject.net.Link.Type;
 import org.onosproject.net.LinkKey;
-import org.onosproject.net.MarkerResource;
 import org.onosproject.net.OchPort;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OduCltPort;
@@ -63,12 +64,19 @@ import org.onosproject.net.flow.FlowId;
 import org.onosproject.net.flow.FlowRule;
 import org.onosproject.net.flow.FlowRuleBatchEntry;
 import org.onosproject.net.intent.IntentId;
-import org.onosproject.net.resource.ResourceAllocation;
-import org.onosproject.net.resource.ResourceConsumerId;
-import org.onosproject.net.resource.Resources;
+import org.onosproject.net.newresource.Resources;
 import org.onosproject.net.provider.ProviderId;
+import org.onosproject.net.resource.link.BandwidthResource;
+import org.onosproject.net.resource.link.BandwidthResourceAllocation;
+import org.onosproject.net.resource.link.DefaultLinkResourceAllocations;
+import org.onosproject.net.resource.link.DefaultLinkResourceRequest;
+import org.onosproject.net.resource.link.LambdaResource;
+import org.onosproject.net.resource.link.LambdaResourceAllocation;
+import org.onosproject.net.resource.link.LinkResourceRequest;
+import org.onosproject.net.resource.ResourceAllocation;
 import org.onosproject.net.intent.constraint.AnnotationConstraint;
 import org.onosproject.net.intent.constraint.BandwidthConstraint;
+import org.onosproject.net.intent.constraint.LambdaConstraint;
 import org.onosproject.net.intent.constraint.LatencyConstraint;
 import org.onosproject.net.intent.constraint.LinkTypeConstraint;
 import org.onosproject.net.intent.constraint.ObstacleConstraint;
@@ -81,10 +89,14 @@ import org.onlab.packet.IpPrefix;
 import org.onlab.packet.Ip4Prefix;
 import org.onlab.packet.Ip6Prefix;
 import org.onlab.packet.MacAddress;
+import org.onlab.util.KryoNamespace;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.time.Duration;
 
 import static java.util.Arrays.asList;
@@ -122,7 +134,7 @@ public class KryoSerializerTest {
             GridType.DWDM, ChannelSpacing.CHL_100GHZ, -8, 4);
     private static final VlanId VLAN1 = VlanId.vlanId((short) 100);
 
-    private StoreSerializer serializer;
+    private KryoSerializer serializer;
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
@@ -130,7 +142,16 @@ public class KryoSerializerTest {
 
     @Before
     public void setUp() throws Exception {
-        serializer = StoreSerializer.using(KryoNamespaces.API);
+        serializer = new KryoSerializer() {
+
+            @Override
+            protected void setupKryoPool() {
+                serializerPool = KryoNamespace.newBuilder()
+                        .register(KryoNamespaces.API)
+                        .nextId(KryoNamespaces.BEGIN_USER_CUSTOM_ID)
+                        .build();
+            }
+        };
     }
 
     @After
@@ -336,10 +357,40 @@ public class KryoSerializerTest {
     }
 
     @Test
+    public void testIndexedLambda() {
+        testSerializedEquals(org.onosproject.net.Lambda.indexedLambda(10L));
+    }
+
+    @Test
     public void testOchSignal() {
         testSerializedEquals(org.onosproject.net.Lambda.ochSignal(
                 GridType.DWDM, ChannelSpacing.CHL_100GHZ, 1, 1
         ));
+    }
+
+    @Test
+    public void testDefaultLinkResourceRequest() {
+        testSerializable(DefaultLinkResourceRequest.builder(IntentId.valueOf(2501), ImmutableList.of())
+                        .addLambdaRequest()
+                        .addBandwidthRequest(32.195)
+                        .build()
+        );
+    }
+
+    @Test
+    public void testDefaultLinkResourceAllocations() {
+        LinkResourceRequest request = DefaultLinkResourceRequest
+                    .builder(IntentId.valueOf(2501), ImmutableList.of())
+                        .addLambdaRequest()
+                        .addBandwidthRequest(32.195)
+                        .build();
+        Map<Link, Set<ResourceAllocation>> allocations = new HashMap<>();
+        allocations.put(DefaultLink.builder()
+                                .providerId(PID)
+                                .src(CP1).dst(CP2).type(Type.DIRECT).build(),
+                        ImmutableSet.of(new BandwidthResourceAllocation(new BandwidthResource(Bandwidth.bps(10.0))),
+                                        new LambdaResourceAllocation(LambdaResource.valueOf(1))));
+        testSerializable(new DefaultLinkResourceAllocations(request, allocations));
     }
 
     @Test
@@ -354,9 +405,9 @@ public class KryoSerializerTest {
 
     @Test
     public void testResourceAllocation() {
-        testSerializedEquals(new ResourceAllocation(
+        testSerializedEquals(new org.onosproject.net.newresource.ResourceAllocation(
                 Resources.discrete(DID1, P1, VLAN1).resource(),
-                ResourceConsumerId.of(30L, IntentId.class)));
+                IntentId.valueOf(30)));
     }
 
     @Test
@@ -368,6 +419,11 @@ public class KryoSerializerTest {
     public void testBandwidth() {
         testSerializedEquals(Bandwidth.mbps(1000));
         testSerializedEquals(Bandwidth.mbps(1000.0));
+    }
+
+    @Test
+    public void testLambdaConstraint() {
+        testSerializable(new LambdaConstraint(new IndexedLambda(1)));
     }
 
     @Test
@@ -416,11 +472,6 @@ public class KryoSerializerTest {
     }
 
     @Test
-    public void testMarkerResource() {
-        testSerializedEquals(MarkerResource.marker("testString"));
-    }
-
-    @Test
     public void testAnnotations() {
         // Annotations does not have equals defined, manually test equality
         final byte[] a1Bytes = serializer.encode(A1);
@@ -433,7 +484,7 @@ public class KryoSerializerTest {
     }
 
     // code clone
-    private static void assertAnnotationsEquals(Annotations actual, SparseAnnotations... annotations) {
+    protected static void assertAnnotationsEquals(Annotations actual, SparseAnnotations... annotations) {
         SparseAnnotations expected = DefaultAnnotations.builder().build();
         for (SparseAnnotations a : annotations) {
             expected = DefaultAnnotations.union(expected, a);

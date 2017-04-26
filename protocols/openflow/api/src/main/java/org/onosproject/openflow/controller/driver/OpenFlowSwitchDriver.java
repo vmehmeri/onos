@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFMeterFeaturesStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 
@@ -133,12 +132,6 @@ public interface OpenFlowSwitchDriver extends OpenFlowSwitch, HandlerBehaviour {
      * @param featuresReply the features to set.
      */
     void setFeaturesReply(OFFeaturesReply featuresReply);
-
-    /**
-     *  Sets the meter features reply for this switch.
-     * @param meterFeaturesReply the meter features to set.
-     */
-    void setMeterFeaturesReply(OFMeterFeaturesStatsReply meterFeaturesReply);
 
     /**
      * Sets the switch description.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015,2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,9 +41,7 @@
             $scope.flowTip = 'Show flow view for this device';
             $scope.portTip = 'Show port view for this device';
             $scope.meterTip = 'Show meter view for selected device';
-            $scope.briefTip = 'Switch to brief view';
-            $scope.detailTip = 'Switch to detailed view';
-            $scope.brief = true;
+
             params = $location.search();
             if (params.hasOwnProperty('devId')) {
                 $scope.devId = params['devId'];
@@ -68,18 +66,6 @@
                     ns.navTo(path, { devId: $scope.devId });
                 }
             };
-            $scope.briefToggle = function () {
-                $scope.brief = !$scope.brief;
-            };
-
-            Object.defineProperty($scope, "queryFilter", {
-                get: function() {
-                    var out = {};
-                    out[$scope.queryBy || "$"] = $scope.query;
-                    return out;
-                }
-            });
-
 
             $log.log('OvGroupCtrl has been created');
         }]);

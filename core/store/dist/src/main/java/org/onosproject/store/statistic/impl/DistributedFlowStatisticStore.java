@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package org.onosproject.store.statistic.impl;
 
 import com.google.common.base.Objects;
-
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -26,8 +25,8 @@ import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
+import org.onlab.util.KryoNamespace;
 import org.onlab.util.Tools;
-import org.onosproject.cfg.ComponentConfigService;
 import org.onosproject.cluster.ClusterService;
 import org.onosproject.cluster.NodeId;
 import org.onosproject.mastership.MastershipService;
@@ -40,9 +39,8 @@ import org.onosproject.net.flow.instructions.Instruction;
 import org.onosproject.net.flow.instructions.Instructions;
 import org.onosproject.net.statistic.FlowStatisticStore;
 import org.onosproject.store.cluster.messaging.ClusterCommunicationService;
-import org.onosproject.store.cluster.messaging.MessageSubject;
 import org.onosproject.store.serializers.KryoNamespaces;
-import org.onosproject.store.serializers.StoreSerializer;
+import org.onosproject.store.serializers.KryoSerializer;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 
@@ -60,9 +58,10 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Strings.isNullOrEmpty;
-import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.onlab.util.Tools.get;
 import static org.onlab.util.Tools.groupedThreads;
+import static org.onosproject.store.statistic.impl.StatisticStoreMessageSubjects.GET_CURRENT;
+import static org.onosproject.store.statistic.impl.StatisticStoreMessageSubjects.GET_PREVIOUS;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -85,19 +84,22 @@ public class DistributedFlowStatisticStore implements FlowStatisticStore {
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected ClusterService clusterService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected ComponentConfigService cfgService;
-
     private Map<ConnectPoint, Set<FlowEntry>> previous =
             new ConcurrentHashMap<>();
 
     private Map<ConnectPoint, Set<FlowEntry>> current =
             new ConcurrentHashMap<>();
 
-    public static final MessageSubject GET_CURRENT = new MessageSubject("peer-return-current");
-    public static final MessageSubject GET_PREVIOUS = new MessageSubject("peer-return-previous");
-
-    protected static final StoreSerializer SERIALIZER = StoreSerializer.using(KryoNamespaces.API);
+    protected static final KryoSerializer SERIALIZER = new KryoSerializer() {
+        @Override
+        protected void setupKryoPool() {
+            serializerPool = KryoNamespace.newBuilder()
+                    .register(KryoNamespaces.API)
+                    .nextId(KryoNamespaces.BEGIN_USER_CUSTOM_ID)
+                            // register this store specific classes here
+                    .build();
+        }
+    };
 
     private NodeId local;
     private ExecutorService messageHandlingExecutor;
@@ -111,16 +113,12 @@ public class DistributedFlowStatisticStore implements FlowStatisticStore {
     private static final long STATISTIC_STORE_TIMEOUT_MILLIS = 3000;
 
     @Activate
-    public void activate(ComponentContext context) {
-        cfgService.registerProperties(getClass());
-
-        modified(context);
-
+    public void activate() {
         local = clusterService.getLocalNode().id();
 
         messageHandlingExecutor = Executors.newFixedThreadPool(
                 messageHandlerThreadPoolSize,
-                groupedThreads("onos/store/statistic", "message-handlers", log));
+                groupedThreads("onos/store/statistic", "message-handlers"));
 
         clusterCommunicator.addSubscriber(
                 GET_CURRENT, SERIALIZER::decode, this::getCurrentStatisticInternal, SERIALIZER::encode,
@@ -135,7 +133,6 @@ public class DistributedFlowStatisticStore implements FlowStatisticStore {
 
     @Deactivate
     public void deactivate() {
-        cfgService.unregisterProperties(getClass(), false);
         clusterCommunicator.removeSubscriber(GET_PREVIOUS);
         clusterCommunicator.removeSubscriber(GET_CURRENT);
         messageHandlingExecutor.shutdown();
@@ -203,7 +200,6 @@ public class DistributedFlowStatisticStore implements FlowStatisticStore {
         previous.computeIfPresent(cp, (c, e) -> { e.remove(rule); return e; });
     }
 
-    @Override
     public synchronized void updateFlowStatistic(FlowEntry rule) {
         ConnectPoint cp = buildConnectPoint(rule);
         if (cp == null) {
@@ -329,6 +325,9 @@ public class DistributedFlowStatisticStore implements FlowStatisticStore {
                 Instructions.OutputInstruction out = (Instructions.OutputInstruction) i;
                 return out.port();
             }
+            if (i.type() == Instruction.Type.DROP) {
+                return PortNumber.P0;
+            }
         }
         return null;
     }
@@ -348,8 +347,7 @@ public class DistributedFlowStatisticStore implements FlowStatisticStore {
      */
     private void restartMessageHandlerThreadPool() {
         ExecutorService prevExecutor = messageHandlingExecutor;
-        messageHandlingExecutor = newFixedThreadPool(getMessageHandlerThreadPoolSize(),
-                                                     groupedThreads("DistFlowStats", "messageHandling-%d", log));
+        messageHandlingExecutor = Executors.newFixedThreadPool(getMessageHandlerThreadPoolSize());
         prevExecutor.shutdown();
     }
 

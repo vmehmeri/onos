@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,17 +23,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * Mock id generator for testing.
  */
 public class MockIdGenerator implements IdGenerator {
-
-    private static boolean generatorIsBound = false;
-    private static MockIdGenerator idGenerator;
-    public static void bindNewGenerator() {
-        if (!generatorIsBound) {
-            generatorIsBound = true;
-            idGenerator = new MockIdGenerator();
-            Intent.unbindIdGenerator(idGenerator);
-            Intent.bindIdGenerator(idGenerator);
-        }
-    }
     private AtomicLong nextId = new AtomicLong(0);
 
     @Override

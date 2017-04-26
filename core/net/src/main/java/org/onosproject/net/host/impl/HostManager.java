@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,12 @@ package org.onosproject.net.host.impl;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Modified;
-import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
-import org.onlab.packet.Ip6Address;
 import org.onlab.packet.IpAddress;
 import org.onlab.packet.MacAddress;
 import org.onlab.packet.VlanId;
-import org.onlab.util.Tools;
-import org.onosproject.cfg.ComponentConfigService;
 import org.onosproject.incubator.net.intf.InterfaceService;
 import org.onosproject.net.edge.EdgePortService;
 import org.onosproject.net.provider.AbstractListenerProviderRegistry;
@@ -53,16 +48,12 @@ import org.onosproject.net.host.HostStore;
 import org.onosproject.net.host.HostStoreDelegate;
 import org.onosproject.net.packet.PacketService;
 import org.onosproject.net.provider.AbstractProviderService;
-import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 
-import java.util.Dictionary;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static org.onlab.packet.IPv6.getLinkLocalAddress;
-import static org.onosproject.net.link.ProbedLinkProvider.DEFAULT_MAC;
 import static org.onosproject.security.AppGuard.checkPermission;
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.onosproject.security.AppPermission.Type.*;
@@ -102,39 +93,15 @@ public class HostManager
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected EdgePortService edgePortService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected ComponentConfigService cfgService;
-
-    @Property(name = "allowDuplicateIps", boolValue = true,
-            label = "Enable removal of duplicate ip address")
-    private boolean allowDuplicateIps = true;
-
-    @Property(name = "monitorHosts", boolValue = false,
-            label = "Enable/Disable monitoring of hosts")
-    private boolean monitorHosts = false;
-
-    @Property(name = "probeRate", longValue = 30000,
-            label = "Set the probe Rate in milli seconds")
-    private long probeRate = 30000;
-
-    @Property(name = "greedyLearningIpv6", boolValue = false,
-            label = "Enable/Disable greedy learning of IPv6 link local address")
-    private boolean greedyLearningIpv6 = false;
-
     private HostMonitor monitor;
 
-
     @Activate
-    public void activate(ComponentContext context) {
+    public void activate() {
         store.setDelegate(delegate);
         eventDispatcher.addSink(HostEvent.class, listenerRegistry);
-        cfgService.registerProperties(getClass());
         networkConfigService.addListener(networkConfigListener);
         monitor = new HostMonitor(packetService, this, interfaceService, edgePortService);
-        monitor.setProbeRate(probeRate);
         monitor.start();
-        modified(context);
-        cfgService.registerProperties(getClass());
         log.info("Started");
     }
 
@@ -143,100 +110,7 @@ public class HostManager
         store.unsetDelegate(delegate);
         eventDispatcher.removeSink(HostEvent.class);
         networkConfigService.removeListener(networkConfigListener);
-        cfgService.unregisterProperties(getClass(), false);
-        monitor.shutdown();
         log.info("Stopped");
-    }
-
-    @Modified
-     public void modified(ComponentContext context) {
-        boolean oldValue = monitorHosts;
-        readComponentConfiguration(context);
-        if (probeRate > 0) {
-            monitor.setProbeRate(probeRate);
-        } else {
-            log.warn("probeRate cannot be lessthan 0");
-        }
-
-        if (oldValue != monitorHosts) {
-            if (monitorHosts) {
-                startMonitoring();
-            } else {
-                stopMonitoring();
-            }
-        }
-    }
-
-    /**
-     * Extracts properties from the component configuration context.
-     *
-     * @param context the component context
-     */
-    private void readComponentConfiguration(ComponentContext context) {
-        Dictionary<?, ?> properties = context.getProperties();
-        Boolean flag;
-
-        flag = Tools.isPropertyEnabled(properties, "monitorHosts");
-        if (flag == null) {
-            log.info("monitorHosts is not enabled " +
-                             "using current value of {}", monitorHosts);
-        } else {
-            monitorHosts = flag;
-            log.info("Configured. monitorHosts {}",
-            monitorHosts ? "enabled" : "disabled");
-        }
-
-        Long longValue = Tools.getLongProperty(properties, "probeRate");
-        if (longValue == null || longValue == 0) {
-            log.info("probeRate is not set sing default value of {}", probeRate);
-        } else {
-            probeRate = longValue;
-            log.info("Configured. probeRate {}", probeRate);
-        }
-
-        flag = Tools.isPropertyEnabled(properties, "allowDuplicateIps");
-        if (flag == null) {
-            log.info("Removal of duplicate ip address is not configured");
-        } else {
-            allowDuplicateIps = flag;
-            log.info("Removal of duplicate ip address is {}",
-                     allowDuplicateIps ? "disabled" : "enabled");
-        }
-
-        flag = Tools.isPropertyEnabled(properties, "greedyLearningIpv6");
-        if (flag == null) {
-            log.info("greedy learning is not enabled " +
-                             "using current value of {}", greedyLearningIpv6);
-        } else {
-            greedyLearningIpv6 = flag;
-            log.info("Configured. greedyLearningIpv6 {}",
-                     greedyLearningIpv6 ? "enabled" : "disabled");
-        }
-
-    }
-
-    /**
-     * Starts monitoring the hosts by IP Address.
-     *
-     */
-    private void startMonitoring() {
-        store.getHosts().forEach(host -> {
-                    host.ipAddresses().forEach(ip -> {
-                           monitor.addMonitoringFor(ip);
-            });
-        });
-    }
-
-    /**
-     * Stops monitoring the hosts by IP Address.
-     *
-     */
-    private void stopMonitoring() {
-        store.getHosts().forEach(host -> {
-                    host.ipAddresses().forEach(ip -> {
-                           monitor.stopMonitoring(ip);
-            });
-        });
     }
 
     @Override
@@ -334,73 +208,9 @@ public class HostManager
             checkNotNull(hostId, HOST_ID_NULL);
             checkValidity();
             hostDescription = validateHost(hostDescription, hostId);
-
-            if (!allowDuplicateIps) {
-                removeDuplicates(hostId, hostDescription);
-            }
             store.createOrUpdateHost(provider().id(), hostId,
-                                     hostDescription, replaceIps);
-
-            if (monitorHosts) {
-                hostDescription.ipAddress().forEach(ip -> {
-                    monitor.addMonitoringFor(ip);
-                });
-            }
-
-            // Greedy learning of IPv6 host. We have to disable the greedy
-            // learning of configured hosts. Validate hosts each time will
-            // overwrite the learnt information with the configured informations.
-            if (greedyLearningIpv6) {
-                // Auto-generation of the IPv6 link local address
-                // using the mac address
-                Ip6Address targetIp6Address = Ip6Address.valueOf(
-                        getLinkLocalAddress(hostId.mac().toBytes())
-                );
-                // If we already know this guy we don't need to do other
-                if (!hostDescription.ipAddress().contains(targetIp6Address)) {
-                    Host host = store.getHost(hostId);
-                    // Configured host, skip it.
-                    if (host != null && host.configured()) {
-                        return;
-                    }
-                    // Host does not exist in the store or the target is not known
-                    if ((host == null || !host.ipAddresses().contains(targetIp6Address))) {
-                        // We generate ONOS ip from the ONOS default mac
-                        // We could use the mac generated for the link
-                        // discovery but maybe does not worth
-                        MacAddress onosMacAddress = MacAddress.valueOf(DEFAULT_MAC);
-                        Ip6Address onosIp6Address = Ip6Address.valueOf(
-                                getLinkLocalAddress(onosMacAddress.toBytes())
-                        );
-                        // We send a probe using the monitoring service
-                        monitor.sendProbe(
-                                hostDescription.location(),
-                                targetIp6Address,
-                                onosIp6Address,
-                                onosMacAddress,
-                                hostId.vlanId()
-                        );
-                    }
-                }
-            }
+                                                       hostDescription, replaceIps);
         }
-
-        // When a new IP is detected, remove that IP on other hosts if it exists
-        public void removeDuplicates(HostId hostId, HostDescription desc) {
-            desc.ipAddress().forEach(ip -> {
-                Set<Host> allHosts = store.getHosts(ip);
-                allHosts.forEach(eachHost -> {
-                    if (!(eachHost.id().equals(hostId))) {
-                        log.info("Duplicate ip {} found on host {} and {}", ip,
-                                 hostId.toString(), eachHost.id().toString());
-                        store.removeIp(eachHost.id(), ip);
-                    }
-                });
-            });
-        }
-
-
-
 
         // returns a HostDescription made from the union of the BasicHostConfig
         // annotations if it exists
@@ -415,12 +225,6 @@ public class HostManager
         public void hostVanished(HostId hostId) {
             checkNotNull(hostId, HOST_ID_NULL);
             checkValidity();
-            Host host = store.getHost(hostId);
-            if (monitorHosts) {
-                host.ipAddresses().forEach(ip -> {
-                    monitor.stopMonitoring(ip);
-                });
-            }
             store.removeHost(hostId);
         }
 

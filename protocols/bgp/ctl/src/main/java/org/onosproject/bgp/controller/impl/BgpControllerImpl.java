@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import org.apache.felix.scr.annotations.Service;
 import org.onosproject.bgp.controller.BgpCfg;
 import org.onosproject.bgp.controller.BgpController;
 import org.onosproject.bgp.controller.BgpId;
-import org.onosproject.bgp.controller.BgpLinkListener;
 import org.onosproject.bgp.controller.BgpLocalRib;
 import org.onosproject.bgp.controller.BgpNodeListener;
 import org.onosproject.bgp.controller.BgpPeer;
@@ -38,9 +37,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,7 +49,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class BgpControllerImpl implements BgpController {
 
     private static final Logger log = LoggerFactory.getLogger(BgpControllerImpl.class);
-    final Controller ctrl = new Controller(this);
+
     protected ConcurrentHashMap<BgpId, BgpPeer> connectedPeers = new ConcurrentHashMap<BgpId, BgpPeer>();
 
     protected BgpPeerManagerImpl peerManager = new BgpPeerManagerImpl();
@@ -62,54 +58,10 @@ public class BgpControllerImpl implements BgpController {
     private BgpLocalRib bgplocalRibVpn = new BgpLocalRibImpl(this);
 
     protected Set<BgpNodeListener> bgpNodeListener = new CopyOnWriteArraySet<>();
-    protected Set<BgpLinkListener> bgpLinkListener = new CopyOnWriteArraySet<>();
-    protected BgpController bgpController;
+
+    final Controller ctrl = new Controller(this);
+
     private BgpConfig bgpconfig = new BgpConfig(this);
-    private List<String> activeExceptionList = new LinkedList();
-    private LinkedList<String> closedExceptionList = new LinkedList<String>();
-    private Map<String, List<String>> activeSessionExceptionMap = new TreeMap<>();
-    private Map<String, List<String>> closedSessionExceptionMap = new TreeMap<>();
-
-    @Override
-    public void activeSessionExceptionAdd(String peerId, String exception) {
-        if (peerId != null) {
-            activeExceptionList.add(exception);
-            activeSessionExceptionMap.put(peerId, activeExceptionList);
-        } else {
-            log.debug("Peer Id is null");
-        }
-        if (activeExceptionList.size() > 10) {
-            activeExceptionList.clear();
-            activeExceptionList.add(exception);
-            activeSessionExceptionMap.put(peerId, activeExceptionList);
-        }
-    }
-
-
-    @Override
-    public void closedSessionExceptionAdd(String peerId, String exception) {
-        if (peerId != null) {
-            closedExceptionList.add(exception);
-            closedSessionExceptionMap.put(peerId, closedExceptionList);
-         } else {
-            log.debug("Peer Id is null");
-        }
-        if (closedExceptionList.size() > 10) {
-            closedExceptionList.clear();
-            closedExceptionList.add(exception);
-            closedSessionExceptionMap.put(peerId, closedExceptionList);
-        }
-    }
-
-    @Override
-    public Map<String, List<String>> activeSessionMap() {
-        return activeSessionExceptionMap;
-    }
-
-    @Override
-    public Map<String, List<String>> closedSessionMap() {
-        return closedSessionExceptionMap;
-    }
 
     @Activate
     public void activate() {
@@ -119,8 +71,6 @@ public class BgpControllerImpl implements BgpController {
 
     @Deactivate
     public void deactivate() {
-        activeSessionExceptionMap.clear();
-        closedSessionExceptionMap.clear();
         // Close all connected peers
         closeConnectedPeers();
         this.ctrl.stop();
@@ -181,23 +131,29 @@ public class BgpControllerImpl implements BgpController {
             }
             Iterator<BgpValueType> listIterator = pathAttr.iterator();
             boolean isLinkstate = false;
-
+            boolean isFlowSpec = false;
             while (listIterator.hasNext()) {
                 BgpValueType attr = listIterator.next();
                 if (attr instanceof MpReachNlri) {
                     MpReachNlri mpReach = (MpReachNlri) attr;
-                    if (mpReach.bgpFlowSpecNlri() == null) {
+                    if (mpReach.bgpFlowSpecInfo() == null) {
                         isLinkstate = true;
+                    } else {
+                        isFlowSpec = true;
                     }
                 } else if (attr instanceof MpUnReachNlri) {
                     MpUnReachNlri mpUnReach = (MpUnReachNlri) attr;
-                    if (mpUnReach.bgpFlowSpecNlri() == null) {
+                    if (mpUnReach.bgpFlowSpecInfo() == null) {
                         isLinkstate = true;
+                    } else {
+                        isFlowSpec = true;
                     }
                 }
             }
             if (isLinkstate) {
                 peer.buildAdjRibIn(pathAttr);
+            } else if (isFlowSpec) {
+                peer.buildFlowSpecRib(pathAttr);
             }
             break;
         default:
@@ -321,20 +277,5 @@ public class BgpControllerImpl implements BgpController {
     @Override
     public BgpLocalRib bgpLocalRibVpn() {
         return bgplocalRibVpn;
-    }
-
-    @Override
-    public void addLinkListener(BgpLinkListener listener) {
-        this.bgpLinkListener.add(listener);
-    }
-
-    @Override
-    public void removeLinkListener(BgpLinkListener listener) {
-        this.bgpLinkListener.remove(listener);
-    }
-
-    @Override
-    public Set<BgpLinkListener> linkListener() {
-        return bgpLinkListener;
     }
 }

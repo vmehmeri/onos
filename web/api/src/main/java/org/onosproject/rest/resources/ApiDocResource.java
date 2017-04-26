@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,6 +111,7 @@ public class ApiDocResource extends AbstractInjectionResource {
      * @throws URISyntaxException if unable to create redirect URI
      */
     @GET
+    @Path("/")
     public Response getDefault() throws IOException, URISyntaxException {
         return uriInfo.getPath().endsWith("/") ? getIndex() :
                 temporaryRedirect(new URI(uriInfo.getPath() + "/")).build();
@@ -164,9 +165,6 @@ public class ApiDocResource extends AbstractInjectionResource {
     @GET
     @Path("{resource: .*}")
     public Response getResource(@PathParam("resource") String resource) throws IOException {
-        if (resource != null && resource.equals("")) {
-            return getIndex();
-        }
         InputStream stream = getClass().getClassLoader().getResourceAsStream(DOCS + resource);
         return ok(nullIsNotFound(stream, resource + " not found"))
                 .header(CONTENT_TYPE, contentType(resource)).build();

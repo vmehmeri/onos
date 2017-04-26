@@ -1,26 +1,17 @@
-/*
- * Copyright 2016-present Open Networking Laboratory
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.onosproject.store.cluster.messaging.impl;
 
+import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.Uninterruptibles;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.onlab.packet.IpAddress;
 import org.onosproject.cluster.ClusterMetadata;
@@ -28,45 +19,19 @@ import org.onosproject.cluster.ClusterMetadataEventListener;
 import org.onosproject.cluster.ClusterMetadataService;
 import org.onosproject.cluster.ControllerNode;
 import org.onosproject.cluster.NodeId;
-import org.onosproject.core.HybridLogicalClockService;
-import org.onosproject.core.HybridLogicalTime;
 import org.onosproject.net.provider.ProviderId;
 import org.onosproject.store.cluster.messaging.Endpoint;
 
-import java.util.Arrays;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.Uninterruptibles;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.onlab.junit.TestTools.findAvailablePort;
 
 /**
  * Unit tests for NettyMessaging.
  */
 public class NettyMessagingManagerTest {
-
-    HybridLogicalClockService testClockService = new HybridLogicalClockService() {
-        AtomicLong counter = new AtomicLong();
-        @Override
-        public HybridLogicalTime timeNow() {
-            return new HybridLogicalTime(counter.incrementAndGet(), 0);
-        }
-
-        @Override
-        public void recordEventTime(HybridLogicalTime time) {
-        }
-    };
 
     NettyMessagingManager netty1;
     NettyMessagingManager netty2;
@@ -83,22 +48,12 @@ public class NettyMessagingManagerTest {
         ep1 = new Endpoint(IpAddress.valueOf("127.0.0.1"), findAvailablePort(5001));
         netty1 = new NettyMessagingManager();
         netty1.clusterMetadataService = dummyMetadataService(DUMMY_NAME, IP_STRING, ep1);
-        netty1.clockService = testClockService;
         netty1.activate();
 
         ep2 = new Endpoint(IpAddress.valueOf("127.0.0.1"), findAvailablePort(5003));
         netty2 = new NettyMessagingManager();
         netty2.clusterMetadataService = dummyMetadataService(DUMMY_NAME, IP_STRING, ep2);
-        netty2.clockService = testClockService;
         netty2.activate();
-    }
-
-    /**
-     * Returns a random String to be used as a test subject.
-     * @return string
-     */
-    private String nextSubject() {
-        return UUID.randomUUID().toString();
     }
 
     @After
@@ -114,9 +69,8 @@ public class NettyMessagingManagerTest {
 
     @Test
     public void testSendAsync() {
-        String subject = nextSubject();
         CountDownLatch latch1 = new CountDownLatch(1);
-        CompletableFuture<Void> response = netty1.sendAsync(ep2, subject, "hello world".getBytes());
+        CompletableFuture<Void> response = netty1.sendAsync(ep2, "test-subject", "hello world".getBytes());
         response.whenComplete((r, e) -> {
             assertNull(e);
             latch1.countDown();
@@ -124,7 +78,7 @@ public class NettyMessagingManagerTest {
         Uninterruptibles.awaitUninterruptibly(latch1);
 
         CountDownLatch latch2 = new CountDownLatch(1);
-        response = netty1.sendAsync(invalidEndPoint, subject, "hello world".getBytes());
+        response = netty1.sendAsync(invalidEndPoint, "test-subject", "hello world".getBytes());
         response.whenComplete((r, e) -> {
             assertNotNull(e);
             latch2.countDown();
@@ -133,9 +87,7 @@ public class NettyMessagingManagerTest {
     }
 
     @Test
-    @Ignore // FIXME disabled on 9/29/16 due to random failures
     public void testSendAndReceive() {
-        String subject = nextSubject();
         AtomicBoolean handlerInvoked = new AtomicBoolean(false);
         AtomicReference<byte[]> request = new AtomicReference<>();
         AtomicReference<Endpoint> sender = new AtomicReference<>();
@@ -146,9 +98,9 @@ public class NettyMessagingManagerTest {
             request.set(data);
             return "hello there".getBytes();
         };
-        netty2.registerHandler(subject, handler, MoreExecutors.directExecutor());
+        netty2.registerHandler("test-subject", handler, MoreExecutors.directExecutor());
 
-        CompletableFuture<byte[]> response = netty1.sendAndReceive(ep2, subject, "hello world".getBytes());
+        CompletableFuture<byte[]> response = netty1.sendAndReceive(ep2, "test-subject", "hello world".getBytes());
         assertTrue(Arrays.equals("hello there".getBytes(), response.join()));
         assertTrue(handlerInvoked.get());
         assertTrue(Arrays.equals(request.get(), "hello world".getBytes()));
@@ -160,36 +112,25 @@ public class NettyMessagingManagerTest {
      * and response completion occurs on the expected thread.
      */
     @Test
-    @Ignore
     public void testSendAndReceiveWithExecutor() {
-        String subject = nextSubject();
         ExecutorService completionExecutor = Executors.newSingleThreadExecutor(r -> new Thread(r, "completion-thread"));
         ExecutorService handlerExecutor = Executors.newSingleThreadExecutor(r -> new Thread(r, "handler-thread"));
         AtomicReference<String> handlerThreadName = new AtomicReference<>();
         AtomicReference<String> completionThreadName = new AtomicReference<>();
 
-        final CountDownLatch latch = new CountDownLatch(1);
-
         BiFunction<Endpoint, byte[], byte[]> handler = (ep, data) -> {
             handlerThreadName.set(Thread.currentThread().getName());
-            try {
-                latch.await();
-            } catch (InterruptedException e1) {
-                Thread.currentThread().interrupt();
-                fail("InterruptedException");
-            }
             return "hello there".getBytes();
         };
-        netty2.registerHandler(subject, handler, handlerExecutor);
+        netty2.registerHandler("test-subject", handler, handlerExecutor);
 
         CompletableFuture<byte[]> response = netty1.sendAndReceive(ep2,
-                                                                   subject,
+                                                                   "test-subject",
                                                                    "hello world".getBytes(),
                                                                    completionExecutor);
         response.whenComplete((r, e) -> {
             completionThreadName.set(Thread.currentThread().getName());
         });
-        latch.countDown();
 
         // Verify that the message was request handling and response completion happens on the correct thread.
         assertTrue(Arrays.equals("hello there".getBytes(), response.join()));

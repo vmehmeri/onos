@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,9 +34,6 @@ public final class DefaultBand implements Band, BandEntry {
     public DefaultBand(Type type, long rate,
                        Long burstSize, Short prec) {
         this.type = type;
-        if (type == Type.REMARK) {
-            checkArgument(prec <= MAX_PRECEDENCE && prec >= MIN_PRECEDENCE, ERR_MSG);
-        }
         this.rate = rate;
         this.burstSize = burstSize;
         this.prec = prec;

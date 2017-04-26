@@ -1,6 +1,6 @@
-# Main ONOS UI Web Application
+# Main Application
 
-../index.html is the main launch point for the application.
+index.html is the main launch point for the application.
 
 fw/ contains framework related code
 

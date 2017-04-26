@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -177,7 +177,7 @@ public class SimpleHostStore
 
     @Override
     public Iterable<Host> getHosts() {
-        return ImmutableSet.copyOf(hosts.values());
+        return ImmutableSet.<Host>copyOf(hosts.values());
     }
 
     @Override

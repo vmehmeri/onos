@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 /**
- * Distributed store serializers.
+ * Cluster messaging and distributed store serializers.
  */
+//FIXME what is the right name for this package?
+//FIXME can this be moved to onos-core-serializers?
 package org.onosproject.store.serializers.custom;

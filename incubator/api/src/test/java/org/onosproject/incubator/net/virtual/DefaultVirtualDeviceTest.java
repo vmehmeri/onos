@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,16 @@ package org.onosproject.incubator.net.virtual;
 
 import com.google.common.testing.EqualsTester;
 import org.junit.Test;
-import org.onosproject.net.TestDeviceParams;
+import org.onosproject.net.DeviceId;
 
 import static org.onlab.junit.ImmutableClassChecker.assertThatClassIsImmutable;
 
 /**
  * Test of the default virtual device model entity.
  */
-public class DefaultVirtualDeviceTest extends TestDeviceParams {
+public class DefaultVirtualDeviceTest {
+    final String deviceIdValue1 = "DEVICE_ID1";
+    final String deviceIdValue2 = "DEVICE_ID2";
 
     /**
      * Checks that the DefaultVirtualDevice class is immutable.
@@ -38,13 +40,13 @@ public class DefaultVirtualDeviceTest extends TestDeviceParams {
     @Test
     public void testEquality() {
         DefaultVirtualDevice device1 =
-                new DefaultVirtualDevice(NetworkId.networkId(0), DID1);
+                new DefaultVirtualDevice(NetworkId.networkId(0), DeviceId.deviceId(deviceIdValue1));
         DefaultVirtualDevice device2 =
-                new DefaultVirtualDevice(NetworkId.networkId(0), DID1);
+                new DefaultVirtualDevice(NetworkId.networkId(0), DeviceId.deviceId(deviceIdValue1));
         DefaultVirtualDevice device3 =
-                new DefaultVirtualDevice(NetworkId.networkId(0), DID2);
+                new DefaultVirtualDevice(NetworkId.networkId(0), DeviceId.deviceId(deviceIdValue2));
         DefaultVirtualDevice device4 =
-                new DefaultVirtualDevice(NetworkId.networkId(1), DID1);
+                new DefaultVirtualDevice(NetworkId.networkId(1), DeviceId.deviceId(deviceIdValue1));
 
         new EqualsTester().addEqualityGroup(device1, device2).addEqualityGroup(device3)
                 .addEqualityGroup(device4).testEquals();

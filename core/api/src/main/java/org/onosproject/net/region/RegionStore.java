@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package org.onosproject.net.region;
 
 import org.onosproject.cluster.NodeId;
-import org.onosproject.net.Annotations;
 import org.onosproject.net.DeviceId;
 import org.onosproject.store.Store;
 
@@ -68,13 +67,12 @@ public interface RegionStore extends Store<RegionEvent, RegionStoreDelegate> {
      * @param regionId      region identifier
      * @param name          friendly name
      * @param type          region type
-     * @param annots        annotations
      * @param masterNodeIds list of master nodes; null implies empty list
      * @return new region descriptor
      * @throws IllegalArgumentException if item already exists
      */
     Region createRegion(RegionId regionId, String name, Region.Type type,
-                        Annotations annots, List<Set<NodeId>> masterNodeIds);
+                        List<Set<NodeId>> masterNodeIds);
 
     /**
      * Updates the specified new region using the supplied data.
@@ -82,13 +80,12 @@ public interface RegionStore extends Store<RegionEvent, RegionStoreDelegate> {
      * @param regionId      region identifier
      * @param name          friendly name
      * @param type          region type
-     * @param annots        annotations
      * @param masterNodeIds list of master nodes; null implies empty list
      * @return new region descriptor
      * @throws IllegalArgumentException if item already exists
      */
     Region updateRegion(RegionId regionId, String name, Region.Type type,
-                        Annotations annots, List<Set<NodeId>> masterNodeIds);
+                        List<Set<NodeId>> masterNodeIds);
 
     /**
      * Removes the specified region using the new set of data.

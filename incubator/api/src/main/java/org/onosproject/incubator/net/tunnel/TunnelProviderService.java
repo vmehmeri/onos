@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
 package org.onosproject.incubator.net.tunnel;
 
 import com.google.common.annotations.Beta;
-
-import org.onosproject.incubator.net.tunnel.Tunnel.State;
 import org.onosproject.net.provider.ProviderService;
 
 /**
@@ -36,16 +34,6 @@ public interface TunnelProviderService extends ProviderService<TunnelProvider> {
     TunnelId tunnelAdded(TunnelDescription tunnel);
 
     /**
-     * Signals that the provider has added a tunnel with a status which may not
-     * be default, hence is provided as an input.
-     *
-     * @param tunnel tunnel information
-     * @param state tunnel working status
-     * @return tunnel identity
-     */
-    TunnelId tunnelAdded(TunnelDescription tunnel, State state);
-
-    /**
      * Signals that the provider has removed a tunnel.
      *
      * @param tunnel tunnel information
@@ -58,14 +46,6 @@ public interface TunnelProviderService extends ProviderService<TunnelProvider> {
      * @param tunnel tunnel information
      */
     void tunnelUpdated(TunnelDescription tunnel);
-
-    /**
-     * Signals that the tunnel was changed with tunnel status change.
-     *
-     * @param tunnel tunnel information
-     * @param state tunnel working status
-     */
-    void tunnelUpdated(TunnelDescription tunnel, State state);
 
     /**
      * Signals that the a tunnel was queried.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -341,10 +341,6 @@ public class GrpcRemoteServiceTest {
         DeviceId isReachableDid;
         boolean isReachableReply = false;
 
-        final CountDownLatch portStateChanged = new CountDownLatch(1);
-        DeviceId portStateChangedDid;
-        PortNumber portStateChangedPort;
-
         @Override
         public ProviderId id() {
             return PID;
@@ -371,17 +367,6 @@ public class GrpcRemoteServiceTest {
             isReachableDid = deviceId;
             isReachable.countDown();
             return isReachableReply;
-        }
-
-        @Override
-        public void changePortState(DeviceId deviceId, PortNumber portNumber,
-                                    boolean enable) {
-            log.info("portState change to {} on ({},{}) on Client called", enable,
-                     deviceId, portNumber);
-            portStateChangedDid = deviceId;
-            portStateChangedPort = portNumber;
-            portStateChanged.countDown();
-
         }
 
     }
@@ -449,6 +434,7 @@ public class GrpcRemoteServiceTest {
             deviceConnectedDesc = deviceDescription;
             deviceConnected.countDown();
         }
+
 
         final CountDownLatch updatePorts = new CountDownLatch(1);
         DeviceId updatePortsDid;

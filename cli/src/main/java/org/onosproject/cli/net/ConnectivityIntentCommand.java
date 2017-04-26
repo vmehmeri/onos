@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ import org.onosproject.cli.AbstractShellCommand;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.net.EncapsulationType;
+import org.onosproject.net.Link;
 import org.onosproject.net.PortNumber;
-import org.onosproject.net.ResourceGroup;
 import org.onosproject.net.flow.DefaultTrafficSelector;
 import org.onosproject.net.flow.DefaultTrafficTreatment;
 import org.onosproject.net.flow.TrafficSelector;
@@ -38,7 +38,8 @@ import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.Key;
 import org.onosproject.net.intent.constraint.BandwidthConstraint;
 import org.onosproject.net.intent.constraint.EncapsulationConstraint;
-import org.onosproject.net.intent.constraint.HashedPathSelectionConstraint;
+import org.onosproject.net.intent.constraint.LambdaConstraint;
+import org.onosproject.net.intent.constraint.LinkTypeConstraint;
 import org.onosproject.net.intent.constraint.PartialFailureConstraint;
 
 import java.util.LinkedList;
@@ -170,6 +171,10 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
             required = false, multiValued = false)
     private String bandwidthString = null;
 
+    @Option(name = "-l", aliases = "--lambda", description = "Lambda",
+            required = false, multiValued = false)
+    private boolean lambda = false;
+
     @Option(name = "--partial", description = "Allow partial installation",
             required = false, multiValued = false)
     private boolean partial = false;
@@ -177,15 +182,6 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
     @Option(name = "-e", aliases = "--encapsulation", description = "Encapsulation type",
             required = false, multiValued = false)
     private String encapsulationString = null;
-
-    @Option(name = "--hashed", description = "Hashed path selection",
-            required = false, multiValued = false)
-    private boolean hashedPathSelection = false;
-
-    // Resource Group
-    @Option(name = "-r", aliases = "--resourceGroup", description = "Resource Group Id",
-            required = false, multiValued = false)
-    private String resourceGroupId = null;
 
 
     /**
@@ -328,7 +324,7 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
         }
 
         if (!isNullOrEmpty(setIpDstString)) {
-            treatmentBuilder.setIpDst(IpAddress.valueOf(setIpDstString));
+            treatmentBuilder.setIpSrc(IpAddress.valueOf(setIpDstString));
             emptyTreatment = false;
         }
         if (!isNullOrEmpty(setVlan)) {
@@ -385,6 +381,12 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
             constraints.add(new BandwidthConstraint(bandwidth));
         }
 
+        // Check for a lambda specification
+        if (lambda) {
+            constraints.add(new LambdaConstraint(null));
+        }
+        constraints.add(new LinkTypeConstraint(lambda, Link.Type.OPTICAL));
+
         // Check for partial failure specification
         if (partial) {
             constraints.add(new PartialFailureConstraint());
@@ -396,10 +398,6 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
             constraints.add(new EncapsulationConstraint(encapType));
         }
 
-        // Check for hashed path selection
-        if (hashedPathSelection) {
-            constraints.add(new HashedPathSelectionConstraint());
-        }
         return constraints;
     }
 
@@ -413,18 +411,6 @@ public abstract class ConnectivityIntentCommand extends AbstractShellCommand {
             appIdForIntent = service.getAppId(appId);
         }
         return appIdForIntent;
-    }
-
-    protected ResourceGroup resourceGroup() {
-        if (resourceGroupId != null) {
-            if (resourceGroupId.toLowerCase().startsWith("0x")) {
-                return ResourceGroup.of(Long.parseUnsignedLong(resourceGroupId.substring(2), 16));
-            } else {
-                return ResourceGroup.of(Long.parseUnsignedLong(resourceGroupId));
-            }
-        } else {
-            return null;
-        }
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
  */
 package org.onosproject.segmentrouting.grouphandler;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.onosproject.core.ApplicationId;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link;
@@ -23,9 +26,6 @@ import org.onosproject.net.link.LinkService;
 import org.onosproject.segmentrouting.SegmentRoutingManager;
 import org.onosproject.segmentrouting.config.DeviceConfigNotFoundException;
 import org.onosproject.segmentrouting.config.DeviceProperties;
-
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Default ECMP group handler creation module for a transit device.
@@ -67,8 +67,7 @@ public class DefaultTransitGroupHandler extends DefaultGroupHandler {
             if (combo.isEmpty()) {
                 continue;
             }
-             // For these NeighborSet isMpls is meaningless.
-            NeighborSet ns = new NeighborSet(combo, false);
+            NeighborSet ns = new NeighborSet(combo);
             log.debug("createGroupsAtTransitRouter: sw {} combo {} ns {}",
                       deviceId, combo, ns);
             nsSet.add(ns);
@@ -151,8 +150,7 @@ public class DefaultTransitGroupHandler extends DefaultGroupHandler {
             if (combo.isEmpty()) {
                 continue;
             }
-            // For these NeighborSet isMpls is meaningless.
-            NeighborSet ns = new NeighborSet(combo, false);
+            NeighborSet ns = new NeighborSet(combo);
             log.debug("createGroupsAtTransitRouter: sw {} combo {} ns {}",
                       deviceId, combo, ns);
             nsSet.add(ns);

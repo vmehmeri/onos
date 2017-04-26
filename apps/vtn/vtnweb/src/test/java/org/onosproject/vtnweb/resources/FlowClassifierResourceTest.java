@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,25 @@
  */
 package org.onosproject.vtnweb.resources;
 
+import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
+
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
+import javax.ws.rs.core.MediaType;
+
 import com.eclipsesource.json.Json;
-import com.eclipsesource.json.JsonObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,26 +49,10 @@ import org.onosproject.vtnrsc.VirtualPortId;
 import org.onosproject.vtnrsc.flowclassifier.FlowClassifierService;
 import org.onosproject.vtnweb.web.SfcCodecContext;
 
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
+import com.eclipsesource.json.JsonObject;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.UniformInterfaceException;
+import com.sun.jersey.api.client.WebResource;
 /**
  * Unit tests for flow classifier REST APIs.
  */
@@ -65,9 +66,8 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
     VirtualPortId dstPortId1 = VirtualPortId.portId("aef3478a-4a56-2a6e-cd3a-9dee4e2ec345");
 
     final MockFlowClassifier flowClassifier1 = new MockFlowClassifier(flowClassifierId1, tenantId1, "flowClassifier1",
-                                                                      "Mock flow classifier", "IPv4", "IP", 10000,
-                                                                      1001, 1500, 5001, 6000,
-                                                                      IpPrefix.valueOf("1.1.1.1/16"),
+                                                                      "Mock flow classifier", "IPv4", "IP", 1001, 1500,
+                                                                      5001, 6000, IpPrefix.valueOf("1.1.1.1/16"),
                                                                       IpPrefix.valueOf("22.12.34.45/16"),
                                                                       srcPortId1, dstPortId1);
 
@@ -82,7 +82,6 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
         private final String description;
         private final String etherType;
         private final String protocol;
-        private final int priority;
         private final int minSrcPortRange;
         private final int maxSrcPortRange;
         private final int minDstPortRange;
@@ -93,17 +92,15 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
         private final VirtualPortId dstPort;
 
         public MockFlowClassifier(FlowClassifierId flowClassifierId, TenantId tenantId, String name,
-                                  String description, String etherType, String protocol, int priority,
-                                  int minSrcPortRange, int maxSrcPortRange, int minDstPortRange, int maxDstPortRange,
-                                  IpPrefix srcIpPrefix, IpPrefix dstIpPrefix, VirtualPortId srcPort,
-                                  VirtualPortId dstPort) {
+                                  String description, String etherType, String protocol, int minSrcPortRange,
+                                  int maxSrcPortRange, int minDstPortRange, int maxDstPortRange, IpPrefix srcIpPrefix,
+                                  IpPrefix dstIpPrefix, VirtualPortId srcPort, VirtualPortId dstPort) {
             this.flowClassifierId = flowClassifierId;
             this.tenantId = tenantId;
             this.name = name;
             this.description = description;
             this.etherType = etherType;
             this.protocol = protocol;
-            this.priority = priority;
             this.minSrcPortRange = minSrcPortRange;
             this.maxSrcPortRange = maxSrcPortRange;
             this.minDstPortRange = minDstPortRange;
@@ -143,11 +140,6 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
         @Override
         public String protocol() {
             return protocol;
-        }
-
-        @Override
-        public int priority() {
-            return priority;
         }
 
         @Override
@@ -227,8 +219,8 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
 
         expect(flowClassifierService.getFlowClassifiers()).andReturn(null).anyTimes();
         replay(flowClassifierService);
-        final WebTarget wt = target();
-        final String response = wt.path("flow_classifiers").request().get(String.class);
+        final WebResource rs = resource();
+        final String response = rs.path("flow_classifiers").get(String.class);
         assertThat(response, is("{\"flow_classifiers\":[]}"));
     }
 
@@ -245,9 +237,8 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
         expect(flowClassifierService.getFlowClassifier(anyObject())).andReturn(flowClassifier1).anyTimes();
         replay(flowClassifierService);
 
-        final WebTarget wt = target();
-        final String response = wt.path("flow_classifiers/4a334cd4-fe9c-4fae-af4b-321c5e2eb051")
-                                  .request().get(String.class);
+        final WebResource rs = resource();
+        final String response = rs.path("flow_classifiers/4a334cd4-fe9c-4fae-af4b-321c5e2eb051").get(String.class);
         final JsonObject result = Json.parse(response).asObject();
         assertThat(result, notNullValue());
     }
@@ -260,14 +251,13 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
         expect(flowClassifierService.getFlowClassifier(anyObject()))
         .andReturn(null).anyTimes();
         replay(flowClassifierService);
-        WebTarget wt = target();
+        WebResource rs = resource();
         try {
-            wt.path("flow_classifiers/78dcd363-fc23-aeb6-f44b-56dc5aafb3ae")
-                    .request().get(String.class);
+            rs.path("flow_classifiers/78dcd363-fc23-aeb6-f44b-56dc5aafb3ae").get(String.class);
             fail("Fetch of non-existent flow classifier did not throw an exception");
-        } catch (NotFoundException ex) {
+        } catch (UniformInterfaceException ex) {
             assertThat(ex.getMessage(),
-                       containsString("HTTP 404 Not Found"));
+                       containsString("returned a response status of"));
         }
     }
 
@@ -281,12 +271,12 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
         .andReturn(true).anyTimes();
         replay(flowClassifierService);
 
-        WebTarget wt = target();
+        WebResource rs = resource();
         InputStream jsonStream = FlowClassifierResourceTest.class.getResourceAsStream("post-FlowClassifier.json");
 
-        Response response = wt.path("flow_classifiers")
-                .request(MediaType.APPLICATION_JSON_TYPE)
-                .post(Entity.json(jsonStream));
+        ClientResponse response = rs.path("flow_classifiers")
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .post(ClientResponse.class, jsonStream);
         assertThat(response.getStatus(), is(HttpURLConnection.HTTP_OK));
     }
 
@@ -299,13 +289,13 @@ public class FlowClassifierResourceTest extends VtnResourceTest {
         .andReturn(true).anyTimes();
         replay(flowClassifierService);
 
-        WebTarget wt = target();
+        WebResource rs = resource();
 
         String location = "flow_classifiers/4a334cd4-fe9c-4fae-af4b-321c5e2eb051";
 
-        Response deleteResponse = wt.path(location)
-                .request(MediaType.APPLICATION_JSON_TYPE, MediaType.TEXT_PLAIN_TYPE)
-                .delete();
+        ClientResponse deleteResponse = rs.path(location)
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .delete(ClientResponse.class);
         assertThat(deleteResponse.getStatus(),
                    is(HttpURLConnection.HTTP_NO_CONTENT));
     }

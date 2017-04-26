@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 /*
  ONOS GUI -- Main Application Module
  */
+
 (function () {
     'use strict';
 
@@ -35,12 +36,13 @@
         'onosWidget'
     ];
 
-    // view ID to help page url map.. injected via the servlet
-    var viewMap = {
-        // {INJECTED-VIEW-DATA-START}
-        // {INJECTED-VIEW-DATA-END}
-    },
-    viewIds = [];
+    // view IDs.. injected via the servlet
+    var viewIds = [
+        // {INJECTED-VIEW-IDS-START}
+        // {INJECTED-VIEW-IDS-END}
+        // dummy entry
+        ''
+    ];
 
     // secret sauce
     var sauce = [
@@ -54,17 +56,11 @@
         '7:667186698384',
         '1:857780888778876787',
         '20:70717066',
-        '24:886774868469',
-        '17:7487696973687580739078',
-        '14:70777086',
-        '17:7287687967'
-        // Add more sauce...
+        '24:886774868469'
     ];
 
     var defaultView = 'topo',
         viewDependencies = [];
-
-    viewIds = d3.map(viewMap).keys();
 
     viewIds.forEach(function (id) {
         if (id) {
@@ -91,10 +87,10 @@
             '$log', '$scope', '$route', '$routeParams', '$location',
             'KeyService', 'ThemeService', 'GlyphService', 'VeilService',
             'PanelService', 'FlashService', 'QuickHelpService', 'EeService',
-            'WebSocketService', 'SpriteService',
+            'WebSocketService',
 
             function (_$log_, $scope, $route, $routeParams, $location,
-                      ks, ts, gs, vs, ps, flash, qhs, ee, wss, ss) {
+                      ks, ts, gs, vs, ps, flash, qhs, ee, wss) {
                 var self = this;
                 $log = _$log_;
 
@@ -105,14 +101,12 @@
 
                 // shared object inherited by all views:
                 $scope.onos = {};
-                $scope.onos['viewMap'] = viewMap;
 
                 // initialize services...
                 ts.init();
                 ks.installOn(d3.select('body'));
                 ks.bindQhs(qhs);
                 gs.init();
-                ss.init();
                 vs.init();
                 ps.init();
                 saucy(ee, ks);

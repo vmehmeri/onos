@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,6 @@ import org.onosproject.openflow.controller.DefaultOpenFlowPacketContext;
 import org.onosproject.openflow.controller.Dpid;
 import org.onosproject.openflow.controller.OpenFlowController;
 import org.onosproject.openflow.controller.OpenFlowEventListener;
-import org.onosproject.openflow.controller.OpenFlowMessageListener;
 import org.onosproject.openflow.controller.OpenFlowPacketContext;
 import org.onosproject.openflow.controller.OpenFlowSwitch;
 import org.onosproject.openflow.controller.OpenFlowSwitchListener;
@@ -48,7 +47,6 @@ import org.onosproject.openflow.controller.PacketListener;
 import org.onosproject.openflow.controller.RoleState;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFMeterFeatures;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -289,21 +287,15 @@ public class OpenFlowPacketProviderTest {
         }
 
         @Override
+        public void monitorAllEvents(boolean monitor) {
+        }
+
+        @Override
         public void addListener(OpenFlowSwitchListener listener) {
         }
 
         @Override
         public void removeListener(OpenFlowSwitchListener listener) {
-        }
-
-        @Override
-        public void addMessageListener(OpenFlowMessageListener listener) {
-
-        }
-
-        @Override
-        public void removeMessageListener(OpenFlowMessageListener listener) {
-
         }
 
         @Override
@@ -376,11 +368,6 @@ public class OpenFlowPacketProviderTest {
         }
 
         @Override
-        public OFMeterFeatures getMeterFeatures() {
-            return null;
-        }
-
-        @Override
         public OFFactory factory() {
             return factory;
         }
@@ -441,6 +428,16 @@ public class OpenFlowPacketProviderTest {
         public String channelId() {
             return "1.2.3.4:1";
         }
+
+        @Override
+        public void addEventListener(OpenFlowEventListener listener) {
+        }
+
+        @Override
+        public void removeEventListener(OpenFlowEventListener listener) {
+        }
+
+
     }
 
 }

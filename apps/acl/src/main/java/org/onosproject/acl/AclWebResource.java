@@ -1,5 +1,9 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
+ * Originally created by Pengfei Lu, Network and Cloud Computing Laboratory, Dalian University of Technology, China
+ * Advisers: Keqiu Li, Heng Qi and Haisheng Yu
+ * This work is supported by the State Key Program of National Natural Science of China(Grant No. 61432002)
+ * and Prospective Research Project on Future Networks in Jiangsu Future Networks Innovation Institute.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,11 +16,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * Originally created by Pengfei Lu, Network and Cloud Computing Laboratory, Dalian University of Technology, China
- * Advisers: Keqiu Li, Heng Qi and Haisheng Yu
- * This work is supported by the State Key Program of National Natural Science of China(Grant No. 61432002)
- * and Prospective Research Project on Future Networks in Jiangsu Future Networks Innovation Institute.
  */
 package org.onosproject.acl;
 
@@ -114,25 +113,25 @@ public class AclWebResource extends AbstractWebResource {
      * Remove ACL rule.
      *
      * @param id ACL rule id (in hex string format)
-     * @return 204 NO CONTENT
+     * @return 200 OK
      */
     @DELETE
     @Path("{id}")
     public Response removeAclRule(@PathParam("id") String id) {
         RuleId ruleId = new RuleId(Long.parseLong(id.substring(2), 16));
         get(AclService.class).removeAclRule(ruleId);
-        return Response.noContent().build();
+        return Response.ok().build();
     }
 
     /**
      * Remove all ACL rules.
      *
-     * @return 204 NO CONTENT
+     * @return 200 OK
      */
     @DELETE
     public Response clearAcl() {
         get(AclService.class).clearAcl();
-        return Response.noContent().build();
+        return Response.ok().build();
     }
 
     /**

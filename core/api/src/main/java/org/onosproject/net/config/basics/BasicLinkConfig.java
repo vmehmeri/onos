@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,11 @@ package org.onosproject.net.config.basics;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.onosproject.net.Link;
 import org.onosproject.net.LinkKey;
+import org.onosproject.net.VnoId;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.function.Function;
 
 import static org.onosproject.net.config.Config.FieldPresence.OPTIONAL;
 
@@ -33,10 +36,11 @@ public final class BasicLinkConfig extends AllowedEntityConfig<LinkKey> {
     public static final String LATENCY = "latency";
     public static final String BANDWIDTH = "bandwidth";
     public static final String IS_DURABLE = "durable";
+    public static final String VNO_IDS = "vno-ids";
 
     @Override
     public boolean isValid() {
-        return hasOnlyFields(ALLOWED, TYPE, METRIC, LATENCY, BANDWIDTH, IS_DURABLE) &&
+        return hasOnlyFields(ALLOWED, TYPE, METRIC, LATENCY, BANDWIDTH, IS_DURABLE, VNO_IDS) &&
                 isBoolean(ALLOWED, OPTIONAL) && isNumber(METRIC, OPTIONAL) &&
                 isNumber(LATENCY, OPTIONAL) && isNumber(BANDWIDTH, OPTIONAL);
     }
@@ -58,6 +62,28 @@ public final class BasicLinkConfig extends AllowedEntityConfig<LinkKey> {
      */
     public BasicLinkConfig type(Link.Type type) {
         return (BasicLinkConfig) setOrClear(TYPE, type);
+    }
+
+    /**
+     * Mapper function for vnoId.
+     */
+    Function<String, VnoId> vnoIdMapper = (i)->VnoId.vnoId(Integer.parseInt(i));
+
+    /**
+     * Returns the ids of VNOs this link "belongs to".
+     * @return list of VNO identifiers
+     */
+    public List<VnoId> vnoIds() {
+        return getList(VNO_IDS, vnoIdMapper);
+    }
+
+    /**
+     * Sets the VNO ids for link.
+     * @param vnoIds list of vno ids
+     * @return self
+     */
+    public BasicLinkConfig vnoIds(List<VnoId> vnoIds) {
+        return (BasicLinkConfig)  setOrClear(VNO_IDS, vnoIds);
     }
 
     /**

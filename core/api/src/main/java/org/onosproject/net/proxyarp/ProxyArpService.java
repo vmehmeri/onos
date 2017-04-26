@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,8 @@ import org.onosproject.net.packet.PacketContext;
 
 /**
  * Service for processing ARP or NDP requests on behalf of applications.
- *
- * @deprecated in Hummingbird release. Use NeighbourResolutionService instead.
  */
 // TODO: move to the peer host package
-@Deprecated
 public interface ProxyArpService {
 
     /**

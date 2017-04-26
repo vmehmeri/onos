@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,9 +38,7 @@ import org.jboss.netty.handler.timeout.IdleStateEvent;
 import org.jboss.netty.handler.timeout.IdleStateHandler;
 import org.jboss.netty.handler.timeout.ReadTimeoutException;
 import org.onlab.packet.IpAddress;
-import org.onosproject.pcep.controller.ClientCapability;
 import org.onosproject.pcep.controller.PccId;
-import org.onosproject.pcep.controller.PcepCfg;
 import org.onosproject.pcep.controller.driver.PcepClientDriver;
 import org.onosproject.pcepio.exceptions.PcepParseException;
 import org.onosproject.pcepio.protocol.PcepError;
@@ -53,17 +51,13 @@ import org.onosproject.pcepio.protocol.PcepOpenMsg;
 import org.onosproject.pcepio.protocol.PcepOpenObject;
 import org.onosproject.pcepio.protocol.PcepType;
 import org.onosproject.pcepio.protocol.PcepVersion;
-import org.onosproject.pcepio.types.IPv4RouterIdOfLocalNodeSubTlv;
-import org.onosproject.pcepio.types.NodeAttributesTlv;
+import org.onosproject.pcepio.types.ErrorObjListWithOpen;
 import org.onosproject.pcepio.types.PceccCapabilityTlv;
-import org.onosproject.pcepio.types.SrPceCapabilityTlv;
 import org.onosproject.pcepio.types.StatefulPceCapabilityTlv;
 import org.onosproject.pcepio.types.PcepErrorDetailInfo;
 import org.onosproject.pcepio.types.PcepValueType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.onosproject.pcep.controller.PcepSyncStatus.NOT_SYNCED;
 
 /**
  * Channel handler deals with the pcc client connection and dispatches
@@ -80,7 +74,6 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
     private byte sessionId = 0;
     private byte keepAliveTime;
     private byte deadTime;
-    private ClientCapability capability;
     private PcepPacketStatsImpl pcepPacketStats;
     static final int MAX_WRONG_COUNT_PACKET = 5;
     static final int BYTE_MASK = 0xFF;
@@ -88,9 +81,7 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
     // State needs to be volatile because the HandshakeTimeoutHandler
     // needs to check if the handshake is complete
     private volatile ChannelState state;
-    private String peerAddr;
-    private SocketAddress address;
-    private InetSocketAddress inetAddress;
+
     // When a pcc client with a ip addresss is found (i.e we already have a
     // connected client with the same ip), the new client is immediately
     // disconnected. At that point netty callsback channelDisconnected() which
@@ -125,38 +116,192 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
     //  Channel State Machine
     //*************************
 
+    /**
+     * The state machine for handling the client/channel state. All state
+     * transitions should happen from within the state machine (and not from other
+     * parts of the code)
+     */
+    enum ChannelState {
+        /**
+         * Initial state before channel is connected.
+         */
+        INIT(false) {
+
+        },
+        /**
+         * Once the session is established, wait for open message.
+         */
+        OPENWAIT(false) {
+            @Override
+            void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
+
+                log.debug("Message received in OPEN WAIT State");
+
+                //check for open message
+                if (m.getType() != PcepType.OPEN) {
+                    // When the message type is not open message increment the wrong packet statistics
+                    h.processUnknownMsg();
+                    log.debug("message is not OPEN message");
+                } else {
+
+                    h.pcepPacketStats.addInPacket();
+                    PcepOpenMsg pOpenmsg = (PcepOpenMsg) m;
+                    // do Capability validation.
+                    if (h.capabilityValidation(pOpenmsg)) {
+                        log.debug("Sending handshake OPEN message");
+                        h.sessionId = pOpenmsg.getPcepOpenObject().getSessionId();
+                        h.pcepVersion = pOpenmsg.getPcepOpenObject().getVersion();
+
+                        //setting keepalive and deadTimer
+                        byte yKeepalive = pOpenmsg.getPcepOpenObject().getKeepAliveTime();
+                        byte yDeadTimer = pOpenmsg.getPcepOpenObject().getDeadTime();
+                        h.keepAliveTime = yKeepalive;
+                        if (yKeepalive < yDeadTimer) {
+                            h.deadTime = yDeadTimer;
+                        } else {
+                            if (DEADTIMER_MAXIMUM_VALUE > (yKeepalive * KEEPALIVE_MULTIPLE_FOR_DEADTIMER)) {
+                                h.deadTime = (byte) (yKeepalive * KEEPALIVE_MULTIPLE_FOR_DEADTIMER);
+                            } else {
+                                h.deadTime = DEADTIMER_MAXIMUM_VALUE;
+                            }
+                        }
+                        h.sendHandshakeOpenMessage();
+                        h.pcepPacketStats.addOutPacket();
+                        h.setState(KEEPWAIT);
+                    } else {
+                        log.debug("Capability validation failed. Sending PCEP-ERROR message to PCC.");
+                        // Send PCEP-ERROR message.
+                        PcepErrorMsg errMsg = h.getErrorMsg(PcepErrorDetailInfo.ERROR_TYPE_2,
+                                PcepErrorDetailInfo.ERROR_VALUE_2);
+                        h.channel.write(Collections.singletonList(errMsg));
+                    }
+                }
+            }
+        },
+        /**
+         * Once the open messages are exchanged, wait for keep alive message.
+         */
+        KEEPWAIT(false) {
+            @Override
+            void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
+                log.debug("message received in KEEPWAIT state");
+                //check for keep alive message
+                if (m.getType() != PcepType.KEEP_ALIVE) {
+                    // When the message type is not keep alive message increment the wrong packet statistics
+                    h.processUnknownMsg();
+                    log.debug("message is not KEEPALIVE message");
+                } else {
+                    // Set the client connected status
+                    h.pcepPacketStats.addInPacket();
+                    final SocketAddress address = h.channel.getRemoteAddress();
+                    if (!(address instanceof InetSocketAddress)) {
+                        throw new IOException("Invalid client connection. Pcc is indentifed based on IP");
+                    }
+                    log.debug("sending keep alive message in KEEPWAIT state");
+
+                    final InetSocketAddress inetAddress = (InetSocketAddress) address;
+                    h.thispccId = PccId.pccId(IpAddress.valueOf(inetAddress.getAddress()));
+                    h.pc = h.controller.getPcepClientInstance(h.thispccId, h.sessionId, h.pcepVersion,
+                            h.pcepPacketStats);
+                    // set the status of pcc as connected
+                    h.pc.setConnected(true);
+                    h.pc.setChannel(h.channel);
+
+                    // set any other specific parameters to the pcc
+                    h.pc.setPcVersion(h.pcepVersion);
+                    h.pc.setPcSessionId(h.sessionId);
+                    h.pc.setPcKeepAliveTime(h.keepAliveTime);
+                    h.pc.setPcDeadTime(h.deadTime);
+                    int keepAliveTimer = h.keepAliveTime & BYTE_MASK;
+                    int deadTimer = h.deadTime & BYTE_MASK;
+                    if (0 == h.keepAliveTime) {
+                        h.deadTime = 0;
+                    }
+                    // handle keep alive and dead time
+                    if (keepAliveTimer != PcepPipelineFactory.DEFAULT_KEEP_ALIVE_TIME
+                            || deadTimer != PcepPipelineFactory.DEFAULT_DEAD_TIME) {
+
+                        h.channel.getPipeline().replace("idle", "idle",
+                                new IdleStateHandler(PcepPipelineFactory.TIMER, deadTimer, keepAliveTimer, 0));
+                    }
+                    log.debug("Dead timer : " + deadTimer);
+                    log.debug("Keep alive time : " + keepAliveTimer);
+
+                    //set the state handshake completion.
+                    h.sendKeepAliveMessage();
+                    h.pcepPacketStats.addOutPacket();
+                    h.setHandshakeComplete(true);
+
+                    if (!h.pc.connectClient()) {
+                        disconnectDuplicate(h);
+                    } else {
+                        h.setState(ESTABLISHED);
+                    }
+                }
+            }
+        },
+        /**
+         * Once the keep alive messages are exchanged, the state is established.
+         */
+        ESTABLISHED(true) {
+            @Override
+            void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
+
+                //h.channel.getPipeline().remove("waittimeout");
+                log.debug("Message received in established state " + m.getType());
+                //dispatch the message
+                h.dispatchMessage(m);
+            }
+        };
+        private boolean handshakeComplete;
+
+        ChannelState(boolean handshakeComplete) {
+            this.handshakeComplete = handshakeComplete;
+        }
+
+        void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
+            // do nothing
+        }
+
+        /**
+         * Is this a state in which the handshake has completed.
+         *
+         * @return true if the handshake is complete
+         */
+        public boolean isHandshakeComplete() {
+            return this.handshakeComplete;
+        }
+
+        protected void disconnectDuplicate(PcepChannelHandler h) {
+            log.error("Duplicated Pcc IP or incompleted cleanup - " + "disconnecting channel {}",
+                    h.getClientInfoString());
+            h.duplicatePccIdFound = Boolean.TRUE;
+            h.channel.disconnect();
+        }
+
+        /**
+         * Sets handshake complete status.
+         *
+         * @param handshakeComplete status of handshake
+         */
+        public void setHandshakeComplete(boolean handshakeComplete) {
+            this.handshakeComplete = handshakeComplete;
+        }
+
+    }
+
     @Override
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         channel = e.getChannel();
         log.info("PCC connected from {}", channel.getRemoteAddress());
 
-        address = channel.getRemoteAddress();
-        if (!(address instanceof InetSocketAddress)) {
-            throw new IOException("Invalid peer connection.");
-        }
-
-        inetAddress = (InetSocketAddress) address;
-        peerAddr = IpAddress.valueOf(inetAddress.getAddress()).toString();
-
         // Wait for open message from pcc client
         setState(ChannelState.OPENWAIT);
-        controller.peerStatus(peerAddr, PcepCfg.State.OPENWAIT.toString(), sessionId);
     }
 
     @Override
     public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         log.info("Pcc disconnected callback for pc:{}. Cleaning up ...", getClientInfoString());
-        controller.peerStatus(peerAddr, PcepCfg.State.DOWN.toString(), sessionId);
-
-        channel = e.getChannel();
-        address = channel.getRemoteAddress();
-        if (!(address instanceof InetSocketAddress)) {
-            throw new IOException("Invalid peer connection.");
-        }
-
-        inetAddress = (InetSocketAddress) address;
-        peerAddr = IpAddress.valueOf(inetAddress.getAddress()).toString();
-
         if (thispccId != null) {
             if (!duplicatePccIdFound) {
                 // if the disconnected client (on this ChannelHandler)
@@ -192,7 +337,6 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
                 // OpenWait timer.
                 errMsg = getErrorMsg(PcepErrorDetailInfo.ERROR_TYPE_1, PcepErrorDetailInfo.ERROR_VALUE_2);
                 log.debug("Sending PCEP-ERROR message to PCC.");
-                controller.peerExceptions(peerAddr, e.getCause().toString());
                 channel.write(Collections.singletonList(errMsg));
                 channel.close();
                 state = ChannelState.INIT;
@@ -202,17 +346,14 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
                 // KeepWait timer.
                 errMsg = getErrorMsg(PcepErrorDetailInfo.ERROR_TYPE_1, PcepErrorDetailInfo.ERROR_VALUE_7);
                 log.debug("Sending PCEP-ERROR message to PCC.");
-                controller.peerExceptions(peerAddr, e.getCause().toString());
                 channel.write(Collections.singletonList(errMsg));
                 channel.close();
                 state = ChannelState.INIT;
                 return;
             }
         } else if (e.getCause() instanceof ClosedChannelException) {
-            controller.peerExceptions(peerAddr, e.getCause().toString());
             log.debug("Channel for pc {} already closed", getClientInfoString());
         } else if (e.getCause() instanceof IOException) {
-            controller.peerExceptions(peerAddr, e.getCause().toString());
             log.error("Disconnecting client {} due to IO Error: {}", getClientInfoString(), e.getCause().getMessage());
             if (log.isDebugEnabled()) {
                 // still print stack trace if debug is enabled
@@ -220,7 +361,6 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
             }
             channel.close();
         } else if (e.getCause() instanceof PcepParseException) {
-            controller.peerExceptions(peerAddr, e.getCause().toString());
             PcepParseException errMsgParse = (PcepParseException) e.getCause();
             byte errorType = errMsgParse.getErrorType();
             byte errorValue = errMsgParse.getErrorValue();
@@ -234,10 +374,8 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
             }
         } else if (e.getCause() instanceof RejectedExecutionException) {
             log.warn("Could not process message: queue full");
-            controller.peerExceptions(peerAddr, e.getCause().toString());
         } else {
             log.error("Error while processing message from client " + getClientInfoString() + "state " + this.state);
-            controller.peerExceptions(peerAddr, e.getCause().toString());
             channel.close();
         }
     }
@@ -280,15 +418,6 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
     }
 
     /**
-     * Is this a state in which the handshake has completed.
-     *
-     * @return true if the handshake is complete
-     */
-    public boolean isHandshakeComplete() {
-        return this.state.isHandshakeComplete();
-    }
-
-    /**
      * To set the handshake status.
      *
      * @param handshakeComplete value is handshake status
@@ -298,26 +427,21 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
     }
 
     /**
+     * Is this a state in which the handshake has completed.
+     *
+     * @return true if the handshake is complete
+     */
+    public boolean isHandshakeComplete() {
+        return this.state.isHandshakeComplete();
+    }
+
+    /**
      * To handle the pcep message.
      *
      * @param m pcep message
      */
     private void dispatchMessage(PcepMessage m) {
         pc.handleMessage(m);
-    }
-
-    /**
-     * Adds PCEP device configuration with capabilities once session is established.
-     */
-    private void addNode() {
-        pc.addNode(pc);
-    }
-
-    /**
-     * Deletes PCEP device configuration when session is disconnected.
-     */
-    private void deleteNode() {
-        pc.deleteNode(pc.getPccId());
     }
 
     /**
@@ -369,48 +493,45 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
         channel.write(Collections.singletonList(msg));
     }
 
-    //Capability negotiation
-    private void capabilityNegotiation(PcepOpenMsg pOpenmsg) {
+    /**
+     * Capability Validation.
+     *
+     * @param pOpenmsg pcep open message
+     * @return success or failure
+     */
+    private boolean capabilityValidation(PcepOpenMsg pOpenmsg) {
         LinkedList<PcepValueType> tlvList = pOpenmsg.getPcepOpenObject().getOptionalTlv();
-        boolean pceccCapability = false;
-        boolean statefulPceCapability = false;
-        boolean pcInstantiationCapability = false;
-        boolean labelStackCapability = false;
-        boolean srCapability = false;
+        boolean bFoundPceccCapability = false;
+        boolean bFoundStatefulPceCapability = false;
+        boolean bFoundPcInstantiationCapability = false;
 
         ListIterator<PcepValueType> listIterator = tlvList.listIterator();
         while (listIterator.hasNext()) {
             PcepValueType tlv = listIterator.next();
 
             switch (tlv.getType()) {
-                case PceccCapabilityTlv.TYPE:
-                    pceccCapability = true;
-                    if (((PceccCapabilityTlv) tlv).sBit()) {
-                        labelStackCapability = true;
-                    }
-                    break;
-                case StatefulPceCapabilityTlv.TYPE:
-                    statefulPceCapability = true;
-                    StatefulPceCapabilityTlv stetefulPcCapTlv = (StatefulPceCapabilityTlv) tlv;
-                    if (stetefulPcCapTlv.getIFlag()) {
-                        pcInstantiationCapability = true;
-                    }
-                    break;
-                case SrPceCapabilityTlv.TYPE:
-                    srCapability = true;
-                    break;
-                default:
-                    continue;
+            case PceccCapabilityTlv.TYPE:
+                bFoundPceccCapability = true;
+                break;
+            case StatefulPceCapabilityTlv.TYPE:
+                bFoundStatefulPceCapability = true;
+                StatefulPceCapabilityTlv stetefulPcCapTlv = (StatefulPceCapabilityTlv) tlv;
+                if (stetefulPcCapTlv.getIFlag()) {
+                    bFoundPcInstantiationCapability = true;
+                }
+                break;
+            default:
+                continue;
             }
         }
-        this.capability = new ClientCapability(pceccCapability, statefulPceCapability, pcInstantiationCapability,
-                labelStackCapability, srCapability);
+
+        return (bFoundPceccCapability && bFoundStatefulPceCapability && bFoundPcInstantiationCapability);
     }
 
     /**
      * Send keep alive message.
      *
-     * @throws IOException        when channel is disconnected
+     * @throws IOException when channel is disconnected
      * @throws PcepParseException while building keep alive message
      */
     private void sendKeepAliveMessage() throws IOException, PcepParseException {
@@ -424,8 +545,6 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
      */
     private void sendErrMsgAndCloseChannel() {
         // TODO send error message
-        //Remove PCEP device from topology
-        deleteNode();
         channel.close();
     }
 
@@ -460,22 +579,40 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
 
         llerrObj.add(errObj);
 
-        //If Error caught in other than Openmessage
-        LinkedList<PcepError> llPcepErr = new LinkedList<>();
+        if (state == ChannelState.OPENWAIT) {
+            //If Error caught in Openmessage
+            PcepOpenObject openObj = null;
+            ErrorObjListWithOpen errorObjListWithOpen = null;
 
-        PcepError pcepErr = factory1.buildPcepError()
-                .setErrorObjList(llerrObj)
-                .build();
+            if (0 != sessionId) {
+                openObj = factory1.buildOpenObject().setSessionId(sessionId).build();
+                errorObjListWithOpen = new ErrorObjListWithOpen(llerrObj, openObj);
+            } else {
+                errorObjListWithOpen = new ErrorObjListWithOpen(llerrObj, null);
+            }
 
-        llPcepErr.add(pcepErr);
+            errMsg = factory1.buildPcepErrorMsg()
+                    .setErrorObjListWithOpen(errorObjListWithOpen)
+                    .build();
+        } else {
 
-        PcepErrorInfo errInfo = factory1.buildPcepErrorInfo()
-                .setPcepErrorList(llPcepErr)
-                .build();
+            //If Error caught in other than Openmessage
+            LinkedList<PcepError> llPcepErr = new LinkedList<>();
 
-        errMsg = factory1.buildPcepErrorMsg()
-                .setPcepErrorInfo(errInfo)
-                .build();
+            PcepError pcepErr = factory1.buildPcepError()
+                    .setErrorObjList(llerrObj)
+                    .build();
+
+            llPcepErr.add(pcepErr);
+
+            PcepErrorInfo errInfo = factory1.buildPcepErrorInfo()
+                    .setPcepErrorList(llPcepErr)
+                    .build();
+
+            errMsg = factory1.buildPcepErrorMsg()
+                    .setPcepErrorInfo(errInfo)
+                    .build();
+        }
         return errMsg;
     }
 
@@ -511,215 +648,5 @@ class PcepChannelHandler extends IdleStateAwareChannelHandler {
                 }
             }
         }
-    }
-
-    /**
-     * The state machine for handling the client/channel state. All state
-     * transitions should happen from within the state machine (and not from other
-     * parts of the code)
-     */
-    enum ChannelState {
-        /**
-         * Initial state before channel is connected.
-         */
-        INIT(false) {
-
-        },
-        /**
-         * Once the session is established, wait for open message.
-         */
-        OPENWAIT(false) {
-            @Override
-            void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
-
-                log.info("Message received in OPEN WAIT State");
-
-                //check for open message
-                if (m.getType() != PcepType.OPEN) {
-                    // When the message type is not open message increment the wrong packet statistics
-                    h.processUnknownMsg();
-                    log.debug("Message is not OPEN message");
-                } else {
-
-                    h.pcepPacketStats.addInPacket();
-                    PcepOpenMsg pOpenmsg = (PcepOpenMsg) m;
-                    //Do Capability negotiation.
-                    h.capabilityNegotiation(pOpenmsg);
-                    log.debug("Sending handshake OPEN message");
-                    h.sessionId = pOpenmsg.getPcepOpenObject().getSessionId();
-                    h.pcepVersion = pOpenmsg.getPcepOpenObject().getVersion();
-
-                    //setting keepalive and deadTimer
-                    byte yKeepalive = pOpenmsg.getPcepOpenObject().getKeepAliveTime();
-                    byte yDeadTimer = pOpenmsg.getPcepOpenObject().getDeadTime();
-                    h.keepAliveTime = yKeepalive;
-                    if (yKeepalive < yDeadTimer) {
-                        h.deadTime = yDeadTimer;
-                    } else {
-                        if (DEADTIMER_MAXIMUM_VALUE > (yKeepalive * KEEPALIVE_MULTIPLE_FOR_DEADTIMER)) {
-                            h.deadTime = (byte) (yKeepalive * KEEPALIVE_MULTIPLE_FOR_DEADTIMER);
-                        } else {
-                            h.deadTime = DEADTIMER_MAXIMUM_VALUE;
-                        }
-                    }
-
-                        /*
-                         * If MPLS LSR id and PCEP session socket IP addresses are not same,
-                         * the MPLS LSR id will be encoded in separate TLV.
-                         * We always maintain session information based on LSR ids.
-                         * The socket IP is stored in channel.
-                         */
-                    LinkedList<PcepValueType> optionalTlvs = pOpenmsg.getPcepOpenObject().getOptionalTlv();
-                    if (optionalTlvs != null) {
-                        for (PcepValueType optionalTlv : optionalTlvs) {
-                            if (optionalTlv instanceof NodeAttributesTlv) {
-                                List<PcepValueType> subTlvs = ((NodeAttributesTlv) optionalTlv)
-                                        .getllNodeAttributesSubTLVs();
-                                if (subTlvs == null) {
-                                    break;
-                                }
-                                for (PcepValueType subTlv : subTlvs) {
-                                    if (subTlv instanceof IPv4RouterIdOfLocalNodeSubTlv) {
-                                        h.thispccId = PccId.pccId(IpAddress
-                                                .valueOf(((IPv4RouterIdOfLocalNodeSubTlv) subTlv).getInt()));
-                                        break;
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-
-                    if (h.thispccId == null) {
-                        final SocketAddress address = h.channel.getRemoteAddress();
-                        if (!(address instanceof InetSocketAddress)) {
-                            throw new IOException("Invalid client connection. Pcc is indentifed based on IP");
-                        }
-
-                        final InetSocketAddress inetAddress = (InetSocketAddress) address;
-                        h.thispccId = PccId.pccId(IpAddress.valueOf(inetAddress.getAddress()));
-                    }
-
-                    h.sendHandshakeOpenMessage();
-                    h.pcepPacketStats.addOutPacket();
-                    h.setState(KEEPWAIT);
-                    h.controller.peerStatus(h.peerAddr.toString(), PcepCfg.State.KEEPWAIT.toString(), h.sessionId);
-                }
-            }
-        },
-        /**
-         * Once the open messages are exchanged, wait for keep alive message.
-         */
-        KEEPWAIT(false) {
-            @Override
-            void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
-                log.info("Message received in KEEPWAIT state");
-                //check for keep alive message
-                if (m.getType() != PcepType.KEEP_ALIVE) {
-                    // When the message type is not keep alive message increment the wrong packet statistics
-                    h.processUnknownMsg();
-                    log.error("Message is not KEEPALIVE message");
-                } else {
-                    // Set the client connected status
-                    h.pcepPacketStats.addInPacket();
-                    log.debug("sending keep alive message in KEEPWAIT state");
-                    h.pc = h.controller.getPcepClientInstance(h.thispccId, h.sessionId, h.pcepVersion,
-                            h.pcepPacketStats);
-                    //Get pc instance and set capabilities
-                    h.pc.setCapability(h.capability);
-
-                    // Initilialize DB sync status.
-                    h.pc.setLspDbSyncStatus(NOT_SYNCED);
-                    h.pc.setLabelDbSyncStatus(NOT_SYNCED);
-
-                    // set the status of pcc as connected
-                    h.pc.setConnected(true);
-                    h.pc.setChannel(h.channel);
-
-                    // set any other specific parameters to the pcc
-                    h.pc.setPcVersion(h.pcepVersion);
-                    h.pc.setPcSessionId(h.sessionId);
-                    h.pc.setPcKeepAliveTime(h.keepAliveTime);
-                    h.pc.setPcDeadTime(h.deadTime);
-                    int keepAliveTimer = h.keepAliveTime & BYTE_MASK;
-                    int deadTimer = h.deadTime & BYTE_MASK;
-                    if (0 == h.keepAliveTime) {
-                        h.deadTime = 0;
-                    }
-                    // handle keep alive and dead time
-                    if (keepAliveTimer != PcepPipelineFactory.DEFAULT_KEEP_ALIVE_TIME
-                            || deadTimer != PcepPipelineFactory.DEFAULT_DEAD_TIME) {
-
-                        h.channel.getPipeline().replace("idle", "idle",
-                                new IdleStateHandler(PcepPipelineFactory.TIMER, deadTimer, keepAliveTimer, 0));
-                    }
-                    log.debug("Dead timer : " + deadTimer);
-                    log.debug("Keep alive time : " + keepAliveTimer);
-
-                    //set the state handshake completion.
-
-                    h.sendKeepAliveMessage();
-                    h.pcepPacketStats.addOutPacket();
-                    h.setHandshakeComplete(true);
-
-                    if (!h.pc.connectClient()) {
-                        disconnectDuplicate(h);
-                    } else {
-                        h.setState(ESTABLISHED);
-                     h.controller.peerStatus(h.peerAddr.toString(), PcepCfg.State.ESTABLISHED.toString(), h.sessionId);
-                        //Session is established, add a network configuration with LSR id and device capabilities.
-                        h.addNode();
-                    }
-                }
-            }
-        },
-        /**
-         * Once the keep alive messages are exchanged, the state is established.
-         */
-        ESTABLISHED(true) {
-            @Override
-            void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
-
-                //h.channel.getPipeline().remove("waittimeout");
-                log.debug("Message received in established state " + m.getType());
-                //dispatch the message
-                h.dispatchMessage(m);
-            }
-        };
-        private boolean handshakeComplete;
-
-        ChannelState(boolean handshakeComplete) {
-            this.handshakeComplete = handshakeComplete;
-        }
-
-        void processPcepMessage(PcepChannelHandler h, PcepMessage m) throws IOException, PcepParseException {
-            // do nothing
-        }
-
-        /**
-         * Is this a state in which the handshake has completed.
-         *
-         * @return true if the handshake is complete
-         */
-        public boolean isHandshakeComplete() {
-            return this.handshakeComplete;
-        }
-
-        /**
-         * Sets handshake complete status.
-         *
-         * @param handshakeComplete status of handshake
-         */
-        public void setHandshakeComplete(boolean handshakeComplete) {
-            this.handshakeComplete = handshakeComplete;
-        }
-
-        protected void disconnectDuplicate(PcepChannelHandler h) {
-            log.error("Duplicated Pcc IP or incompleted cleanup - " + "disconnecting channel {}",
-                    h.getClientInfoString());
-            h.duplicatePccIdFound = Boolean.TRUE;
-            h.channel.disconnect();
-        }
-
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,22 +87,7 @@ public interface Tunnel extends Annotated, Provided, NetworkResource {
          * Signifies that a tunnel is currently inactive. This state means that
          * this tunnel can not be borrowed by consumer.
          */
-        INACTIVE,
-
-        /**
-         * Signifies that the tunnel's state is unreliable and should be setup again.
-         */
-        UNSTABLE,
-
-        /**
-         * Signifies that a tunnel is being established.
-         */
-        ESTABLISHING,
-
-        /**
-         * Signifies that a tunnel is being removed.
-         */
-        REMOVING
+        INACTIVE
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package org.onosproject.pim.cli;
 
 import org.apache.karaf.shell.commands.Command;
 import org.onosproject.cli.AbstractShellCommand;
-import org.onosproject.pim.impl.PimInterface;
-import org.onosproject.pim.impl.PimInterfaceService;
+import org.onosproject.pim.impl.PIMInterface;
+import org.onosproject.pim.impl.PIMInterfaceService;
 
 import java.util.Set;
 
@@ -35,9 +35,9 @@ public class PimInterfacesListCommand extends AbstractShellCommand {
 
     @Override
     protected void execute() {
-        PimInterfaceService interfaceService = get(PimInterfaceService.class);
+        PIMInterfaceService interfaceService = get(PIMInterfaceService.class);
 
-        Set<PimInterface> interfaces = interfaceService.getPimInterfaces();
+        Set<PIMInterface> interfaces = interfaceService.getPimInterfaces();
 
         interfaces.forEach(pimIntf -> {
             print(FORMAT, pimIntf.getInterface().name(),

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,15 +33,15 @@ public class DefaultPath<V extends Vertex, E extends Edge<V>> implements Path<V,
     private final V src;
     private final V dst;
     private final List<E> edges;
-    private Weight cost;
+    private double cost = 0.0;
 
     /**
      * Creates a new path from the specified list of edges and cost.
      *
      * @param edges list of path edges
-     * @param cost  path cost as a weight object
+     * @param cost  path cost as a unit-less number
      */
-    public DefaultPath(List<E> edges, Weight cost) {
+    public DefaultPath(List<E> edges, double cost) {
         checkNotNull(edges, "Edges list must not be null");
         checkArgument(!edges.isEmpty(), "There must be at least one edge");
         this.edges = ImmutableList.copyOf(edges);
@@ -61,7 +61,7 @@ public class DefaultPath<V extends Vertex, E extends Edge<V>> implements Path<V,
     }
 
     @Override
-    public Weight cost() {
+    public double cost() {
         return cost;
     }
 

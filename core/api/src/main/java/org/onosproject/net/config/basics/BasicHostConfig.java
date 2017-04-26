@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ import org.onosproject.net.HostId;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.onosproject.net.config.basics.AllowedEntityConfig.ALLOWED;
+
 /**
  * Basic configuration for network end-station hosts.
  */
@@ -36,12 +38,12 @@ public final class BasicHostConfig extends BasicElementConfig<HostId> {
         // Location and IP addresses can be absent, but if present must be valid.
         this.location();
         this.ipAddresses();
-        return hasOnlyFields(ALLOWED, NAME, LOC_TYPE, LATITUDE, LONGITUDE,
-                GRID_Y, GRID_Y, UI_TYPE, RACK_ADDRESS, OWNER, IPS, LOCATION);
+        return hasOnlyFields(ALLOWED, NAME, LATITUDE, LONGITUDE, RACK_ADDRESS, OWNER,
+                             IPS, LOCATION);
     }
 
     /**
-     * Returns the location of the host.
+     * Returns location of the host.
      *
      * @return location of the host or null if not set
      * @throws IllegalArgumentException if not specified with correct format

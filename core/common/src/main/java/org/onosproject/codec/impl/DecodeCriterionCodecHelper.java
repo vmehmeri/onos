@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.onlab.packet.VlanId;
 import org.onlab.util.HexString;
 import org.onosproject.net.ChannelSpacing;
 import org.onosproject.net.GridType;
+import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.Lambda;
 import org.onosproject.net.OchSignalType;
 import org.onosproject.net.OduSignalId;
@@ -33,6 +34,8 @@ import org.onosproject.net.OduSignalType;
 import org.onosproject.net.PortNumber;
 import org.onosproject.net.flow.criteria.Criteria;
 import org.onosproject.net.flow.criteria.Criterion;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -420,30 +423,43 @@ public final class DecodeCriterionCodecHelper {
     }
 
     private class OchSigIdDecoder implements CriterionDecoder {
+        private final Logger log = LoggerFactory.getLogger(getClass());
         @Override
         public Criterion decodeCriterion(ObjectNode json) {
             if (json.get(CriterionCodec.LAMBDA) != null) {
                 Lambda lambda = Lambda.indexedLambda(nullIsIllegal(json.get(CriterionCodec.LAMBDA),
-                                                                   CriterionCodec.LAMBDA + MISSING_MEMBER_MESSAGE).asInt());
-                return Criteria.matchLambda(lambda);
-            } else {
-                JsonNode ochSignalId = nullIsIllegal(json.get(CriterionCodec.OCH_SIGNAL_ID),
-                                                     CriterionCodec.GRID_TYPE + MISSING_MEMBER_MESSAGE);
+                        CriterionCodec.LAMBDA + MISSING_MEMBER_MESSAGE).asInt());
+
+
+                //return Criteria.matchLambda(lambda);
                 GridType gridType =
-                        GridType.valueOf(
-                                nullIsIllegal(ochSignalId.get(CriterionCodec.GRID_TYPE),
-                                              CriterionCodec.GRID_TYPE + MISSING_MEMBER_MESSAGE).asText());
+                        GridType.DWDM;
                 ChannelSpacing channelSpacing =
-                        ChannelSpacing.valueOf(
-                                nullIsIllegal(ochSignalId.get(CriterionCodec.CHANNEL_SPACING),
-                                              CriterionCodec.CHANNEL_SPACING + MISSING_MEMBER_MESSAGE).asText());
-                int spacingMultiplier = nullIsIllegal(ochSignalId.get(CriterionCodec.SPACING_MULIPLIER),
-                                                      CriterionCodec.SPACING_MULIPLIER + MISSING_MEMBER_MESSAGE).asInt();
-                int slotGranularity = nullIsIllegal(ochSignalId.get(CriterionCodec.SLOT_GRANULARITY),
-                                                    CriterionCodec.SLOT_GRANULARITY + MISSING_MEMBER_MESSAGE).asInt();
+                        ChannelSpacing.CHL_50GHZ;
+                int spacingMultiplier = (int) (((IndexedLambda) lambda).index());
+                int slotGranularity = 1;
                 return Criteria.matchLambda(
                         Lambda.ochSignal(gridType, channelSpacing,
                                          spacingMultiplier, slotGranularity));
+
+            } else {
+                JsonNode ochSignalId = nullIsIllegal(json.get(CriterionCodec.OCH_SIGNAL_ID),
+                        CriterionCodec.GRID_TYPE + MISSING_MEMBER_MESSAGE);
+                GridType gridType =
+                        GridType.valueOf(
+                                nullIsIllegal(ochSignalId.get(CriterionCodec.GRID_TYPE),
+                                CriterionCodec.GRID_TYPE + MISSING_MEMBER_MESSAGE).asText());
+                ChannelSpacing channelSpacing =
+                        ChannelSpacing.valueOf(
+                                nullIsIllegal(ochSignalId.get(CriterionCodec.CHANNEL_SPACING),
+                                CriterionCodec.CHANNEL_SPACING + MISSING_MEMBER_MESSAGE).asText());
+                int spacingMultiplier = nullIsIllegal(ochSignalId.get(CriterionCodec.SPACING_MULIPLIER),
+                        CriterionCodec.SPACING_MULIPLIER + MISSING_MEMBER_MESSAGE).asInt();
+                int slotGranularity = nullIsIllegal(ochSignalId.get(CriterionCodec.SLOT_GRANULARITY),
+                        CriterionCodec.SLOT_GRANULARITY + MISSING_MEMBER_MESSAGE).asInt();
+                return Criteria.matchLambda(
+                        Lambda.ochSignal(gridType, channelSpacing,
+                                spacingMultiplier, slotGranularity));
             }
         }
     }

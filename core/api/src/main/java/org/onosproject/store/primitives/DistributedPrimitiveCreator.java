@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,15 @@
  */
 package org.onosproject.store.primitives;
 
+import java.util.Set;
+
 import org.onosproject.store.service.AsyncAtomicCounter;
-import org.onosproject.store.service.AsyncAtomicCounterMap;
 import org.onosproject.store.service.AsyncAtomicValue;
 import org.onosproject.store.service.AsyncConsistentMap;
-import org.onosproject.store.service.AsyncConsistentMultimap;
-import org.onosproject.store.service.AsyncConsistentTreeMap;
 import org.onosproject.store.service.AsyncDistributedSet;
-import org.onosproject.store.service.AsyncDocumentTree;
 import org.onosproject.store.service.AsyncLeaderElector;
+import org.onosproject.store.service.DistributedQueue;
 import org.onosproject.store.service.Serializer;
-import org.onosproject.store.service.WorkQueue;
-
-import java.util.Set;
 
 /**
  * Interface for entity that can create instances of different distributed primitives.
@@ -44,40 +40,6 @@ public interface DistributedPrimitiveCreator {
      * @return map
      */
     <K, V> AsyncConsistentMap<K, V> newAsyncConsistentMap(String name, Serializer serializer);
-
-    /**
-     * Creates a new {@code AsyncConsistentTreeMap}.
-     *
-     * @param name tree name
-     * @param serializer serializer to use for serializing/deserializing map entries
-     * @param <V> value type
-     * @return distributedTreeMap
-     */
-    <V> AsyncConsistentTreeMap<V> newAsyncConsistentTreeMap(
-            String name, Serializer serializer);
-
-    /**
-     * Creates a new set backed {@code AsyncConsistentMultimap}.
-     *
-     * @param name multimap name
-     * @param serializer serializer to use for serializing/deserializing
-     * @param <K> key type
-     * @param <V> value type
-     * @return set backed distributedMultimap
-     */
-    <K, V> AsyncConsistentMultimap<K, V> newAsyncConsistentSetMultimap(
-            String name, Serializer serializer);
-
-    /**
-     * Creates a new {@code AsyncAtomicCounterMap}.
-     *
-     * @param name counter map name
-     * @param serializer serializer to use for serializing/deserializing keys
-     * @param <K> key type
-     * @return atomic counter map
-     */
-    <K> AsyncAtomicCounterMap<K> newAsyncAtomicCounterMap(
-        String name, Serializer serializer);
 
     /**
      * Creates a new {@code AsyncAtomicCounter}.
@@ -98,6 +60,16 @@ public interface DistributedPrimitiveCreator {
     <V> AsyncAtomicValue<V> newAsyncAtomicValue(String name, Serializer serializer);
 
     /**
+     * Creates a new {@code DistributedQueue}.
+     *
+     * @param name queue name
+     * @param serializer serializer to use for serializing/deserializing queue entries
+     * @param <E> queue entry type
+     * @return queue
+     */
+    <E> DistributedQueue<E> newDistributedQueue(String name, Serializer serializer);
+
+    /**
      * Creates a new {@code AsyncDistributedSet}.
      *
      * @param name set name
@@ -116,26 +88,6 @@ public interface DistributedPrimitiveCreator {
     AsyncLeaderElector newAsyncLeaderElector(String name);
 
     /**
-     * Creates a new {@code WorkQueue}.
-     *
-     * @param <E> work element type
-     * @param name work queue name
-     * @param serializer serializer
-     * @return work queue
-     */
-    <E> WorkQueue<E> newWorkQueue(String name, Serializer serializer);
-
-    /**
-     * Creates a new {@code AsyncDocumentTree}.
-     *
-     * @param <V> document tree node value type
-     * @param name tree name
-     * @param serializer serializer
-     * @return document tree
-     */
-    <V> AsyncDocumentTree<V> newAsyncDocumentTree(String name, Serializer serializer);
-
-    /**
      * Returns the names of all created {@code AsyncConsistentMap} instances.
      * @return set of {@code AsyncConsistentMap} names
      */
@@ -146,10 +98,4 @@ public interface DistributedPrimitiveCreator {
      * @return set of {@code AsyncAtomicCounter} names
      */
     Set<String> getAsyncAtomicCounterNames();
-
-    /**
-     * Returns the names of all created {@code WorkQueue} instances.
-     * @return set of {@code WorkQueue} names
-     */
-    Set<String> getWorkQueueNames();
 }

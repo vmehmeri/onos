@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ import static org.onosproject.openflow.controller.Dpid.uri;
 
 /**
  * The main controller class.  Handles all setup and network listeners
+ * - Distributed ownership control of switch through IControllerRegistryService
  */
 public class Controller {
 
@@ -80,7 +81,7 @@ public class Controller {
 
     // Configuration options
     protected List<Integer> openFlowPorts = ImmutableList.of(6633, 6653);
-    protected int workerThreads = 0;
+    protected int workerThreads = 16;
 
     // Start time of the controller
     protected long systemStartTime;
@@ -150,13 +151,13 @@ public class Controller {
 
         if (workerThreads == 0) {
             execFactory = new NioServerSocketChannelFactory(
-                    Executors.newCachedThreadPool(groupedThreads("onos/of", "boss-%d", log)),
-                    Executors.newCachedThreadPool(groupedThreads("onos/of", "worker-%d", log)));
+                    Executors.newCachedThreadPool(groupedThreads("onos/of", "boss-%d")),
+                    Executors.newCachedThreadPool(groupedThreads("onos/of", "worker-%d")));
             return new ServerBootstrap(execFactory);
         } else {
             execFactory = new NioServerSocketChannelFactory(
-                    Executors.newCachedThreadPool(groupedThreads("onos/of", "boss-%d", log)),
-                    Executors.newCachedThreadPool(groupedThreads("onos/of", "worker-%d", log)), workerThreads);
+                    Executors.newCachedThreadPool(groupedThreads("onos/of", "boss-%d")),
+                    Executors.newCachedThreadPool(groupedThreads("onos/of", "worker-%d")), workerThreads);
             return new ServerBootstrap(execFactory);
         }
     }
@@ -195,6 +196,7 @@ public class Controller {
         } catch (Exception ex) {
             log.error("SSL init failed: {}", ex.getMessage());
         }
+
     }
 
     private void getTlsParameters() {
@@ -226,6 +228,7 @@ public class Controller {
     }
 
     private void initSsl() throws Exception {
+
         TrustManagerFactory tmFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         KeyStore ts = KeyStore.getInstance("JKS");
         ts.load(new FileInputStream(tsLocation), tsPwd);
@@ -238,6 +241,8 @@ public class Controller {
 
         sslContext = SSLContext.getInstance("TLS");
         sslContext.init(kmf.getKeyManagers(), tmFactory.getTrustManagers(), null);
+
+
     }
 
     // **************
@@ -282,27 +287,21 @@ public class Controller {
             driver = driverService.getDriver(desc.getMfrDesc(), desc.getHwDesc(), desc.getSwDesc());
         }
 
-        if (driver == null) {
-            log.error("No OpenFlow driver for {} : {}", dpid, desc);
-            return null;
+        if (driver != null && driver.hasBehaviour(OpenFlowSwitchDriver.class)) {
+            Dpid did = new Dpid(dpid);
+            DefaultDriverHandler handler =
+                    new DefaultDriverHandler(new DefaultDriverData(driver, deviceId(uri(did))));
+            OpenFlowSwitchDriver ofSwitchDriver =
+                    driver.createBehaviour(handler, OpenFlowSwitchDriver.class);
+            ofSwitchDriver.init(did, desc, ofv);
+            ofSwitchDriver.setAgent(agent);
+            ofSwitchDriver.setRoleHandler(new RoleManager(ofSwitchDriver));
+            log.info("OpenFlow handshaker found for device {}: {}", dpid, ofSwitchDriver);
+            return ofSwitchDriver;
         }
+        log.error("No OpenFlow driver for {} : {}", dpid, desc);
+        return null;
 
-        log.info("Driver {} assigned to device {}", driver.name(), dpidObj);
-
-        if (!driver.hasBehaviour(OpenFlowSwitchDriver.class)) {
-            log.error("Driver {} does not support OpenFlowSwitchDriver behaviour", driver.name());
-            return null;
-        }
-
-        DefaultDriverHandler handler =
-                new DefaultDriverHandler(new DefaultDriverData(driver, deviceId(uri(dpidObj))));
-        OpenFlowSwitchDriver ofSwitchDriver =
-                driver.createBehaviour(handler, OpenFlowSwitchDriver.class);
-        ofSwitchDriver.init(dpidObj, desc, ofv);
-        ofSwitchDriver.setAgent(agent);
-        ofSwitchDriver.setRoleHandler(new RoleManager(ofSwitchDriver));
-        log.info("OpenFlow handshaker found for device {}: {}", dpid, ofSwitchDriver);
-        return ofSwitchDriver;
     }
 
     public void start(OpenFlowAgent ag, DriverService driverService) {

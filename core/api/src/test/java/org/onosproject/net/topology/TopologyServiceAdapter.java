@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,14 +54,12 @@ public class TopologyServiceAdapter implements TopologyService {
     }
 
     @Override
-    public Set<DeviceId> getClusterDevices(Topology topology,
-                                           TopologyCluster cluster) {
+    public Set<DeviceId> getClusterDevices(Topology topology, TopologyCluster cluster) {
         return null;
     }
 
     @Override
-    public Set<Link> getClusterLinks(Topology topology,
-                                     TopologyCluster cluster) {
+    public Set<Link> getClusterLinks(Topology topology, TopologyCluster cluster) {
         return null;
     }
 
@@ -71,26 +69,17 @@ public class TopologyServiceAdapter implements TopologyService {
     }
 
     @Override
-    public Set<Path> getPaths(Topology topology, DeviceId src, DeviceId dst,
-                              LinkWeight weight) {
+    public Set<Path> getPaths(Topology topology, DeviceId src, DeviceId dst, LinkWeight weight) {
         return null;
     }
 
     @Override
-    public Set<Path> getPaths(Topology topology, DeviceId src, DeviceId dst,
-                              LinkWeigher weigher) {
-        return null;
-    }
-
-    @Override
-    public boolean isInfrastructure(Topology topology,
-                                    ConnectPoint connectPoint) {
+    public boolean isInfrastructure(Topology topology, ConnectPoint connectPoint) {
         return false;
     }
 
     @Override
-    public boolean isBroadcastPoint(Topology topology,
-                                    ConnectPoint connectPoint) {
+    public boolean isBroadcastPoint(Topology topology, ConnectPoint connectPoint) {
         return false;
     }
 
@@ -103,28 +92,18 @@ public class TopologyServiceAdapter implements TopologyService {
     }
 
     @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst) {
+    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src, DeviceId dst) {
         return null;
     }
 
     @Override
     public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
-                                              LinkWeight weight) {
+                                              DeviceId dst, LinkWeight weight) {
         return null;
     }
 
     @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
-                                              LinkWeigher weigher) {
-        return null;
-    }
-
-    @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
+    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src, DeviceId dst,
                                               Map<Link, Object> riskProfile) {
         return null;
     }
@@ -132,14 +111,6 @@ public class TopologyServiceAdapter implements TopologyService {
     @Override
     public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
                                               DeviceId dst, LinkWeight weight,
-                                              Map<Link, Object> riskProfile) {
-        return null;
-    }
-
-    @Override
-    public Set<DisjointPath> getDisjointPaths(Topology topology, DeviceId src,
-                                              DeviceId dst,
-                                              LinkWeigher weigher,
                                               Map<Link, Object> riskProfile) {
         return null;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,15 +66,15 @@ public class DisjointPathPair<V extends Vertex, E extends Edge<V>> implements Pa
     /**
      * Returns the secondary path.
      *
-     * @return secondary path, or null if there is no secondary path available.
+     * @return primary path
      */
     public Path<V, E> secondary() {
         return secondary;
     }
 
     @Override
-    public Weight cost() {
-        return hasBackup() ? primary.cost().merge(secondary.cost()) : primary.cost();
+    public double cost() {
+        return hasBackup() ? primary.cost() + secondary.cost() : primary.cost();
     }
 
     @Override

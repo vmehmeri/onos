@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,11 +25,9 @@ import org.onosproject.incubator.net.tunnel.TunnelService;
 import org.onosproject.incubator.net.tunnel.TunnelSubscription;
 import org.onosproject.net.Annotations;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.ElementId;
 
 import java.util.Collection;
 import java.util.Collections;
-import org.onosproject.net.Path;
 
 public class TunnelServiceAdapter implements TunnelService {
     @Override
@@ -53,16 +51,6 @@ public class TunnelServiceAdapter implements TunnelService {
     public Collection<Tunnel> borrowTunnel(ApplicationId consumerId, TunnelEndPoint src, TunnelEndPoint dst,
                                            Tunnel.Type type, Annotations... annotations) {
         return null;
-    }
-
-    @Override
-    public TunnelId setupTunnel(ApplicationId producerId, ElementId srcElementId, Tunnel tunnel, Path path) {
-        return null;
-    }
-
-    @Override
-    public boolean downTunnel(ApplicationId producerId, TunnelId tunnelId) {
-        return false;
     }
 
     @Override
@@ -94,17 +82,17 @@ public class TunnelServiceAdapter implements TunnelService {
 
     @Override
     public Collection<TunnelSubscription> queryTunnelSubscription(ApplicationId consumerId) {
-        return Collections.emptySet();
+        return null;
     }
 
     @Override
     public Collection<Tunnel> queryTunnel(Tunnel.Type type) {
-        return Collections.emptySet();
+        return null;
     }
 
     @Override
     public Collection<Tunnel> queryTunnel(TunnelEndPoint src, TunnelEndPoint dst) {
-        return Collections.emptySet();
+        return null;
     }
 
     @Override

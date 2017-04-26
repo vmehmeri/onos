@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.apache.karaf.shell.commands.Command;
 import org.onlab.packet.MacAddress;
 import org.onlab.packet.VlanId;
 import org.onosproject.cli.AbstractShellCommand;
-import org.onosproject.utils.Comparators;
+import org.onosproject.cli.Comparators;
 import org.onosproject.incubator.net.intf.Interface;
 import org.onosproject.incubator.net.intf.InterfaceService;
 
@@ -38,9 +38,6 @@ public class InterfacesListCommand extends AbstractShellCommand {
     private static final String IP_FORMAT = " ips=";
     private static final String MAC_FORMAT = " mac=";
     private static final String VLAN_FORMAT = " vlan=";
-    private static final String VLAN_UNTAGGED = " vlanUntagged=";
-    private static final String VLAN_TAGGED = " vlanTagged=";
-    private static final String VLAN_NATIVE = " vlanNative=";
 
     private static final String NO_NAME = "(unamed)";
 
@@ -71,21 +68,6 @@ public class InterfacesListCommand extends AbstractShellCommand {
         if (!intf.vlan().equals(VlanId.NONE)) {
             formatStringBuilder.append(VLAN_FORMAT);
             formatStringBuilder.append(intf.vlan().toString());
-        }
-
-        if (!intf.vlanUntagged().equals(VlanId.NONE)) {
-            formatStringBuilder.append(VLAN_UNTAGGED);
-            formatStringBuilder.append(intf.vlanUntagged().toString());
-        }
-
-        if (!intf.vlanTagged().isEmpty()) {
-            formatStringBuilder.append(VLAN_TAGGED);
-            formatStringBuilder.append(intf.vlanTagged().toString());
-        }
-
-        if (!intf.vlanNative().equals(VlanId.NONE)) {
-            formatStringBuilder.append(VLAN_NATIVE);
-            formatStringBuilder.append(intf.vlanNative().toString());
         }
 
         String name = (intf.name().equals(Interface.NO_INTERFACE_NAME)) ?

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- * Default implementation of a NETCONF device.
+ * Defautl implementation of a NETCONF device.
  */
 public class DefaultNetconfDevice implements NetconfDevice {
 
@@ -35,7 +35,7 @@ public class DefaultNetconfDevice implements NetconfDevice {
             .getLogger(DefaultNetconfDevice.class);
 
     private NetconfDeviceInfo netconfDeviceInfo;
-    private boolean deviceState = true;
+    private boolean deviceState = false;
     protected NetconfSessionFactory sessionFactory = new SshNetconfSessionFactory();
     private NetconfSession netconfSession;
 
@@ -53,10 +53,10 @@ public class DefaultNetconfDevice implements NetconfDevice {
         try {
             netconfSession = sessionFactory.createNetconfSession(deviceInfo);
         } catch (IOException e) {
-            deviceState = false;
             throw new NetconfException("Cannot create connection and session for device " +
                                                deviceInfo, e);
         }
+        deviceState = true;
     }
 
     @Override

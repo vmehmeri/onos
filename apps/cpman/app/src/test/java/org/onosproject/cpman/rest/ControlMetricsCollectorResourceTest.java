@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +15,14 @@
  */
 package org.onosproject.cpman.rest;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
-import org.glassfish.jersey.server.ResourceConfig;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.spi.container.servlet.ServletContainer;
+import com.sun.jersey.test.framework.AppDescriptor;
+import com.sun.jersey.test.framework.JerseyTest;
+import com.sun.jersey.test.framework.WebAppDescriptor;
 import org.junit.Before;
 import org.junit.Test;
-import org.onlab.metrics.MetricsComponent;
-import org.onlab.metrics.MetricsFeature;
-import org.onlab.metrics.MetricsReporter;
-import org.onlab.metrics.MetricsService;
 import org.onlab.osgi.ServiceDirectory;
 import org.onlab.osgi.TestServiceDirectory;
 import org.onlab.rest.BaseResource;
@@ -37,16 +30,12 @@ import org.onosproject.cpman.ControlPlaneMonitorService;
 import org.onosproject.cpman.SystemInfo;
 import org.onosproject.cpman.impl.SystemInfoFactory;
 import org.onosproject.net.DeviceId;
-import org.onosproject.rest.resources.ResourceTest;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.util.Collections;
-import java.util.Map;
+import java.net.ServerSocket;
 import java.util.Optional;
 
 import static org.easymock.EasyMock.anyInt;
@@ -62,11 +51,10 @@ import static org.junit.Assert.assertThat;
 /**
  * Unit test for ControlMetricsCollector.
  */
-public class ControlMetricsCollectorResourceTest extends ResourceTest {
+public class ControlMetricsCollectorResourceTest extends JerseyTest {
 
     final ControlPlaneMonitorService mockControlPlaneMonitorService =
                                      createMock(ControlPlaneMonitorService.class);
-    final MetricsService mockMetricsService = new MockMetricsService();
 
     private static final String PREFIX = "collector";
 
@@ -74,7 +62,9 @@ public class ControlMetricsCollectorResourceTest extends ResourceTest {
      * Constructs a control metrics collector resource test instance.
      */
     public ControlMetricsCollectorResourceTest() {
-        super(ResourceConfig.forApplicationClass(CPManWebApplication.class));
+        super(new WebAppDescriptor.Builder("javax.ws.rs.Application",
+                CPManWebApplication.class.getCanonicalName())
+                .servletClass(ServletContainer.class).build());
     }
 
     /**
@@ -84,8 +74,7 @@ public class ControlMetricsCollectorResourceTest extends ResourceTest {
     public void setUpTest() {
         ServiceDirectory testDirectory =
                 new TestServiceDirectory()
-                        .add(ControlPlaneMonitorService.class, mockControlPlaneMonitorService)
-                        .add(MetricsService.class, mockMetricsService);
+                        .add(ControlPlaneMonitorService.class, mockControlPlaneMonitorService);
         BaseResource.setServiceDirectory(testDirectory);
     }
 
@@ -98,7 +87,6 @@ public class ControlMetricsCollectorResourceTest extends ResourceTest {
                 (Optional<DeviceId>) anyObject());
         expectLastCall().times(5);
         replay(mockControlPlaneMonitorService);
-
         basePostTest("cpu-metrics-post.json", PREFIX + "/cpu_metrics");
     }
 
@@ -111,7 +99,6 @@ public class ControlMetricsCollectorResourceTest extends ResourceTest {
                 (Optional<DeviceId>) anyObject());
         expectLastCall().times(4);
         replay(mockControlPlaneMonitorService);
-
         basePostTest("memory-metrics-post.json", PREFIX + "/memory_metrics");
     }
 
@@ -123,7 +110,6 @@ public class ControlMetricsCollectorResourceTest extends ResourceTest {
         mockControlPlaneMonitorService.updateMetric(anyObject(), anyInt(), anyString());
         expectLastCall().times(4);
         replay(mockControlPlaneMonitorService);
-
         basePostTest("disk-metrics-post.json", PREFIX + "/disk_metrics");
     }
 
@@ -135,7 +121,6 @@ public class ControlMetricsCollectorResourceTest extends ResourceTest {
         mockControlPlaneMonitorService.updateMetric(anyObject(), anyInt(), anyString());
         expectLastCall().times(8);
         replay(mockControlPlaneMonitorService);
-
         basePostTest("network-metrics-post.json", PREFIX + "/network_metrics");
     }
 
@@ -150,118 +135,44 @@ public class ControlMetricsCollectorResourceTest extends ResourceTest {
         assertThat(si.totalMemory(), is(4096));
     }
 
-    private Response baseTest(String jsonFile, String path) {
-        final WebTarget wt = target();
+    private ClientResponse baseTest(String jsonFile, String path) {
+        final WebResource rs = resource();
         InputStream jsonStream = ControlMetricsCollectorResourceTest.class
                 .getResourceAsStream(jsonFile);
 
         assertThat(jsonStream, notNullValue());
 
-        return wt.path(path)
-                .request(MediaType.APPLICATION_JSON_TYPE)
-                .post(Entity.json(jsonStream));
+        return rs.path(path)
+                .type(MediaType.APPLICATION_JSON_TYPE)
+                .post(ClientResponse.class, jsonStream);
     }
 
     private void basePostTest(String jsonFile, String path) {
-        Response response = baseTest(jsonFile, path);
+        ClientResponse response = baseTest(jsonFile, path);
         assertThat(response.getStatus(), is(HttpURLConnection.HTTP_OK));
     }
 
-    private class MockMetricsService implements MetricsService {
-
-        @Override
-        public MetricsComponent registerComponent(String name) {
-            MetricsComponent metricsComponent = new MetricsComponent(name);
-            return metricsComponent;
+    /**
+     * Assigns an available port for the test.
+     *
+     * @param defaultPort If a port cannot be determined, this one is used.
+     * @return free port
+     */
+    @Override
+    public int getPort(int defaultPort) {
+        try {
+            ServerSocket socket = new ServerSocket(0);
+            socket.setReuseAddress(true);
+            int port = socket.getLocalPort();
+            socket.close();
+            return port;
+        } catch (IOException ioe) {
+            return defaultPort;
         }
+    }
 
-        @Override
-        public MetricRegistry getMetricRegistry() {
-            return null;
-        }
-
-        @Override
-        public Counter createCounter(MetricsComponent component, MetricsFeature feature,
-                                     String metricName) {
-            return null;
-        }
-
-        @Override
-        public Histogram createHistogram(MetricsComponent component,
-                                         MetricsFeature feature, String metricName) {
-            return null;
-        }
-
-        @Override
-        public Timer createTimer(MetricsComponent component,
-                                 MetricsFeature feature, String metricName) {
-            return null;
-        }
-
-        @Override
-        public Meter createMeter(MetricsComponent component,
-                                 MetricsFeature feature, String metricName) {
-            return new Meter();
-        }
-
-        @Override
-        public <T extends Metric> T registerMetric(MetricsComponent component,
-                                                   MetricsFeature feature,
-                                                   String metricName, T metric) {
-            return null;
-        }
-
-        @Override
-        public void registerReporter(MetricsReporter reporter) {
-        }
-
-        @Override
-        public void unregisterReporter(MetricsReporter reporter) {
-        }
-
-        @Override
-        public void notifyReporters() {
-        }
-
-        @Override
-        public boolean removeMetric(MetricsComponent component,
-                                    MetricsFeature feature, String metricName) {
-            return false;
-        }
-
-        @Override
-        public Map<String, Timer> getTimers(MetricFilter filter) {
-            return Collections.emptyMap();
-        }
-
-        @Override
-        public Map<String, Gauge> getGauges(MetricFilter filter) {
-            return Collections.emptyMap();
-        }
-
-        @Override
-        public Map<String, Counter> getCounters(MetricFilter filter) {
-            return Collections.emptyMap();
-        }
-
-        @Override
-        public Map<String, Meter> getMeters(MetricFilter filter) {
-            return Collections.emptyMap();
-        }
-
-        @Override
-        public Map<String, Histogram> getHistograms(MetricFilter filter) {
-            return Collections.emptyMap();
-        }
-
-        @Override
-        public Map<String, Metric> getMetrics() {
-            return Collections.emptyMap();
-        }
-
-        @Override
-        public void removeMatching(MetricFilter filter) {
-
-        }
+    @Override
+    public AppDescriptor configure() {
+        return new WebAppDescriptor.Builder("org.onosproject.cpman.rest").build();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import org.onlab.packet.MplsLabel;
 import org.onlab.packet.TpPort;
 import org.onlab.packet.VlanId;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.Lambda;
 import org.onosproject.net.IndexedLambda;
+import org.onosproject.net.Lambda;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OchSignalType;
 import org.onosproject.net.OduSignalId;
@@ -461,7 +461,8 @@ public final class Criteria {
      */
     public static Criterion matchLambda(Lambda lambda) {
         if (lambda instanceof IndexedLambda) {
-            return new IndexedLambdaCriterion((IndexedLambda) lambda);
+            //return new IndexedLambdaCriterion((IndexedLambda) lambda);
+            return new OchSignalCriterion((OchSignal) lambda);
         } else if (lambda instanceof OchSignal) {
             return new OchSignalCriterion((OchSignal) lambda);
         } else {

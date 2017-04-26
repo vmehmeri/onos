@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -221,8 +221,8 @@ public class TunnelHandler {
         } else {
             deviceIds.add(config.getDeviceId(sid));
         }
-        // For these NeighborSet isMpls is meaningless.
-        NeighborSet ns = new NeighborSet(deviceIds, false, tunnel.labelIds().get(2));
+
+        NeighborSet ns = new NeighborSet(deviceIds, tunnel.labelIds().get(2));
 
         // If the tunnel reuses any existing groups, then tunnel handler
         // should not remove the group.
@@ -232,7 +232,7 @@ public class TunnelHandler {
             tunnel.allowToRemoveGroup(true);
         }
 
-        return groupHandlerMap.get(deviceId).getNextObjectiveId(ns, null, true);
+        return groupHandlerMap.get(deviceId).getNextObjectiveId(ns, null);
     }
 
 }

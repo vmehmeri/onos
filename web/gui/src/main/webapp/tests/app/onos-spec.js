@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014,2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,10 @@ describe('Controller: OnosCtrl', function () {
     // we need an instance of the controller
     beforeEach(inject(function(_$log_, $controller) {
         $log = _$log_;
-        var $scope = {};
-        ctrl = $controller('OnosCtrl', { $scope: $scope });
+        ctrl = $controller('OnosCtrl');
     }));
 
-    it('should report version 1.5.0', function () {
-        expect(ctrl.version).toEqual('1.5.0');
+    it('should report version 1.2.0', function () {
+        expect(ctrl.version).toEqual('1.2.0');
     });
 });

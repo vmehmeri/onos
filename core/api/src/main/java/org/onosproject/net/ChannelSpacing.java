@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,9 +30,9 @@ public enum ChannelSpacing {
     private final Frequency frequency;
 
     /**
-     * Creates an instance with the specified interval in MHz.
+     * Creates an instance with the specified interval in GHz.
      *
-     * @param value interval of neighboring wavelengths in MHz.
+     * @param value interval of neighboring wavelengths in GHz.
      */
     ChannelSpacing(long value) {
         this.frequency = Frequency.ofMHz(value);

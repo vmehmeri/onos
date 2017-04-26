@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
  */
 
 /*
- Module containing the "business logic" for the Path Painter topology overlay.
+ Sample Demo module. This contains the "business logic" for the topology
+ overlay that we are implementing.
  */
 
 (function () {
@@ -35,7 +36,6 @@
 
     // internal state
     var currentMode = null;
-    var selected = false;
 
 
     // === ---------------------------
@@ -46,17 +46,11 @@
     // === Main API functions
 
     function clear() {
-        if (selected) {
-            selected = false;
-            wss.sendEvent(clearMessage);
-            flash.flash('Cleared source and destination');
-            return true;
-        }
-        return false;
+        wss.sendEvent(clearMessage);
+        flash.flash('Cleared source and destination');
     }
 
     function setSrc(node) {
-        selected = true;
         wss.sendEvent(srcMessage, {
             id: node.id,
             type: node.type
@@ -65,7 +59,6 @@
     }
 
     function setDst(node) {
-        selected = true;
         wss.sendEvent(dstMessage, {
             id: node.id,
             type: node.type

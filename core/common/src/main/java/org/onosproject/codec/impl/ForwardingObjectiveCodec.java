@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.onosproject.codec.CodecContext;
 import org.onosproject.codec.JsonCodec;
+import org.onosproject.core.ApplicationId;
 import org.onosproject.core.CoreService;
 import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
@@ -33,12 +34,11 @@ import static org.slf4j.LoggerFactory.getLogger;
 /**
  * Forwarding Objective Codec.
  */
-public final class ForwardingObjectiveCodec extends JsonCodec<ForwardingObjective> {
+public class ForwardingObjectiveCodec extends JsonCodec<ForwardingObjective> {
     private final Logger log = getLogger(getClass());
 
     // JSON field names
     private static final String ID = "id";
-    private static final String APP_ID = "appId";
     private static final String SELECTOR = "selector";
     private static final String FLAG = "flag";
     private static final String OPERATION = "operation";
@@ -50,6 +50,10 @@ public final class ForwardingObjectiveCodec extends JsonCodec<ForwardingObjectiv
             " member is required in ForwardingObjective";
     private static final String NOT_NULL_MESSAGE =
             "ForwardingObjective cannot be null";
+    private static final String INVALID_FLAG_MESSAGE =
+            "The requested flag {} is not defined in ForwardingObjective.";
+    private static final String INVALID_OP_MESSAGE =
+            "The requested operation {} is not defined for FilteringObjective.";
 
     public static final String REST_APP_ID = "org.onosproject.rest";
 
@@ -112,9 +116,8 @@ public final class ForwardingObjectiveCodec extends JsonCodec<ForwardingObjectiv
                 (DefaultForwardingObjective.Builder) och.decode(json, baseBuilder, context);
 
         // application id
-        JsonNode appIdJson = json.get(APP_ID);
-        String appId = appIdJson != null ? appIdJson.asText() : REST_APP_ID;
-        builder.fromApp(coreService.registerApplication(appId));
+        ApplicationId appId = coreService.registerApplication(REST_APP_ID);
+        builder.fromApp(appId);
 
         // decode flag
         String flagStr = nullIsIllegal(json.get(FLAG), FLAG + MISSING_MEMBER_MESSAGE).asText();
@@ -126,8 +129,8 @@ public final class ForwardingObjectiveCodec extends JsonCodec<ForwardingObjectiv
                 builder.withFlag(ForwardingObjective.Flag.VERSATILE);
                 break;
             default:
-                throw new IllegalArgumentException("The requested flag " + flagStr +
-                " is not defined for FilteringObjective.");
+                log.warn(INVALID_FLAG_MESSAGE, flagStr);
+                return null;
         }
 
         // decode selector
@@ -152,7 +155,7 @@ public final class ForwardingObjectiveCodec extends JsonCodec<ForwardingObjectiv
 
         // decode operation
         String opStr = nullIsIllegal(json.get(OPERATION), OPERATION + MISSING_MEMBER_MESSAGE).asText();
-        ForwardingObjective forwardingObjective = null;
+        ForwardingObjective forwardingObjective;
 
         switch (opStr) {
             case "ADD":
@@ -162,8 +165,8 @@ public final class ForwardingObjectiveCodec extends JsonCodec<ForwardingObjectiv
                 forwardingObjective = builder.remove();
                 break;
             default:
-                throw new IllegalArgumentException("The requested operation " + opStr +
-                " is not defined for FilteringObjective.");
+                log.warn(INVALID_OP_MESSAGE, opStr);
+                return null;
         }
 
         return forwardingObjective;

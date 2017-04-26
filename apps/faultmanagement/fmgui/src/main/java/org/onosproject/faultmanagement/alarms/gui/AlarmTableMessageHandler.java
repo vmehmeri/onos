@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,22 +18,20 @@ package org.onosproject.faultmanagement.alarms.gui;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
-import org.joda.time.DateTime;
-import org.onosproject.incubator.net.faultmanagement.alarm.Alarm;
-import org.onosproject.net.DeviceId;
 import org.onosproject.ui.RequestHandler;
 import org.onosproject.ui.UiMessageHandler;
 import org.onosproject.ui.table.TableModel;
 import org.onosproject.ui.table.TableRequestHandler;
-import org.onosproject.ui.table.cell.TimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Set;
-
-import static java.lang.Long.parseLong;
-import static org.onosproject.incubator.net.faultmanagement.alarm.AlarmId.alarmId;
+import org.joda.time.DateTime;
+import org.onosproject.incubator.net.faultmanagement.alarm.Alarm;
+import org.onosproject.incubator.net.faultmanagement.alarm.AlarmId;
+import org.onosproject.net.DeviceId;
+import org.onosproject.ui.table.cell.TimeFormatter;
 
 /**
  * Skeletal ONOS UI Table-View message handler.
@@ -60,12 +58,8 @@ public class AlarmTableMessageHandler extends UiMessageHandler {
 
     // TODO No need to show id column in ONOS-GUI
 
-    // TODO Replace SEVERITY column by color-coding of row depending on severity
-    // e.g. red=critical, green=cleared etc
-
-    private static final String[] COLUMN_IDS = {
-            ID, DEVICE_ID_STR, DESCRIPTION, SOURCE, TIME_RAISED, SEVERITY
-    };
+    // TODO Replace SEVERITY column by color-coding of row depending on severity ie. red=critical, green=cleared etc
+    private static final String[] COLUMN_IDS = {ID, DEVICE_ID_STR, DESCRIPTION, SOURCE, TIME_RAISED, SEVERITY};
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -88,6 +82,7 @@ public class AlarmTableMessageHandler extends UiMessageHandler {
 
         @Override
         protected String defaultColumnId() {
+            // if necessary, override defaultColumnId() -- if it isn't "id"
             return ID;
         }
 
@@ -103,6 +98,7 @@ public class AlarmTableMessageHandler extends UiMessageHandler {
 
         @Override
         protected TableModel createTableModel() {
+            // if required, override createTableModel() to set column formatters / comparators
             TableModel tm = super.createTableModel();
             tm.setFormatter(TIME_RAISED, new TimeFormatter());
             return tm;
@@ -110,18 +106,21 @@ public class AlarmTableMessageHandler extends UiMessageHandler {
 
         @Override
         protected void populateTable(TableModel tm, ObjectNode payload) {
-            log.debug(" populateTable: tm = {}; payload = {}", tm, payload);
+            log.debug(" populateTable tm={} payload ={}", tm, payload);
             String devId = string(payload, "devId");
 
             Set<Alarm> alarms = Strings.isNullOrEmpty(devId) ?
                     AlarmServiceUtil.lookUpAlarms() :
                     AlarmServiceUtil.lookUpAlarms(DeviceId.deviceId(devId));
 
-            alarms.forEach((alarm) -> populateRow(tm.addRow(), alarm));
+            alarms.stream().forEach((alarm) -> {
+                populateRow(tm.addRow(), alarm);
+            });
+
         }
 
         private void populateRow(TableModel.Row row, Alarm alarm) {
-            log.debug("populateRow: row = {} alarm = {}", row, alarm);
+            log.debug("populate table Row row={} item ={}", row, alarm);
 
             row.cell(ID, alarm.id().fingerprint())
                     .cell(DEVICE_ID_STR, alarm.deviceId())
@@ -140,11 +139,11 @@ public class AlarmTableMessageHandler extends UiMessageHandler {
         }
 
         @Override
-        public void process(ObjectNode payload) {
-            log.debug("payload = {}", payload);
+        public void process(long sid, ObjectNode payload) {
+            log.debug("sid={}, payload ={}", sid, payload);
 
             String id = string(payload, ID, "(none)");
-            Alarm alarm = AlarmServiceUtil.lookupAlarm(alarmId(parseLong(id)));
+            Alarm alarm = AlarmServiceUtil.lookupAlarm(AlarmId.alarmId(Long.parseLong(id)));
             ObjectNode rootNode = objectNode();
             ObjectNode data = objectNode();
             rootNode.set(DETAILS, data);
@@ -168,9 +167,9 @@ public class AlarmTableMessageHandler extends UiMessageHandler {
                 data.put(TIME_CLEARED, formatTime(alarm.timeCleared()));
                 data.put(SEVERITY, alarm.severity().toString());
             }
-            log.debug("send = {}", rootNode);
+            log.debug("send ={}", rootNode);
 
-            sendMessage(ALARM_TABLE_DETAIL_RESP, rootNode);
+            sendMessage(ALARM_TABLE_DETAIL_RESP, 0, rootNode);
         }
     }
 
@@ -180,4 +179,6 @@ public class AlarmTableMessageHandler extends UiMessageHandler {
         }
         return new TimeFormatter().format(new DateTime(msSinceStartOfEpoch));
     }
+
+
 }

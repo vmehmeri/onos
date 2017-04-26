@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,27 @@
 
 package org.onosproject.net.behaviour;
 
+import java.util.Objects;
+
 import com.google.common.annotations.Beta;
-import com.google.common.base.MoreObjects;
 import org.onlab.packet.IpAddress;
+
+import com.google.common.base.MoreObjects;
 
 /**
  * Represent for a tunnel point using ip address.
- *
- * @deprecated version 1.7.0 - Hummingbird; use {@code TunnelEndPoint<IpAddress>}
  */
-@Deprecated
 @Beta
-public final class IpTunnelEndPoint extends TunnelEndPoint<IpAddress> {
+public final class IpTunnelEndPoint implements TunnelEndPoint {
+
+    private final IpAddress ip;
 
     /**
      * Public construction is prohibited.
      * @param ip ip address
      */
     private IpTunnelEndPoint(IpAddress ip) {
-        super(ip);
+        this.ip = ip;
     }
 
     /**
@@ -51,11 +53,28 @@ public final class IpTunnelEndPoint extends TunnelEndPoint<IpAddress> {
      * @return IP address
      */
     public IpAddress ip() {
-        return value;
+        return ip;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(ip);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof IpTunnelEndPoint) {
+            final IpTunnelEndPoint other = (IpTunnelEndPoint) obj;
+            return Objects.equals(this.ip, other.ip);
+        }
+        return false;
     }
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(getClass()).add("ip", value).toString();
+        return MoreObjects.toStringHelper(getClass()).add("ip", ip).toString();
     }
 }

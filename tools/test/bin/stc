@@ -3,20 +3,9 @@
 #   System Test Coordinator
 #-------------------------------------------------------------------------------
 
-. $ONOS_ROOT/tools/build/envDefaults
-
-VER=${STC_VERSION:-2.2}
-JAR=~/.m2/repository/org/onosproject/onos-stc/$VER/onos-stc-$VER.jar
+VER=1.5.0
+JAR=~/.m2/repository/org/onosproject/onlab-stc/$VER/onlab-stc-$VER.jar
 SCENARIOS=$ONOS_ROOT/tools/test/scenarios
-
-# Download the STC binary if needed
-if [ ! -f $JAR ]; then
-    printf "Downloading STC binary..."
-    aux=/tmp/stc/stc-$$.log
-    mvn dependency:get -Dartifact=org.onosproject:onos-stc:$VER -Dtransitive=false -B >$aux || fgrep '[ERROR]' $aux
-    rm -f $aux
-    [ -f $JAR ] && printf "Done.\n"
-fi
 
 DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=y"
 
@@ -35,5 +24,5 @@ scenario=${1:-smoke}
 
 # Run stc
 [ -z "$stcDebug" ] && DEBUG_OPTS=""
-stcTitle=${stcTitle:-} stcColor=${stcColor:-$interactive} stcDumpLogs=${stcDumpLogs:-$notInteractive} \
+stcColor=${stcColor:-$interactive} stcDumpLogs=${stcDumpLogs:-$notInteractive} \
     java $DEBUG_OPTS -jar $JAR $scenario "$@"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014,2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,21 +20,16 @@
 (function () {
     'use strict';
 
-    // injected refs
-    var $log, fs, ps;
+    var $log, fs;
 
-    // configuration
     var themes = ['light', 'dark'],
-        themeStr = themes.join(' ');
-
-    // internal state
-    var listeners = [],
-        currentTheme,
-        thidx;
-
+        themeStr = themes.join(' '),
+        thidx,
+        listeners = {},
+        nextListenerId = 1;
 
     function init() {
-        thidx = ps.getPrefs('theme', { idx: 0 }).idx;
+        thidx = 0;
         updateBodyClass();
     }
 
@@ -42,65 +37,71 @@
         return themes[thidx];
     }
 
-    function setTheme(t, force) {
+    function setTheme(t) {
         var idx = themes.indexOf(t);
-        if (force || idx > -1 && idx !== thidx) {
+        if (idx > -1 && idx !== thidx) {
             thidx = idx;
-            ps.setPrefs('theme', { idx: thidx });
-            applyTheme();
+            updateBodyClass();
+            themeEvent('set');
         }
     }
 
     function toggleTheme() {
         var i = thidx + 1;
         thidx = (i===themes.length) ? 0 : i;
-        ps.setPrefs('theme', { idx: thidx });
-        applyTheme('toggle');
+        updateBodyClass();
+        themeEvent('toggle');
         return getTheme();
-    }
-
-    function applyTheme(evt) {
-        thidx = ps.getPrefs('theme', { idx: thidx }).idx;
-        if (currentTheme != thidx) {
-            $log.info('Applying theme:', thidx);
-            updateBodyClass();
-            themeEvent(evt || 'set');
-        }
     }
 
     function updateBodyClass() {
         var body = d3.select('body');
         body.classed(themeStr, false);
         body.classed(getTheme(), true);
-        currentTheme = thidx;
     }
 
     function themeEvent(w) {
         var t = getTheme(),
-            m = 'Theme-Change-(' + w + '): ' + t;
+            m = 'Theme-Change-('+w+'): ' + t;
         $log.debug(m);
-
-        listeners.forEach(function (lsnr) { 
-            lsnr({event: 'themeChange', value: t}); 
+        angular.forEach(listeners, function(value) {
+            value.cb(
+                {
+                    event: 'themeChange',
+                    value: t
+                }
+            );
         });
     }
 
-    function addListener(lsnr) {
-        listeners.push(lsnr);
+    function addListener(callback) {
+        var id = nextListenerId++,
+            cb = fs.isF(callback),
+            o = { id: id, cb: cb };
+
+        if (cb) {
+            listeners[id] = o;
+        } else {
+            $log.error('ThemeService.addListener(): callback not a function');
+            o.error = 'No callback defined';
+        }
+        return o;
     }
 
     function removeListener(lsnr) {
-        listeners = listeners.filter(function(obj) { return obj === lsnr; });
+        var id = lsnr && lsnr.id,
+            o = listeners[id];
+        if (o) {
+            delete listeners[id];
+        }
     }
 
     angular.module('onosUtil')
-        .factory('ThemeService', ['$log', 'FnService', 'PrefsService',
-        function (_$log_, _fs_, _ps_) {
+        .factory('ThemeService', ['$log', 'FnService',
+        function (_$log_, _fs_) {
             $log = _$log_;
             fs = _fs_;
-            ps = _ps_;
-
-            ps.addListener(applyTheme);
+            thidx = 0;
 
             return {
                 init: init,

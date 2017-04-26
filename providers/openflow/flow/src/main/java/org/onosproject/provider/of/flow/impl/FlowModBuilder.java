@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import org.onlab.packet.VlanId;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OduSignalId;
-import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.driver.DefaultDriverData;
 import org.onosproject.net.driver.DefaultDriverHandler;
 import org.onosproject.net.driver.Driver;
@@ -50,7 +49,6 @@ import org.onosproject.net.flow.criteria.IcmpCodeCriterion;
 import org.onosproject.net.flow.criteria.IcmpTypeCriterion;
 import org.onosproject.net.flow.criteria.Icmpv6CodeCriterion;
 import org.onosproject.net.flow.criteria.Icmpv6TypeCriterion;
-import org.onosproject.net.flow.criteria.IndexedLambdaCriterion;
 import org.onosproject.net.flow.criteria.MetadataCriterion;
 import org.onosproject.net.flow.criteria.MplsBosCriterion;
 import org.onosproject.net.flow.criteria.MplsCriterion;
@@ -66,8 +64,6 @@ import org.onosproject.net.flow.criteria.UdpPortCriterion;
 import org.onosproject.net.flow.criteria.VlanIdCriterion;
 import org.onosproject.net.flow.criteria.VlanPcpCriterion;
 import org.onosproject.openflow.controller.ExtensionSelectorInterpreter;
-import org.onosproject.provider.of.flow.util.NoMappingFoundException;
-import org.onosproject.provider.of.flow.util.OpenFlowValueMapper;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -421,26 +417,28 @@ public abstract class FlowModBuilder {
                                   U16.of(exthdrFlagsCriterion.exthdrFlags()));
                 break;
             case OCH_SIGID:
-                if (c instanceof IndexedLambdaCriterion) {
-                    IndexedLambdaCriterion indexedLambdaCriterion = (IndexedLambdaCriterion) c;
-                    IndexedLambda lambda = indexedLambdaCriterion.lambda();
-                    mBuilder.setExact(MatchField.EXP_OCH_SIG_ID, new CircuitSignalID((byte) 1, (byte) 2, (short) lambda.index(), (short) 1));
+                try {
+                    OchSignalCriterion ochSignalCriterion = (OchSignalCriterion) c;
+                    OchSignal signal = ochSignalCriterion.lambda();
+                    byte gridType = OpenFlowValueMapper.lookupGridType(signal.gridType());
+                    byte channelSpacing = OpenFlowValueMapper.lookupChannelSpacing(signal.channelSpacing());
 
-                } else {
-                    try {
-                        OchSignalCriterion ochSignalCriterion = (OchSignalCriterion) c;
-                        OchSignal signal = ochSignalCriterion.lambda();
-                        byte gridType = OpenFlowValueMapper.lookupGridType(signal.gridType());
-                        byte channelSpacing = OpenFlowValueMapper.lookupChannelSpacing(signal.channelSpacing());
-                        mBuilder.setExact(MatchField.EXP_OCH_SIG_ID,
-                                          new CircuitSignalID(gridType, channelSpacing,
-                                                              (short) signal.spacingMultiplier(), (short) signal.slotGranularity()));
-                    } catch (NoMappingFoundException e) {
-                        log.warn(e.getMessage());
-                    }
+                    //mBuilder.setExact(MatchField.EXP_OCH_SIG_ID,
+                    //        new CircuitSignalID(gridType, channelSpacing,
+                    //                (short) signal.spacingMultiplier(), (short) signal.slotGranularity()));
+
+                    short channelId = (short) signal.spacingMultiplier();
+                    mBuilder.setExact(MatchField.EXP_OCH_SIG_ID,
+                                      new CircuitSignalID((byte) 1, (byte) 2,
+                                                          channelId, (short) 1));
+
+
+                } catch (NoMappingFoundException e) {
+                    log.warn(e.getMessage());
                 }
                 break;
             case OCH_SIGTYPE:
+                log.warn(">>> case OCH_SIGTYPE");
                 try {
                     OchSignalTypeCriterion sc = (OchSignalTypeCriterion) c;
                     byte signalType = OpenFlowValueMapper.lookupOchSignalType(sc.signalType());
@@ -450,6 +448,7 @@ public abstract class FlowModBuilder {
                 }
                 break;
             case ODU_SIGID:
+                log.warn(">>> case ODU_SIGID");
                 OduSignalIdCriterion oduSignalIdCriterion = (OduSignalIdCriterion) c;
                 OduSignalId oduSignalId = oduSignalIdCriterion.oduSignalId();
                 mBuilder.setExact(MatchField.EXP_ODU_SIG_ID,
@@ -503,6 +502,7 @@ public abstract class FlowModBuilder {
                                   IPv4Address.of(arpPaCriterion.ip().toInt()));
                 break;
             case EXTENSION:
+                log.warn(">>> case EXTENSION");
                 ExtensionCriterion extensionCriterion = (ExtensionCriterion) c;
                 OFOxm oxm = buildExtensionOxm(extensionCriterion.extensionSelector());
                 if (oxm == null) {

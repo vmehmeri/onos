@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.onosproject.store.primitives.impl;
 import io.atomix.catalyst.serializer.Serializer;
 import io.atomix.catalyst.transport.Address;
 import io.atomix.resource.ResourceType;
+import io.atomix.variables.DistributedLong;
 
 import java.io.File;
 import java.util.Collection;
@@ -46,18 +47,20 @@ import com.google.common.collect.ImmutableSet;
 public class StoragePartition implements Managed<StoragePartition> {
 
     private final AtomicBoolean isOpened = new AtomicBoolean(false);
+    private final AtomicBoolean isClosed = new AtomicBoolean(false);
     private final Serializer serializer;
     private final MessagingService messagingService;
     private final ClusterService clusterService;
     private final File logFolder;
     private Partition partition;
+    private static final Collection<ResourceType> RESOURCE_TYPES = ImmutableSet.of(
+                                                        new ResourceType(DistributedLong.class),
+                                                        new ResourceType(AtomixLeaderElector.class),
+                                                        new ResourceType(AtomixConsistentMap.class));
+
     private NodeId localNodeId;
     private StoragePartitionServer server;
     private StoragePartitionClient client;
-
-    public static final Collection<ResourceType> RESOURCE_TYPES = ImmutableSet.of(
-                                                                    new ResourceType(AtomixLeaderElector.class),
-                                                                    new ResourceType(AtomixConsistentMap.class));
 
     public StoragePartition(Partition partition,
             MessagingService messagingService,
@@ -93,7 +96,8 @@ public class StoragePartition implements Managed<StoragePartition> {
     public CompletableFuture<Void> close() {
         // We do not explicitly close the server and instead let the cluster
         // deal with this as an unclean exit.
-        return closeClient();
+        return closeClient().thenAccept(v -> isClosed.set(true))
+                            .thenApply(v -> null);
     }
 
     /**
@@ -134,6 +138,7 @@ public class StoragePartition implements Managed<StoragePartition> {
                 () -> new CopycatTransport(CopycatTransport.Mode.SERVER,
                                      partition.getId(),
                                      messagingService),
+                RESOURCE_TYPES,
                 logFolder);
         return server.open().thenRun(() -> this.server = server);
     }
@@ -153,6 +158,7 @@ public class StoragePartition implements Managed<StoragePartition> {
                 () -> new CopycatTransport(CopycatTransport.Mode.SERVER,
                                      partition.getId(),
                                      messagingService),
+                RESOURCE_TYPES,
                 logFolder);
         return server.join(Collections2.transform(otherMembers, this::toAddress)).thenRun(() -> this.server = server);
     }
@@ -162,7 +168,8 @@ public class StoragePartition implements Managed<StoragePartition> {
                 serializer,
                 new CopycatTransport(CopycatTransport.Mode.CLIENT,
                                      partition.getId(),
-                                     messagingService));
+                                     messagingService),
+                RESOURCE_TYPES);
         return client.open().thenApply(v -> client);
     }
 
@@ -176,7 +183,12 @@ public class StoragePartition implements Managed<StoragePartition> {
 
     @Override
     public boolean isOpen() {
-        return isOpened.get();
+        return isOpened.get() && !isClosed.get();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return isClosed.get();
     }
 
     private CompletableFuture<Void> closeClient() {
@@ -197,27 +209,21 @@ public class StoragePartition implements Managed<StoragePartition> {
      * @return partition info
      */
     public Optional<PartitionInfo> info() {
-        return server != null && server.isOpen() ? Optional.of(server.info()) : Optional.empty();
+        return server != null && !server.isClosed() ? Optional.of(server.info()) : Optional.empty();
     }
 
-    /**
-     * Process updates to partitions and handles joining or leaving a partition.
-     * @param newValue new Partition
-     */
     public void onUpdate(Partition newValue) {
-
-        boolean wasPresent = partition.getMembers().contains(localNodeId);
-        boolean isPresent = newValue.getMembers().contains(localNodeId);
-        this.partition = newValue;
-        if ((wasPresent && isPresent) || (!wasPresent && !isPresent)) {
-            // no action needed
+        if (partition.getMembers().contains(localNodeId) && newValue.getMembers().contains(localNodeId)) {
             return;
         }
-        //only need to do action if our membership changed
-        if (wasPresent) {
-            leaveCluster();
-        } else if (isPresent) {
+        if (!partition.getMembers().contains(localNodeId) && !newValue.getMembers().contains(localNodeId)) {
+            return;
+        }
+        this.partition = newValue;
+        if (partition.getMembers().contains(localNodeId)) {
             joinCluster();
+        } else if (!partition.getMembers().contains(localNodeId)) {
+            leaveCluster();
         }
     }
 }

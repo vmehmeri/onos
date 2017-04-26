@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package org.onosproject.store.trivial;
 
 import com.google.common.collect.ImmutableSet;
-
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
@@ -33,14 +32,14 @@ import org.onosproject.cluster.DefaultControllerNode;
 import org.onosproject.cluster.NodeId;
 import org.onosproject.event.EventDeliveryService;
 import org.onosproject.event.ListenerRegistry;
-import org.onosproject.net.intent.WorkPartitionEvent;
-import org.onosproject.net.intent.WorkPartitionEventListener;
-import org.onosproject.net.intent.WorkPartitionService;
+import org.onosproject.net.intent.Key;
+import org.onosproject.net.intent.IntentPartitionEvent;
+import org.onosproject.net.intent.IntentPartitionEventListener;
+import org.onosproject.net.intent.IntentPartitionService;
 import org.onosproject.store.AbstractStore;
 import org.slf4j.Logger;
 
 import java.util.Set;
-import java.util.function.Function;
 
 import static org.onosproject.security.AppGuard.checkPermission;
 import static org.onosproject.security.AppPermission.Type.*;
@@ -54,7 +53,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 @Service
 public class SimpleClusterStore
         extends AbstractStore<ClusterEvent, ClusterStoreDelegate>
-        implements ClusterStore, WorkPartitionService {
+        implements ClusterStore, IntentPartitionService {
 
     public static final IpAddress LOCALHOST = IpAddress.valueOf("127.0.0.1");
 
@@ -67,22 +66,21 @@ public class SimpleClusterStore
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected EventDeliveryService eventDispatcher;
 
-    private ListenerRegistry<WorkPartitionEvent, WorkPartitionEventListener> listenerRegistry;
-    private boolean started = false;
+    private ListenerRegistry<IntentPartitionEvent, IntentPartitionEventListener> listenerRegistry;
 
     @Activate
     public void activate() {
         instance = new DefaultControllerNode(new NodeId("local"), LOCALHOST);
 
         listenerRegistry = new ListenerRegistry<>();
-        eventDispatcher.addSink(WorkPartitionEvent.class, listenerRegistry);
+        eventDispatcher.addSink(IntentPartitionEvent.class, listenerRegistry);
 
         log.info("Started");
     }
 
     @Deactivate
     public void deactivate() {
-        eventDispatcher.removeSink(WorkPartitionEvent.class);
+        eventDispatcher.removeSink(IntentPartitionEvent.class);
         log.info("Stopped");
     }
 
@@ -108,11 +106,6 @@ public class SimpleClusterStore
     }
 
     @Override
-    public void markFullyStarted(boolean started) {
-        this.started = started;
-    }
-
-    @Override
     public DateTime getLastUpdated(NodeId nodeId) {
         return creationTime;
     }
@@ -127,25 +120,25 @@ public class SimpleClusterStore
     }
 
     @Override
-    public <K> boolean isMine(K key, Function<K, Long> hasher) {
+    public boolean isMine(Key intentKey) {
         checkPermission(INTENT_READ);
         return true;
     }
 
     @Override
-    public <K> NodeId getLeader(K key, Function<K, Long> hasher) {
+    public NodeId getLeader(Key intentKey) {
         checkPermission(INTENT_READ);
         return instance.id();
     }
 
     @Override
-    public void addListener(WorkPartitionEventListener listener) {
+    public void addListener(IntentPartitionEventListener listener) {
         checkPermission(INTENT_EVENT);
         listenerRegistry.addListener(listener);
     }
 
     @Override
-    public void removeListener(WorkPartitionEventListener listener) {
+    public void removeListener(IntentPartitionEventListener listener) {
         checkPermission(INTENT_EVENT);
         listenerRegistry.removeListener(listener);
     }

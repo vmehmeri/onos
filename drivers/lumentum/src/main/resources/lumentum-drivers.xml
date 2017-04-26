@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright 2016-present Open Networking Laboratory
+  ~ Copyright 2016 Open Networking Laboratory
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -15,23 +15,13 @@
   ~ limitations under the License.
   -->
 <drivers>
-    <driver name="lumentum-sdn" manufacturer="Lumentum" hwVersion="SDN ROADM" swVersion="1.0">
-        <behaviour api="org.onosproject.net.device.DeviceDescriptionDiscovery"
-                   impl="org.onosproject.drivers.lumentum.LumentumRoadmDiscovery"/>
+    <driver name="lumentum" manufacturer="Lumentum" hwVersion="SDN ROADM" swVersion="1.0">
+        <behaviour api="org.onosproject.net.behaviour.PortDiscovery"
+                   impl="org.onosproject.drivers.lumentum.PortDiscoveryLumentumRoadm"/>
         <behaviour api="org.onosproject.net.behaviour.LambdaQuery"
-                   impl="org.onosproject.drivers.lumentum.LumentumSdnRoadmLambdaQuery"/>
+                   impl="org.onosproject.drivers.lumentum.LambdaQueryLumentumRoadm"/>
         <behaviour api="org.onosproject.net.flow.FlowRuleProgrammable"
-                   impl="org.onosproject.drivers.lumentum.LumentumSdnRoadmFlowRuleProgrammable"/>
-        <behaviour api="org.onosproject.incubator.net.faultmanagement.alarm.AlarmConsumer"
-                   impl="org.onosproject.drivers.lumentum.LumentumAlarmConsumer"/>
-        <behaviour api="org.onosproject.net.optical.OpticalDevice"
-                   impl="org.onosproject.net.optical.DefaultOpticalDevice"/>
-    </driver>
-    <driver name="lumentum-waveready" manufacturer="Lumentum" hwVersion="WR*">
-        <behaviour api="org.onosproject.net.device.DeviceDescriptionDiscovery"
-                   impl="org.onosproject.drivers.lumentum.LumentumWaveReadyDiscovery"/>
-        <behaviour api="org.onosproject.net.optical.OpticalDevice"
-                   impl="org.onosproject.net.optical.DefaultOpticalDevice"/>
+                   impl="org.onosproject.drivers.lumentum.LumentumFlowRuleDriver"/>
     </driver>
 </drivers>
 

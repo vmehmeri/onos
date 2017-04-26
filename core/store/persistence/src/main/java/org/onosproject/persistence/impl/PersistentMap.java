@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -118,8 +118,7 @@ public class PersistentMap<K, V> implements Map<K, V> {
     @Override
     public V get(Object key) {
         checkNotNull(key, "Key cannot be null.");
-        byte[] bytes = items.get(serializer.encode(key));
-        return bytes == null ? null : serializer.decode(bytes);
+        return serializer.decode(items.get(serializer.encode(key)));
     }
 
     @Override

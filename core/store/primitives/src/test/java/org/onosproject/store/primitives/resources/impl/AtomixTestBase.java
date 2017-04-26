@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,40 +15,48 @@
  */
 package org.onosproject.store.primitives.resources.impl;
 
-import com.google.common.util.concurrent.Uninterruptibles;
-
+import io.atomix.Atomix;
 import io.atomix.AtomixClient;
 import io.atomix.catalyst.serializer.Serializer;
 import io.atomix.catalyst.transport.Address;
-import io.atomix.catalyst.transport.local.LocalServerRegistry;
-import io.atomix.catalyst.transport.netty.NettyTransport;
+import io.atomix.catalyst.transport.LocalServerRegistry;
+import io.atomix.catalyst.transport.LocalTransport;
 import io.atomix.copycat.client.CopycatClient;
 import io.atomix.copycat.server.CopycatServer;
 import io.atomix.copycat.server.storage.Storage;
 import io.atomix.copycat.server.storage.StorageLevel;
-import io.atomix.manager.internal.ResourceManagerState;
+import io.atomix.manager.state.ResourceManagerState;
+import io.atomix.resource.ResourceRegistry;
 import io.atomix.resource.ResourceType;
-import org.onlab.junit.TestTools;
-import org.onosproject.store.primitives.impl.CatalystSerializers;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.After;
+import org.junit.Before;
+import org.onosproject.store.primitives.impl.CatalystSerializers;
+
+import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
- * Base class for various Atomix tests.
+ * Base class for various Atomix* tests.
  */
 public abstract class AtomixTestBase {
-    protected static LocalServerRegistry registry = new LocalServerRegistry();
-    protected static List<Address> members = new ArrayList<>();
-    protected static List<CopycatClient> copycatClients = new ArrayList<>();
-    protected static List<CopycatServer> copycatServers = new ArrayList<>();
-    protected static List<AtomixClient> atomixClients = new ArrayList<>();
-    protected static List<CopycatServer> atomixServers = new ArrayList<>();
-    protected static Serializer serializer = CatalystSerializers.getSerializer();
-    protected static AtomicInteger port = new AtomicInteger(49200);
+    private static final File TEST_DIR = new File("target/test-logs");
+    protected LocalServerRegistry registry;
+    protected int port;
+    protected List<Address> members;
+    protected List<CopycatClient> copycatClients = new ArrayList<>();
+    protected List<CopycatServer> copycatServers = new ArrayList<>();
+    protected List<Atomix> atomixClients = new ArrayList<>();
+    protected List<CopycatServer> atomixServers = new ArrayList<>();
+    protected Serializer serializer = CatalystSerializers.getSerializer();
 
     /**
      * Creates a new resource state machine.
@@ -62,9 +70,8 @@ public abstract class AtomixTestBase {
      *
      * @return The next server address.
      */
-    private static Address nextAddress() {
-        Address address = new Address("127.0.0.1",
-                          TestTools.findAvailablePort(port.getAndIncrement()));
+    private Address nextAddress() {
+        Address address = new Address("localhost", port++);
         members.add(address);
         return address;
     }
@@ -72,23 +79,22 @@ public abstract class AtomixTestBase {
     /**
      * Creates a set of Copycat servers.
      */
-    protected static List<CopycatServer> createCopycatServers(int nodes)
-            throws Throwable {
+    protected List<CopycatServer> createCopycatServers(int nodes) throws Throwable {
+        CountDownLatch latch = new CountDownLatch(nodes);
         List<CopycatServer> servers = new ArrayList<>();
 
         List<Address> members = new ArrayList<>();
+        for (int i = 0; i < nodes; i++) {
+            members.add(nextAddress());
+        }
 
         for (int i = 0; i < nodes; i++) {
-            Address address = nextAddress();
-            members.add(address);
-            CopycatServer server = createCopycatServer(address);
-            if (members.size() <= 1) {
-                server.bootstrap().join();
-            } else {
-                server.join(members).join();
-            }
+            CopycatServer server = createCopycatServer(members.get(i));
+            server.open().thenRun(latch::countDown);
             servers.add(server);
         }
+
+        Uninterruptibles.awaitUninterruptibly(latch);
 
         return servers;
     }
@@ -96,50 +102,78 @@ public abstract class AtomixTestBase {
     /**
      * Creates a Copycat server.
      */
-    protected static CopycatServer createCopycatServer(Address address) {
-        CopycatServer server = CopycatServer.builder(address)
-                .withTransport(NettyTransport.builder().withThreads(1).build())
+    protected CopycatServer createCopycatServer(Address address) {
+        ResourceRegistry resourceRegistry = new ResourceRegistry();
+        resourceRegistry.register(resourceType());
+        CopycatServer server = CopycatServer.builder(address, members)
+                .withTransport(new LocalTransport(registry))
                 .withStorage(Storage.builder()
-                             .withStorageLevel(StorageLevel.MEMORY)
-                             .build())
-                .withStateMachine(ResourceManagerState::new)
+                        .withStorageLevel(StorageLevel.DISK)
+                        .withDirectory(TEST_DIR + "/" + address.port())
+                        .build())
+                .withStateMachine(() -> new ResourceManagerState(resourceRegistry))
                 .withSerializer(serializer.clone())
+                .withHeartbeatInterval(Duration.ofMillis(25))
+                .withElectionTimeout(Duration.ofMillis(50))
+                .withSessionTimeout(Duration.ofMillis(100))
                 .build();
         copycatServers.add(server);
         return server;
     }
 
-    public static void clearTests() throws Exception {
+    @Before
+    @After
+    public void clearTests() throws Exception {
         registry = new LocalServerRegistry();
         members = new ArrayList<>();
+        port = 5000;
 
         CompletableFuture<Void> closeClients =
                 CompletableFuture.allOf(atomixClients.stream()
-                                                     .map(AtomixClient::close)
+                                                     .map(Atomix::close)
                                                      .toArray(CompletableFuture[]::new));
-        closeClients.join();
 
-        CompletableFuture<Void> closeServers =
-                CompletableFuture.allOf(copycatServers.stream()
-                                                      .map(CopycatServer::shutdown)
-                                                      .toArray(CompletableFuture[]::new));
-        closeServers.join();
+        closeClients.thenCompose(v -> CompletableFuture.allOf(copycatServers.stream()
+                .map(CopycatServer::close)
+                .toArray(CompletableFuture[]::new))).join();
 
-        atomixClients.clear();
-        copycatServers.clear();
+        deleteDirectory(TEST_DIR);
+
+        atomixClients = new ArrayList<>();
+
+        copycatServers = new ArrayList<>();
     }
 
+    /**
+     * Deletes a directory recursively.
+     */
+    private void deleteDirectory(File directory) throws IOException {
+        if (directory.exists()) {
+            File[] files = directory.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        deleteDirectory(file);
+                    } else {
+                        Files.delete(file.toPath());
+                    }
+                }
+            }
+            Files.delete(directory.toPath());
+        }
+    }
 
     /**
      * Creates a Atomix client.
      */
-    protected AtomixClient createAtomixClient() {
+    protected Atomix createAtomixClient() {
         CountDownLatch latch = new CountDownLatch(1);
-        AtomixClient client = AtomixClient.builder()
-                .withTransport(NettyTransport.builder().withThreads(1).build())
+        Atomix client = AtomixClient.builder(members)
+                .withTransport(new LocalTransport(registry))
                 .withSerializer(serializer.clone())
+                .withResourceResolver(r -> r.register(resourceType()))
                 .build();
-        client.connect(members).thenRun(latch::countDown);
+        client.open().thenRun(latch::countDown);
         atomixClients.add(client);
         Uninterruptibles.awaitUninterruptibly(latch);
         return client;

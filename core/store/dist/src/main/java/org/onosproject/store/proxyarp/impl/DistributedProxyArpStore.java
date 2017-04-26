@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ import org.onosproject.net.proxyarp.ProxyArpStoreDelegate;
 import org.onosproject.store.cluster.messaging.ClusterCommunicationService;
 import org.onosproject.store.cluster.messaging.MessageSubject;
 import org.onosproject.store.serializers.KryoNamespaces;
-import org.onosproject.store.serializers.StoreSerializer;
+import org.onosproject.store.serializers.KryoSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,11 +50,7 @@ import static org.onlab.util.Tools.groupedThreads;
 
 /**
  * Implementation of proxy ARP distribution mechanism.
- *
- * @deprecated in Hummingbird release. This is no longer necessary as there are
- * other solutions for the problem this was solving.
  */
-@Deprecated
 @Component(immediate = true)
 @Service
 public class DistributedProxyArpStore implements ProxyArpStore {
@@ -64,20 +60,23 @@ public class DistributedProxyArpStore implements ProxyArpStore {
     private static final MessageSubject ARP_RESPONSE_MESSAGE =
             new MessageSubject("onos-arp-response");
 
-    protected final StoreSerializer serializer = StoreSerializer.using(
-            KryoNamespace.newBuilder()
+    protected final KryoSerializer serializer = new KryoSerializer() {
+        @Override
+        protected void setupKryoPool() {
+            serializerPool = KryoNamespace.newBuilder()
                     .register(KryoNamespaces.API)
-                    .nextId(KryoNamespaces.BEGIN_USER_CUSTOM_ID)
                     .register(ArpResponseMessage.class)
                     .register(ByteBuffer.class)
-                    .build("ProxyArpStore"));
+                    .build();
+        }
+    };
 
     private ProxyArpStoreDelegate delegate;
 
     private Map<HostId, ArpResponseMessage> pendingMessages = Maps.newConcurrentMap();
 
     private ExecutorService executor =
-            newFixedThreadPool(4, groupedThreads("onos/arp", "sender-%d", log));
+            newFixedThreadPool(4, groupedThreads("onos/arp", "sender-%d"));
 
     private NodeId localNodeId;
 

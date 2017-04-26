@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,54 +15,35 @@
  */
 package org.onosproject.store.primitives.impl;
 
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
+import static org.slf4j.LoggerFactory.getLogger;
+import io.atomix.Atomix;
 import io.atomix.AtomixClient;
 import io.atomix.catalyst.transport.Transport;
-import io.atomix.copycat.client.ConnectionStrategies;
-import io.atomix.copycat.client.CopycatClient;
-import io.atomix.copycat.client.CopycatClient.State;
-import io.atomix.copycat.client.RecoveryStrategies;
-import io.atomix.copycat.client.ServerSelectionStrategies;
-import io.atomix.manager.ResourceClient;
-import io.atomix.manager.ResourceManagerException;
-import io.atomix.manager.util.ResourceManagerTypeResolver;
-import io.atomix.resource.ResourceRegistry;
 import io.atomix.resource.ResourceType;
 import io.atomix.variables.DistributedLong;
-import org.onlab.util.HexString;
-import org.onosproject.store.primitives.DistributedPrimitiveCreator;
-import org.onosproject.store.primitives.resources.impl.AtomixAtomicCounterMap;
-import org.onosproject.store.primitives.resources.impl.AtomixConsistentMap;
-import org.onosproject.store.primitives.resources.impl.AtomixConsistentSetMultimap;
-import org.onosproject.store.primitives.resources.impl.AtomixConsistentTreeMap;
-import org.onosproject.store.primitives.resources.impl.AtomixCounter;
-import org.onosproject.store.primitives.resources.impl.AtomixDocumentTree;
-import org.onosproject.store.primitives.resources.impl.AtomixLeaderElector;
-import org.onosproject.store.primitives.resources.impl.AtomixWorkQueue;
-import org.onosproject.store.serializers.KryoNamespaces;
-import org.onosproject.store.service.AsyncAtomicCounter;
-import org.onosproject.store.service.AsyncAtomicCounterMap;
-import org.onosproject.store.service.AsyncAtomicValue;
-import org.onosproject.store.service.AsyncConsistentMap;
-import org.onosproject.store.service.AsyncConsistentMultimap;
-import org.onosproject.store.service.AsyncConsistentTreeMap;
-import org.onosproject.store.service.AsyncDistributedSet;
-import org.onosproject.store.service.AsyncDocumentTree;
-import org.onosproject.store.service.AsyncLeaderElector;
-import org.onosproject.store.service.DistributedPrimitive.Status;
-import org.onosproject.store.service.PartitionClientInfo;
-import org.onosproject.store.service.Serializer;
-import org.onosproject.store.service.WorkQueue;
-import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
-import static org.slf4j.LoggerFactory.getLogger;
+import org.onlab.util.HexString;
+import org.onosproject.store.primitives.DistributedPrimitiveCreator;
+import org.onosproject.store.primitives.resources.impl.AtomixConsistentMap;
+import org.onosproject.store.primitives.resources.impl.AtomixCounter;
+import org.onosproject.store.primitives.resources.impl.AtomixLeaderElector;
+import org.onosproject.store.serializers.KryoNamespaces;
+import org.onosproject.store.service.AsyncAtomicCounter;
+import org.onosproject.store.service.AsyncAtomicValue;
+import org.onosproject.store.service.AsyncConsistentMap;
+import org.onosproject.store.service.AsyncDistributedSet;
+import org.onosproject.store.service.AsyncLeaderElector;
+import org.onosproject.store.service.DistributedQueue;
+import org.onosproject.store.service.Serializer;
+import org.slf4j.Logger;
+
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * StoragePartition client.
@@ -74,44 +55,38 @@ public class StoragePartitionClient implements DistributedPrimitiveCreator, Mana
     private final StoragePartition partition;
     private final Transport transport;
     private final io.atomix.catalyst.serializer.Serializer serializer;
-    private AtomixClient client;
-    private ResourceClient resourceClient;
+    private final Collection<ResourceType> resourceTypes;
+    private Atomix client;
     private static final String ATOMIC_VALUES_CONSISTENT_MAP_NAME = "onos-atomic-values";
     private final Supplier<AsyncConsistentMap<String, byte[]>> onosAtomicValuesMap =
             Suppliers.memoize(() -> newAsyncConsistentMap(ATOMIC_VALUES_CONSISTENT_MAP_NAME,
                                                           Serializer.using(KryoNamespaces.BASIC)));
-    Function<State, Status> mapper = state -> {
-                                        switch (state) {
-                                        case CONNECTED:
-                                            return Status.ACTIVE;
-                                        case SUSPENDED:
-                                            return Status.SUSPENDED;
-                                        case CLOSED:
-                                            return Status.INACTIVE;
-                                        default:
-                                            throw new IllegalStateException("Unknown state " + state);
-                                        }
-                                    };
 
     public StoragePartitionClient(StoragePartition partition,
             io.atomix.catalyst.serializer.Serializer serializer,
-            Transport transport) {
+            Transport transport,
+            Collection<ResourceType> resourceTypes) {
         this.partition = partition;
         this.serializer = serializer;
         this.transport = transport;
+        this.resourceTypes = ImmutableSet.copyOf(resourceTypes);
     }
 
     @Override
     public CompletableFuture<Void> open() {
-        synchronized (StoragePartitionClient.this) {
-            resourceClient = newResourceClient(transport,
-                                             serializer.clone(),
-                                             StoragePartition.RESOURCE_TYPES);
-            resourceClient.client().onStateChange(state -> log.debug("Partition {} client state"
-                    + " changed to {}", partition.getId(), state));
-            client = new AtomixClient(resourceClient);
+        if (client != null && client.isOpen()) {
+            return CompletableFuture.completedFuture(null);
         }
-        return client.connect(partition.getMemberAddresses()).whenComplete((r, e) -> {
+        synchronized (StoragePartitionClient.this) {
+            client = AtomixClient.builder(partition.getMemberAddresses())
+                                .withSerializer(serializer.clone())
+                                .withResourceResolver(r -> {
+                                    resourceTypes.forEach(r::register);
+                                })
+                                .withTransport(transport)
+                                .build();
+        }
+        return client.open().whenComplete((r, e) -> {
             if (e == null) {
                 log.info("Successfully started client for partition {}", partition.getId());
             } else {
@@ -127,82 +102,20 @@ public class StoragePartitionClient implements DistributedPrimitiveCreator, Mana
 
     @Override
     public <K, V> AsyncConsistentMap<K, V> newAsyncConsistentMap(String name, Serializer serializer) {
-        AtomixConsistentMap atomixConsistentMap = client.getResource(name, AtomixConsistentMap.class).join();
-        Consumer<State> statusListener = state -> {
-            atomixConsistentMap.statusChangeListeners()
-                               .forEach(listener -> listener.accept(mapper.apply(state)));
-        };
-        resourceClient.client().onStateChange(statusListener);
         AsyncConsistentMap<String, byte[]> rawMap =
-                new DelegatingAsyncConsistentMap<String, byte[]>(atomixConsistentMap) {
+                new DelegatingAsyncConsistentMap<String, byte[]>(client.get(name, AtomixConsistentMap.class).join()) {
                     @Override
                     public String name() {
                         return name;
                     }
                 };
         AsyncConsistentMap<K, V> transcodedMap = DistributedPrimitives.<K, V, String, byte[]>newTranscodingMap(rawMap,
-            key -> HexString.toHexString(serializer.encode(key)),
-            string -> serializer.decode(HexString.fromHexString(string)),
-            value -> value == null ? null : serializer.encode(value),
-            bytes -> serializer.decode(bytes));
-
-        return transcodedMap;
-    }
-
-    @Override
-    public <V> AsyncConsistentTreeMap<V> newAsyncConsistentTreeMap(String name, Serializer serializer) {
-        AtomixConsistentTreeMap atomixConsistentTreeMap =
-                client.getResource(name, AtomixConsistentTreeMap.class).join();
-        Consumer<State> statusListener = state -> {
-            atomixConsistentTreeMap.statusChangeListeners()
-                    .forEach(listener -> listener.accept(mapper.apply(state)));
-        };
-        resourceClient.client().onStateChange(statusListener);
-        AsyncConsistentTreeMap<byte[]> rawMap =
-                new DelegatingAsyncConsistentTreeMap<byte[]>(atomixConsistentTreeMap) {
-                    @Override
-                    public String name() {
-                        return name;
-                    }
-                };
-        AsyncConsistentTreeMap<V> transcodedMap =
-                DistributedPrimitives.<V, byte[]>newTranscodingTreeMap(
-                    rawMap,
-                    value -> value == null ? null : serializer.encode(value),
-                    bytes -> serializer.decode(bytes));
-        return transcodedMap;
-    }
-
-    @Override
-    public <K, V> AsyncConsistentMultimap<K, V> newAsyncConsistentSetMultimap(
-            String name, Serializer serializer) {
-        AtomixConsistentSetMultimap atomixConsistentSetMultimap =
-                client.getResource(name, AtomixConsistentSetMultimap.class)
-                        .join();
-        Consumer<State> statusListener = state -> {
-            atomixConsistentSetMultimap.statusChangeListeners()
-                    .forEach(listener -> listener.accept(mapper.apply(state)));
-        };
-        resourceClient.client().onStateChange(statusListener);
-        AsyncConsistentMultimap<String, byte[]> rawMap =
-                new DelegatingAsyncConsistentMultimap<String, byte[]>(
-                        atomixConsistentSetMultimap) {
-                    @Override
-                    public String name() {
-                        return super.name();
-                    }
-                };
-        AsyncConsistentMultimap<K, V> trancodedMap =
-                DistributedPrimitives.<K, V, String, byte[]>newTranscodingMultimap(
-                        rawMap,
                         key -> HexString.toHexString(serializer.encode(key)),
-                        string -> serializer.decode(
-                                HexString.fromHexString(string)),
-                        value -> value == null ? null :
-                                serializer.encode(value),
+                        string -> serializer.decode(HexString.fromHexString(string)),
+                        value -> value == null ? null : serializer.encode(value),
                         bytes -> serializer.decode(bytes));
-        return trancodedMap;
 
+        return DistributedPrimitives.newCachingMap(transcodedMap);
     }
 
     @Override
@@ -211,52 +124,27 @@ public class StoragePartitionClient implements DistributedPrimitiveCreator, Mana
     }
 
     @Override
-    public <K> AsyncAtomicCounterMap<K> newAsyncAtomicCounterMap(String name, Serializer serializer) {
-        AtomixAtomicCounterMap atomixAtomicCounterMap =
-                client.getResource(name, AtomixAtomicCounterMap.class)
-                        .join();
-        AsyncAtomicCounterMap<K> transcodedMap =
-                DistributedPrimitives.<K, String>newTranscodingAtomicCounterMap(
-                       atomixAtomicCounterMap,
-                        key -> HexString.toHexString(serializer.encode(key)),
-                        string -> serializer.decode(HexString.fromHexString(string)));
-        return transcodedMap;
-    }
-
-    @Override
     public AsyncAtomicCounter newAsyncCounter(String name) {
-        DistributedLong distributedLong = client.getLong(name).join();
+        DistributedLong distributedLong = client.get(name, DistributedLong.class).join();
         return new AtomixCounter(name, distributedLong);
     }
 
     @Override
     public <V> AsyncAtomicValue<V> newAsyncAtomicValue(String name, Serializer serializer) {
-       return new DefaultAsyncAtomicValue<>(name, serializer, onosAtomicValuesMap.get());
+       return new DefaultAsyncAtomicValue<>(name,
+                                        serializer,
+                                        onosAtomicValuesMap.get());
     }
 
     @Override
-    public <E> WorkQueue<E> newWorkQueue(String name, Serializer serializer) {
-        AtomixWorkQueue workQueue = client.getResource(name, AtomixWorkQueue.class).join();
-        return new DefaultDistributedWorkQueue<>(workQueue, serializer);
-    }
-
-    @Override
-    public <V> AsyncDocumentTree<V> newAsyncDocumentTree(String name, Serializer serializer) {
-        AtomixDocumentTree atomixDocumentTree = client.getResource(name, AtomixDocumentTree.class).join();
-        return new DefaultDistributedDocumentTree<>(name, atomixDocumentTree, serializer);
+    public <E> DistributedQueue<E> newDistributedQueue(String name, Serializer serializer) {
+        // TODO: Implement
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public AsyncLeaderElector newAsyncLeaderElector(String name) {
-        AtomixLeaderElector leaderElector = client.getResource(name, AtomixLeaderElector.class)
-                                                  .thenCompose(AtomixLeaderElector::setupCache)
-                                                  .join();
-        Consumer<State> statusListener = state -> {
-            leaderElector.statusChangeListeners()
-                         .forEach(listener -> listener.accept(mapper.apply(state)));
-        };
-        resourceClient.client().onStateChange(statusListener);
-        return leaderElector;
+        return client.get(name, AtomixLeaderElector.class).join();
     }
 
     @Override
@@ -270,49 +158,12 @@ public class StoragePartitionClient implements DistributedPrimitiveCreator, Mana
     }
 
     @Override
-    public Set<String> getWorkQueueNames() {
-        return client.keys(AtomixWorkQueue.class).join();
+    public boolean isOpen() {
+        return client.isOpen();
     }
 
     @Override
-    public boolean isOpen() {
-        return resourceClient.client().state() != State.CLOSED;
-    }
-
-    /**
-     * Returns the {@link PartitionClientInfo information} for this client.
-     * @return partition client information
-     */
-    public PartitionClientInfo clientInfo() {
-        return new PartitionClientInfo(partition.getId(),
-                partition.getMembers(),
-                resourceClient.client().session().id(),
-                mapper.apply(resourceClient.client().state()));
-    }
-
-    private ResourceClient newResourceClient(Transport transport,
-                                           io.atomix.catalyst.serializer.Serializer serializer,
-                                           Collection<ResourceType> resourceTypes) {
-        ResourceRegistry registry = new ResourceRegistry();
-        resourceTypes.forEach(registry::register);
-        CopycatClient copycatClient = CopycatClient.builder()
-                .withServerSelectionStrategy(ServerSelectionStrategies.ANY)
-                .withConnectionStrategy(ConnectionStrategies.FIBONACCI_BACKOFF)
-                .withRecoveryStrategy(RecoveryStrategies.RECOVER)
-                .withTransport(transport)
-                .withSerializer(serializer)
-                .build();
-        copycatClient.serializer().resolve(new ResourceManagerTypeResolver());
-        for (ResourceType type : registry.types()) {
-            try {
-                type.factory()
-                    .newInstance()
-                    .createSerializableTypeResolver()
-                    .resolve(copycatClient.serializer().registry());
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new ResourceManagerException(e);
-            }
-        }
-        return new ResourceClient(new OnosCopycatClient(copycatClient, 5, 100));
+    public boolean isClosed() {
+        return client.isClosed();
     }
 }

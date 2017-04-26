@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ public class RegionsWebResource extends AbstractWebResource {
     /**
      * Returns set of all regions.
      *
-     * @return 200 OK with set of all regions
+     * @return 200 OK
      * @onos.rsModel Regions
      */
     @GET
@@ -73,7 +73,7 @@ public class RegionsWebResource extends AbstractWebResource {
      * Returns the region with the specified identifier.
      *
      * @param regionId region identifier
-     * @return 200 OK with a region, 404 not found
+     * @return 200 OK, 404 not found
      * @onos.rsModel Region
      */
     @GET
@@ -90,7 +90,7 @@ public class RegionsWebResource extends AbstractWebResource {
      * Returns the set of devices that belong to the specified region.
      *
      * @param regionId region identifier
-     * @return 200 OK with set of devices that belong to the specified region
+     * @return 200 OK
      * @onos.rsModel RegionDeviceIds
      */
     @GET
@@ -143,6 +143,7 @@ public class RegionsWebResource extends AbstractWebResource {
     @PUT
     @Path("{regionId}")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response updateRegion(@PathParam("regionId") String regionId,
                                  InputStream stream) {
         try {
@@ -168,14 +169,15 @@ public class RegionsWebResource extends AbstractWebResource {
      * Removes the specified region using the given region identifier.
      *
      * @param regionId region identifier
-     * @return 204 NO CONTENT
+     * @return 200 OK, 404 not found
      */
     @DELETE
     @Path("{regionId}")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response removeRegion(@PathParam("regionId") String regionId) {
         final RegionId rid = RegionId.regionId(regionId);
         regionAdminService.removeRegion(rid);
-        return Response.noContent().build();
+        return Response.ok().build();
     }
 
     /**
@@ -193,13 +195,11 @@ public class RegionsWebResource extends AbstractWebResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response addDevices(@PathParam("regionId") String regionId,
                                InputStream stream) {
-        RegionId rid = RegionId.regionId(regionId);
-        Region region = nullIsNotFound(regionService.getRegion(rid),
-                REGION_NOT_FOUND + rid);
+        final RegionId rid = RegionId.regionId(regionId);
 
         URI location;
         try {
-            regionAdminService.addDevices(region.id(), extractDeviceIds(stream));
+            regionAdminService.addDevices(rid, extractDeviceIds(stream));
             location = new URI(rid.id());
         } catch (IOException | URISyntaxException e) {
             throw new IllegalArgumentException(e);
@@ -213,17 +213,16 @@ public class RegionsWebResource extends AbstractWebResource {
      *
      * @param regionId region identifier
      * @param stream deviceIds JSON stream
-     * @return 204 NO CONTENT
+     * @return 200 OK, 404 not found
      * @onos.rsModel RegionDeviceIds
      */
     @DELETE
     @Path("{regionId}/devices")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response removeDevices(@PathParam("regionId") String regionId,
                                   InputStream stream) {
-        RegionId rid = RegionId.regionId(regionId);
-        Region region = nullIsNotFound(regionService.getRegion(rid),
-                REGION_NOT_FOUND + rid);
+        final RegionId rid = RegionId.regionId(regionId);
 
         try {
             regionAdminService.removeDevices(rid, extractDeviceIds(stream));
@@ -231,7 +230,7 @@ public class RegionsWebResource extends AbstractWebResource {
             throw new IllegalArgumentException(e);
         }
 
-        return Response.noContent().build();
+        return Response.ok().build();
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 package org.onosproject.store.primitives.impl;
 
-import static org.onosproject.security.AppGuard.checkPermission;
-import static org.onosproject.security.AppPermission.Type.STORAGE_WRITE;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.util.Collection;
@@ -37,24 +35,18 @@ import org.onosproject.cluster.PartitionId;
 import org.onosproject.persistence.PersistenceService;
 import org.onosproject.store.cluster.messaging.ClusterCommunicationService;
 import org.onosproject.store.primitives.DistributedPrimitiveCreator;
+import org.onosproject.store.primitives.MapUpdate;
 import org.onosproject.store.primitives.PartitionAdminService;
 import org.onosproject.store.primitives.PartitionService;
 import org.onosproject.store.primitives.TransactionId;
 import org.onosproject.store.serializers.KryoNamespaces;
-import org.onosproject.store.service.AsyncAtomicValue;
 import org.onosproject.store.service.AsyncConsistentMap;
-import org.onosproject.store.service.AsyncDocumentTree;
-import org.onosproject.store.service.AsyncConsistentMultimap;
-import org.onosproject.store.service.AsyncConsistentTreeMap;
 import org.onosproject.store.service.AtomicCounterBuilder;
-import org.onosproject.store.service.AtomicCounterMapBuilder;
 import org.onosproject.store.service.AtomicValueBuilder;
 import org.onosproject.store.service.ConsistentMap;
 import org.onosproject.store.service.ConsistentMapBuilder;
-import org.onosproject.store.service.ConsistentMultimapBuilder;
-import org.onosproject.store.service.ConsistentTreeMapBuilder;
+import org.onosproject.store.service.DistributedQueueBuilder;
 import org.onosproject.store.service.DistributedSetBuilder;
-import org.onosproject.store.service.DocumentTreeBuilder;
 import org.onosproject.store.service.EventuallyConsistentMapBuilder;
 import org.onosproject.store.service.LeaderElectorBuilder;
 import org.onosproject.store.service.MapInfo;
@@ -62,20 +54,21 @@ import org.onosproject.store.service.PartitionInfo;
 import org.onosproject.store.service.Serializer;
 import org.onosproject.store.service.StorageAdminService;
 import org.onosproject.store.service.StorageService;
-import org.onosproject.store.service.Topic;
 import org.onosproject.store.service.TransactionContextBuilder;
-import org.onosproject.store.service.WorkQueue;
-import org.onosproject.store.service.WorkQueueStats;
 import org.slf4j.Logger;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
+
+import static org.onosproject.security.AppGuard.checkPermission;
+import static org.onosproject.security.AppPermission.Type.*;
 
 /**
  * Implementation for {@code StorageService} and {@code StorageAdminService}.
  */
 @Service
-@Component(immediate = true)
+@Component(immediate = true, enabled = false)
 public class StorageManager implements StorageService, StorageAdminService {
 
     private final Logger log = getLogger(getClass());
@@ -111,6 +104,8 @@ public class StorageManager implements StorageService, StorageAdminService {
         transactions = this.<TransactionId, Transaction.State>consistentMapBuilder()
                     .withName("onos-transactions")
                     .withSerializer(Serializer.using(KryoNamespaces.API,
+                            MapUpdate.class,
+                            MapUpdate.Type.class,
                             Transaction.class,
                             Transaction.State.class))
                     .buildAsyncMap();
@@ -134,32 +129,7 @@ public class StorageManager implements StorageService, StorageAdminService {
     @Override
     public <K, V> ConsistentMapBuilder<K, V> consistentMapBuilder() {
         checkPermission(STORAGE_WRITE);
-        return new DefaultConsistentMapBuilder<>(federatedPrimitiveCreator);
-    }
-
-    @Override
-    public <V> DocumentTreeBuilder<V> documentTreeBuilder() {
-        checkPermission(STORAGE_WRITE);
-        return new DefaultDocumentTreeBuilder<V>(federatedPrimitiveCreator);
-    }
-
-    @Override
-    public <V> ConsistentTreeMapBuilder<V> consistentTreeMapBuilder() {
-        return new DefaultConsistentTreeMapBuilder<V>(
-                federatedPrimitiveCreator);
-    }
-
-    @Override
-    public <K, V> ConsistentMultimapBuilder<K, V> consistentMultimapBuilder() {
-        checkPermission(STORAGE_WRITE);
-        return new DefaultConsistentMultimapBuilder<K, V>(
-                federatedPrimitiveCreator);
-    }
-
-    @Override
-    public <K> AtomicCounterMapBuilder<K> atomicCounterMapBuilder() {
-        checkPermission(STORAGE_WRITE);
-        return new DefaultAtomicCounterMapBuilder<>(federatedPrimitiveCreator);
+        return new NewDefaultConsistentMapBuilder<>(federatedPrimitiveCreator);
     }
 
     @Override
@@ -169,9 +139,16 @@ public class StorageManager implements StorageService, StorageAdminService {
     }
 
     @Override
+    public <E> DistributedQueueBuilder<E> queueBuilder() {
+        checkPermission(STORAGE_WRITE);
+        // TODO: implement
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public AtomicCounterBuilder atomicCounterBuilder() {
         checkPermission(STORAGE_WRITE);
-        return new DefaultAtomicCounterBuilder(federatedPrimitiveCreator);
+        return new NewDefaultAtomicCounterBuilder(federatedPrimitiveCreator);
     }
 
     @Override
@@ -187,7 +164,7 @@ public class StorageManager implements StorageService, StorageAdminService {
     @Override
     public TransactionContextBuilder transactionContextBuilder() {
         checkPermission(STORAGE_WRITE);
-        return new DefaultTransactionContextBuilder(transactionIdGenerator.get(),
+        return new NewDefaultTransactionContextBuilder(transactionIdGenerator.get(),
                 federatedPrimitiveCreator,
                 transactionCoordinator);
     }
@@ -199,57 +176,33 @@ public class StorageManager implements StorageService, StorageAdminService {
     }
 
     @Override
-    public <E> WorkQueue<E> getWorkQueue(String name, Serializer serializer) {
-        checkPermission(STORAGE_WRITE);
-        return federatedPrimitiveCreator.newWorkQueue(name, serializer);
-    }
-
-    @Override
-    public <V> AsyncDocumentTree<V> getDocumentTree(String name, Serializer serializer) {
-        checkPermission(STORAGE_WRITE);
-        return federatedPrimitiveCreator.newAsyncDocumentTree(name, serializer);
-    }
-
-    @Override
-    public <K, V> AsyncConsistentMultimap<K, V> getAsyncSetMultimap(
-            String name, Serializer serializer) {
-        checkPermission(STORAGE_WRITE);
-        return federatedPrimitiveCreator.newAsyncConsistentSetMultimap(name,
-                                                                serializer);
-    }
-
-    @Override
-    public <V> AsyncConsistentTreeMap<V> getAsyncTreeMap(
-            String name, Serializer serializer) {
-        checkPermission(STORAGE_WRITE);
-        return federatedPrimitiveCreator.newAsyncConsistentTreeMap(name,
-                                                                   serializer);
-    }
-
-    @Override
     public List<MapInfo> getMapInfo() {
         return listMapInfo(federatedPrimitiveCreator);
     }
 
     @Override
     public Map<String, Long> getCounters() {
-        Map<String, Long> counters = Maps.newConcurrentMap();
-        federatedPrimitiveCreator.getAsyncAtomicCounterNames()
-               .forEach(name -> counters.put(name,
-                       federatedPrimitiveCreator.newAsyncCounter(name).asAtomicCounter().get()));
-        return counters;
+        Map<String, Long> result = Maps.newHashMap();
+        result.putAll(getInMemoryDatabaseCounters());
+        result.putAll(getPartitionedDatabaseCounters());
+        return result;
     }
 
     @Override
-    public Map<String, WorkQueueStats> getQueueStats() {
-        Map<String, WorkQueueStats> workQueueStats = Maps.newConcurrentMap();
-        federatedPrimitiveCreator.getWorkQueueNames()
-               .forEach(name -> workQueueStats.put(name,
-                       federatedPrimitiveCreator.newWorkQueue(name,
-                                                              Serializer.using(KryoNamespaces.BASIC))
-                                                .stats()
-                                                .join()));
-        return workQueueStats;
+    public Map<String, Long> getInMemoryDatabaseCounters() {
+        return ImmutableMap.of();
+    }
+
+    @Override
+    public Map<String, Long> getPartitionedDatabaseCounters() {
+        return getCounters(federatedPrimitiveCreator);
+    }
+
+    public Map<String, Long> getCounters(DistributedPrimitiveCreator creator) {
+        Map<String, Long> counters = Maps.newConcurrentMap();
+        creator.getAsyncAtomicCounterNames()
+               .forEach(name -> counters.put(name, creator.newAsyncCounter(name).asAtomicCounter().get()));
+        return counters;
     }
 
     @Override
@@ -272,14 +225,5 @@ public class StorageManager implements StorageService, StorageAdminService {
                                              .asConsistentMap();
                     return new MapInfo(name, map.size());
         }).collect(Collectors.toList());
-    }
-
-    @Override
-    public <T> Topic<T> getTopic(String name, Serializer serializer) {
-        AsyncAtomicValue<T> atomicValue = this.<T>atomicValueBuilder()
-                                              .withName("topic-" + name)
-                                              .withSerializer(serializer)
-                                              .build();
-        return new DefaultDistributedTopic<>(atomicValue);
     }
 }

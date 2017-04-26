@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.onlab.junit.TestUtils;
 import org.onlab.packet.ChassisId;
+import org.onosproject.mastership.MastershipEvent;
+import org.onosproject.mastership.MastershipListener;
+import org.onosproject.mastership.MastershipServiceAdapter;
 import org.onosproject.net.DefaultAnnotations;
 import org.onosproject.net.DefaultDevice;
 import org.onosproject.net.Device;
@@ -187,6 +190,7 @@ public class FlowObjectiveManagerTest {
     public void initializeTest() {
         manager = new FlowObjectiveManager();
         manager.flowObjectiveStore = new TestFlowObjectiveStore();
+        manager.mastershipService = new MastershipServiceAdapter();
         manager.deviceService = new TestDeviceService();
         manager.defaultDriverService = new TestDriversLoader();
         manager.driverService = new TestDriverService();
@@ -351,6 +355,42 @@ public class FlowObjectiveManagerTest {
 
         DeviceEvent event = new DeviceEvent(DeviceEvent.Type.DEVICE_ADDED, d2);
         DeviceListener listener = TestUtils.getField(manager, "deviceListener");
+        assertThat(listener, notNullValue());
+
+        listener.event(event);
+
+        ForwardingObjective forward =
+                DefaultForwardingObjective.builder()
+                        .fromApp(NetTestTools.APP_ID)
+                        .withFlag(ForwardingObjective.Flag.SPECIFIC)
+                        .withSelector(selector)
+                        .withTreatment(treatment)
+                        .makePermanent()
+                        .add();
+        manager.forward(id2, forward);
+
+        // new device should have an objective now
+        TestTools.assertAfter(RETRY_MS, () ->
+                assertThat(forwardingObjectives, hasSize(1)));
+
+        assertThat(forwardingObjectives, hasItem("of:d2"));
+        assertThat(filteringObjectives, hasSize(0));
+        assertThat(nextObjectives, hasSize(0));
+    }
+
+    /**
+     * Tests recepit of a device mastership event.
+     *
+     * @throws TestUtilsException if lookup of a field fails
+     */
+    @Test
+    public void deviceMastershipEvent() throws TestUtilsException {
+        TrafficSelector selector = DefaultTrafficSelector.emptySelector();
+        TrafficTreatment treatment = DefaultTrafficTreatment.emptyTreatment();
+
+        MastershipEvent event =
+                new MastershipEvent(MastershipEvent.Type.MASTER_CHANGED, id2, null);
+        MastershipListener listener = TestUtils.getField(manager, "mastershipListener");
         assertThat(listener, notNullValue());
 
         listener.event(event);

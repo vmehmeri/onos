@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,16 +36,6 @@ public final class GossipDeviceStoreMessageSubjects {
     public static final MessageSubject DEVICE_REQUEST = new MessageSubject("peer-device-request");
 
     // Network elements injected (not discovered) by ConfigProvider
-    /**
-     * Remnant of ConfigProvider.
-     * @deprecated in Hummingbird(1.7.0)
-     */
-    @Deprecated
     public static final MessageSubject DEVICE_INJECTED = new MessageSubject("peer-device-injected");
-    /**
-     * Remnant of ConfigProvider.
-     * @deprecated in Hummingbird(1.7.0)
-     */
-    @Deprecated
     public static final MessageSubject PORT_INJECTED = new MessageSubject("peer-port-injected");
 }

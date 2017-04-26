@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 package org.onosproject.incubator.net.virtual;
 
 import com.google.common.annotations.Beta;
-import org.onlab.osgi.ServiceDirectory;
-import org.onosproject.core.ApplicationId;
 import org.onosproject.net.DeviceId;
 
 import java.util.Set;
@@ -53,15 +51,6 @@ public interface VirtualNetworkService {
     Set<VirtualDevice> getVirtualDevices(NetworkId networkId);
 
     /**
-     * Returns a collection of all virtual hosts in the specified network.
-     *
-     * @param networkId network identifier
-     * @return collection of hosts
-     * @throws org.onlab.util.ItemNotFoundException if no such network found
-     */
-    Set<VirtualHost> getVirtualHosts(NetworkId networkId);
-
-    /**
      * Returns collection of all virtual links in the specified network.
      *
      * @param networkId network identifier
@@ -71,9 +60,7 @@ public interface VirtualNetworkService {
     Set<VirtualLink> getVirtualLinks(NetworkId networkId);
 
     /**
-     * Returns list of all virtual ports of the specified device. If the
-     * device identifier is null then all of the virtual ports in the specified
-     * network will be returned.
+     * Returns list of all virtual ports of the specified device.
      *
      * @param networkId network identifier
      * @param deviceId  device identifier
@@ -107,18 +94,4 @@ public interface VirtualNetworkService {
      */
     <T> T get(NetworkId networkId, Class<T> serviceClass);
 
-    /**
-     * Returns service directory.
-     *
-     * @return a service directory
-     */
-    ServiceDirectory getServiceDirectory();
-
-    /**
-     * Returns the application identifier for a virtual network.
-     *
-     * @param networkId network identifier
-     * @return an representative application identifier for a virtual network
-     */
-    ApplicationId getVirtualNetworkApplicationId(NetworkId networkId);
 }

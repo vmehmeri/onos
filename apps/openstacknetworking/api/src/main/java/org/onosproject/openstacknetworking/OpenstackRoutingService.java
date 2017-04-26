@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,65 +15,76 @@
  */
 package org.onosproject.openstacknetworking;
 
-import org.onosproject.net.Host;
-
+import org.onosproject.openstackinterface.OpenstackFloatingIP;
 import org.onosproject.openstackinterface.OpenstackRouter;
 import org.onosproject.openstackinterface.OpenstackRouterInterface;
 
 /**
- * Handles router update requests from OpenStack.
+ * The Interface of Openstack Routing.
  */
 public interface OpenstackRoutingService {
 
     /**
-     * Handles the router create request from OpenStack.
+     * Stores the Floating IP information created by Openstack.
      *
-     * @param osRouter router information
+     * @param openstackFloatingIP Floating IP information
      */
-    void createRouter(OpenstackRouter osRouter);
+    void createFloatingIP(OpenstackFloatingIP openstackFloatingIP);
 
     /**
-     * Handles the router update request from OpenStack.
-     * Update router is called when the name, administrative state, or the external
-     * gateway setting is updated. The external gateway update is the only case
-     * that openstack routing service cares.
+     * Updates flow rules corresponding to the Floating IP information updated by Openstack.
      *
-     * @param osRouter router information
+     * @param openstackFloatingIP Floating IP information
      */
-    void updateRouter(OpenstackRouter osRouter);
+    void updateFloatingIP(OpenstackFloatingIP openstackFloatingIP);
 
     /**
-     * Handles the router remove request from OpenStack.
+     * Removes flow rules corresponding to Floating IP information removed by Openstack.
      *
-     * @param osRouterId identifier of the router
+     * @param id Deleted Floating IP`s ID
      */
-    void removeRouter(String osRouterId);
+    void deleteFloatingIP(String id);
 
     /**
-     * Handles router interface add request from OpenStack.
+     * Stores the router information created by Openstack.
      *
-     * @param osInterface router interface information
+     * @param openstackRouter Floating IP information
      */
-    void addRouterInterface(OpenstackRouterInterface osInterface);
+    void createRouter(OpenstackRouter openstackRouter);
 
     /**
-     * Handles router interface remove request from OpenStack.
+     * Updates flow rules corresponding to the router information updated by Openstack.
      *
-     * @param osInterface router interface information
+     * @param openstackRouter Router information
      */
-    void removeRouterInterface(OpenstackRouterInterface osInterface);
+    void updateRouter(OpenstackRouter openstackRouter);
 
     /**
-     * Handles to purge data plane flow of existing VM.
+     * Removes flow rules corresponding to the router information removed by Openstack.
      *
-     * @param host VM Host information
+     * @param id Deleted router`s ID
      */
-    void purgeVmFlow(Host host);
+    void deleteRouter(String id);
 
     /**
-     * Handles to reinstall data plane flow of existing VM.
+     * Updates flow rules corresponding to the router information updated by Openstack.
      *
-     * @param host VM Host information
+     * @param openstackRouterInterface Router information
      */
-    void reinstallVmFlow(Host host);
+    void updateRouterInterface(OpenstackRouterInterface openstackRouterInterface);
+
+    /**
+     * Removes flow rules corresponding to the router information removed by Openstack.
+     *
+     * @param openstackRouterInterface Router information
+     */
+    void removeRouterInterface(OpenstackRouterInterface openstackRouterInterface);
+
+    /**
+     * Checks floatingIp deassociation when corresponding deleted vm.
+     *
+     * @param portId Deleted vm
+     * @param portInfo
+     */
+    void checkDisassociatedFloatingIp(String portId, OpenstackPortInfo portInfo);
 }

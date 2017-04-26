@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,12 +30,10 @@
         idSum = 'topo-p-summary',
         idDet = 'topo-p-detail',
         panelOpts = {
-            width: 260          // summary and detail panel width
+            width: 268
         },
-        sumMax = 226,           // summary panel max height
-        padTop = 16,            // summary panel padding below masthead
-        padding = 16,           // panel internal padding
-        padFudge = padTop + 2 * padding,
+        sumMax = 262,
+        padTop = 20,
         devPath = 'device';
 
     // internal state
@@ -92,7 +90,8 @@
         //    only adjusts if the body content would be 10px or larger
         function adjustHeight(fromTop, max) {
             var totalPHeight, avSpace,
-                overflow = 0;
+                overflow = 0,
+                pdg = 30;
 
             if (!fromTop) {
                 $log.warn('adjustHeight: height from top of page not given');
@@ -104,12 +103,11 @@
                 return null;
             }
 
-            p.el().style('top', fromTop + 'px');
             p.el().style('height', null);
             body.style('height', null);
 
             totalPHeight = fromTop + p.height();
-            avSpace = fs.windowSize(padFudge).height;
+            avSpace = fs.windowSize(pdg).height;
 
             if (totalPHeight >= avSpace) {
                 overflow = totalPHeight - avSpace;
@@ -125,13 +123,12 @@
             }
 
             if (!_adjustBody(fs.noPxStyle(body, 'height') - overflow)) {
-                return p.height();
+                return;
             }
 
             if (max && p.height() > max) {
                 _adjustBody(fs.noPxStyle(body, 'height') - (p.height() - max));
             }
-            return p.height();
         }
 
         return {
@@ -191,11 +188,8 @@
                     w: $window.innerWidth
                 };
             }, function () {
-                var h = summary.adjustHeight(sumFromTop, sumMax),
-                    ss = summary.panel().isVisible(),
-                    dtop = h && ss ? sumFromTop + h + padFudge : 0,
-                    dy = dtop || ss ? detail.ypos.current : sumFromTop;
-                detail.adjustHeight(dy);
+                summary.adjustHeight(sumFromTop, sumMax);
+                detail.adjustHeight(detail.ypos.current);
             }
         );
     }
@@ -211,9 +205,14 @@
                 .append('svg'),
             title = summary.appendHeader('h2'),
             table = summary.appendBody('table'),
-            tbody = table.append('tbody');
+            tbody = table.append('tbody'),
+            glyphId = data.type || 'node';
 
-        gs.addGlyph(svg, 'bird', 24, 0, [1,1]);
+        gs.addGlyph(svg, glyphId, 40);
+
+        if (glyphId === 'node') {
+            gs.addGlyph(svg, 'bird', 24, true, [8,12]);
+        }
 
         title.text(data.title);
         listProps(tbody, data);
@@ -240,7 +239,7 @@
             tbody = table.append('tbody'),
             navFn;
 
-        gs.addGlyph(svg, (data.type || 'unknown'), 26);
+        gs.addGlyph(svg, (data.type || 'unknown'), 40);
         title.text(data.title);
 
         // only add navigation when displaying a device
@@ -264,7 +263,7 @@
             table = detail.appendBody('table'),
             tbody = table.append('tbody');
 
-        title.text('Selected Items');
+        title.text('Selected Nodes');
         ids.forEach(function (d, i) {
             addProp(tbody, i+1, d);
         });
@@ -310,7 +309,7 @@
     var coreOrder = [
             'Type', 'Expected', '-',
             'A_type', 'A_id', 'A_label', 'A_port', '-',
-            'B_type', 'B_id', 'B_label', 'B_port'
+            'B_type', 'B_id', 'B_label', 'B_port', '-'
         ],
         edgeOrder = [
             'Type', '-',
@@ -318,7 +317,7 @@
             'B_type', 'B_id', 'B_label', 'B_port'
         ];
 
-    function displayLink(data, modifyCb) {
+    function displayLink(data) {
         detail.setup();
 
         var svg = detail.appendHeader('div')
@@ -330,11 +329,12 @@
             edgeLink = data.type() === 'hostLink',
             order = edgeLink ? edgeOrder : coreOrder;
 
-        gs.addGlyph(svg, 'ports', 26);
+        gs.addGlyph(svg, 'ports', 40);
         title.text('Link');
 
-        var linkData = {
-            propOrder: order.slice(0),      // makes a copy of the array
+
+        listProps(tbody, {
+            propOrder: order,
             props: {
                 Type: linkType(data),
                 Expected: linkExpected(data),
@@ -349,11 +349,9 @@
                 B_label: friendly(data.target),
                 B_port: data.tgtPort
             }
-        };
-        listProps(tbody, modifyCb(linkData, data.extra));
+        });
 
         if (!edgeLink) {
-            addSep(tbody);
             addProp(tbody, 'A &rarr; B', linkSummary(data.fromSource));
             addProp(tbody, 'B &rarr; A', linkSummary(data.fromTarget));
         }
@@ -432,7 +430,7 @@
 
     function augmentDetailPanel() {
         var d = detail,
-            downPos = sumFromTop + sumMax + padFudge;
+            downPos = sumFromTop + sumMax + 20;
         d.ypos = { up: sumFromTop, down: downPos, current: downPos};
 
         d._move = function (y, cb) {
@@ -531,7 +529,6 @@
 
                 showSummary: showSummary,
                 toggleSummary: toggleSummary,
-                hideSummary: hideSummaryPanel,
 
                 toggleUseDetailsFlag: toggleUseDetailsFlag,
                 displaySingle: displaySingle,
@@ -540,6 +537,8 @@
                 displayNothing: displayNothing,
                 displaySomething: displaySomething,
                 addAction: addAction,
+
+                hideSummaryPanel: hideSummaryPanel,
 
                 detailVisible: function () { return detail.panel().isVisible(); },
                 summaryVisible: function () { return summary.panel().isVisible(); }

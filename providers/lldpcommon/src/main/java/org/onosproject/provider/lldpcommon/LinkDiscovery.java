@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,17 +34,16 @@ import org.onosproject.net.link.LinkDescription;
 import org.onosproject.net.packet.DefaultOutboundPacket;
 import org.onosproject.net.packet.OutboundPacket;
 import org.onosproject.net.packet.PacketContext;
-import org.onosproject.net.link.ProbedLinkProvider;
 import org.slf4j.Logger;
 
 import java.nio.ByteBuffer;
 import java.util.Set;
 
-import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.onosproject.net.PortNumber.portNumber;
 import static org.onosproject.net.flow.DefaultTrafficTreatment.builder;
 import static org.slf4j.LoggerFactory.getLogger;
+import static org.onosproject.cluster.ClusterMetadata.NO_NAME;
 
 /**
  * Run discovery process from a physical switch. Ports are initially labeled as
@@ -57,6 +56,8 @@ public class LinkDiscovery implements TimerTask {
 
     private final Logger log = getLogger(getClass());
 
+    private static final String SRC_MAC = "DE:AD:BE:EF:BA:11";
+
     private final Device device;
     private final LinkDiscoveryContext context;
 
@@ -65,6 +66,8 @@ public class LinkDiscovery implements TimerTask {
 
     private Timeout timeout;
     private volatile boolean isStopped;
+    // This LinkDiscovery can handle remote link probes (default false).
+    private volatile boolean fingerprinted;
     // Set of ports to be probed
     private final Set<Long> ports = Sets.newConcurrentHashSet();
 
@@ -82,7 +85,7 @@ public class LinkDiscovery implements TimerTask {
 
         ethPacket = new Ethernet();
         ethPacket.setEtherType(Ethernet.TYPE_LLDP);
-        ethPacket.setDestinationMACAddress(ONOSLLDP.LLDP_ONLAB);
+        ethPacket.setDestinationMACAddress(ONOSLLDP.LLDP_NICIRA);
         ethPacket.setPad(true);
 
         bddpEth = new Ethernet();
@@ -90,6 +93,7 @@ public class LinkDiscovery implements TimerTask {
         bddpEth.setDestinationMACAddress(ONOSLLDP.BDDP_MULTICAST);
         bddpEth.setPad(true);
 
+        fingerprinted = false;
         isStopped = true;
         start();
         log.debug("Started discovery manager for switch {}", device.id());
@@ -156,46 +160,52 @@ public class LinkDiscovery implements TimerTask {
 
         ONOSLLDP onoslldp = ONOSLLDP.parseONOSLLDP(eth);
         if (onoslldp != null) {
-            Type lt;
-            if (notMy(eth.getSourceMAC().toString())) {
-                lt = Type.EDGE;
-            } else {
-                lt = eth.getEtherType() == Ethernet.TYPE_LLDP ?
-                        Type.DIRECT : Type.INDIRECT;
+            if (notMy(onoslldp)) {
+                return true;
             }
 
             PortNumber srcPort = portNumber(onoslldp.getPort());
             PortNumber dstPort = packetContext.inPacket().receivedFrom().port();
+            DeviceId srcDeviceId = DeviceId.deviceId(onoslldp.getDeviceString());
+            DeviceId dstDeviceId = packetContext.inPacket().receivedFrom().deviceId();
 
-            String idString = onoslldp.getDeviceString();
-            if (!isNullOrEmpty(idString)) {
-                DeviceId srcDeviceId = DeviceId.deviceId(idString);
-                DeviceId dstDeviceId = packetContext.inPacket().receivedFrom().deviceId();
+            ConnectPoint src = new ConnectPoint(srcDeviceId, srcPort);
+            ConnectPoint dst = new ConnectPoint(dstDeviceId, dstPort);
 
-                ConnectPoint src = new ConnectPoint(srcDeviceId, srcPort);
-                ConnectPoint dst = new ConnectPoint(dstDeviceId, dstPort);
+            LinkDescription ld = eth.getEtherType() == Ethernet.TYPE_LLDP ?
+                    new DefaultLinkDescription(src, dst, Type.DIRECT) :
+                    new DefaultLinkDescription(src, dst, Type.INDIRECT);
 
-                LinkDescription ld = new DefaultLinkDescription(src, dst, lt);
-                try {
-                    context.providerService().linkDetected(ld);
-                    context.touchLink(LinkKey.linkKey(src, dst));
-                } catch (IllegalStateException e) {
-                    return true;
-                }
+            try {
+                context.providerService().linkDetected(ld);
+                context.touchLink(LinkKey.linkKey(src, dst));
+            } catch (IllegalStateException e) {
                 return true;
             }
+            return true;
         }
         return false;
     }
 
     // true if *NOT* this cluster's own probe.
-    private boolean notMy(String mac) {
-        // if we are using DEFAULT_MAC, clustering hadn't initialized, so conservative 'yes'
-        String ourMac = context.fingerprint();
-        if (ProbedLinkProvider.defaultMac().equalsIgnoreCase(ourMac)) {
-            return true;
+    private boolean notMy(ONOSLLDP onoslldp) {
+        if (onoslldp.getDomainTLV() == null) {
+            // not finger-printed - but we can check the source
+            DeviceId src = DeviceId.deviceId(onoslldp.getDeviceString());
+            if (context.deviceService().getDevice(src) == null) {
+                return true;
+            }
+            return false;
         }
-        return !mac.equalsIgnoreCase(ourMac);
+
+        String us = context.fingerprint();
+        String them = onoslldp.getDomainString();
+        // if: Our and/or their MetadataService in poorly state, conservative 'yes'
+        if (NO_NAME.equals(us) || NO_NAME.equals(them)) {
+            return true;
+        } else {
+            return !us.equals(them);
+        }
     }
 
     /**
@@ -232,7 +242,7 @@ public class LinkDiscovery implements TimerTask {
             return null;
         }
         ONOSLLDP lldp = getLinkProbe(port);
-        ethPacket.setSourceMACAddress(context.fingerprint()).setPayload(lldp);
+        ethPacket.setSourceMACAddress(SRC_MAC).setPayload(lldp);
         return new DefaultOutboundPacket(device.id(),
                                          builder().setOutput(portNumber(port)).build(),
                                          ByteBuffer.wrap(ethPacket.serialize()));
@@ -249,20 +259,21 @@ public class LinkDiscovery implements TimerTask {
             return null;
         }
         ONOSLLDP lldp = getLinkProbe(port);
-        bddpEth.setSourceMACAddress(context.fingerprint()).setPayload(lldp);
+        bddpEth.setSourceMACAddress(SRC_MAC).setPayload(lldp);
         return new DefaultOutboundPacket(device.id(),
                                          builder().setOutput(portNumber(port)).build(),
                                          ByteBuffer.wrap(bddpEth.serialize()));
     }
 
     private ONOSLLDP getLinkProbe(Long port) {
-        return ONOSLLDP.onosLLDP(device.id().toString(), device.chassisId(), port.intValue());
+        return fingerprinted
+                ? ONOSLLDP.fingerprintedLLDP(device.id().toString(), device.chassisId(),
+                                             port.intValue(), context.fingerprint())
+                : ONOSLLDP.onosLLDP(device.id().toString(), device.chassisId(),
+                                    port.intValue());
     }
 
     private void sendProbes(Long portNumber) {
-        if (context.packetService() == null) {
-            return;
-        }
         log.trace("Sending probes out to {}@{}", portNumber, device.id());
         OutboundPacket pkt = createOutBoundLldp(portNumber);
         context.packetService().emit(pkt);
@@ -274,5 +285,13 @@ public class LinkDiscovery implements TimerTask {
 
     public boolean containsPort(long portNumber) {
         return ports.contains(portNumber);
+    }
+
+    public void enableFingerprint() {
+        fingerprinted = true;
+    }
+
+    public void disableFingerprint() {
+        fingerprinted = false;
     }
 }

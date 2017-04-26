@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.ListIterator;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.onosproject.pcepio.exceptions.PcepParseException;
 import org.onosproject.pcepio.protocol.PcepSrpObject;
-import org.onosproject.pcepio.types.PathSetupTypeTlv;
 import org.onosproject.pcepio.types.PcepObjectHeader;
 import org.onosproject.pcepio.types.PcepValueType;
 import org.onosproject.pcepio.types.SymbolicPathNameTlv;
@@ -43,7 +42,7 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     | Object-Class  |   OT  |Res|P|I|   Object Length (bytes)       |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                          Flags                            |S|R|
+    |                          Flags                              |R|
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                        SRP-ID-number                          |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -60,7 +59,7 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
     public static final byte SRP_OBJECT_VERSION = 1;
     public static final short SRP_OBJ_MINIMUM_LENGTH = 12;
     public static final int MINIMUM_COMMON_HEADER_LENGTH = 4;
-    public static final boolean FLAG_DEFAULT_VALUE = false;
+    public static final boolean DEFAULT_RFLAG = false;
 
     static final PcepObjectHeader DEFAULT_SRP_OBJECT_HEADER = new PcepObjectHeader(SRP_OBJ_CLASS, SRP_OBJ_TYPE,
             PcepObjectHeader.REQ_OBJ_OPTIONAL_PROCESS, PcepObjectHeader.RSP_OBJ_PROCESSED, SRP_OBJ_MINIMUM_LENGTH);
@@ -68,7 +67,6 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
     private PcepObjectHeader srpObjHeader;
     private static int flags;
     private boolean bRFlag;
-    private boolean bSFlag;
     private int srpId;
 
     //Optional TLV
@@ -81,16 +79,14 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
      *
      * @param srpObjHeader srp object header
      * @param bRFlag R flag
-     * @param bSFlag S (sync) flag
      * @param srpID srp Id
      * @param llOptionalTlv list of optional tlv
      */
-    public PcepSrpObjectVer1(PcepObjectHeader srpObjHeader, boolean bRFlag, boolean bSFlag, int srpID,
+    public PcepSrpObjectVer1(PcepObjectHeader srpObjHeader, boolean bRFlag, int srpID,
             LinkedList<PcepValueType> llOptionalTlv) {
 
         this.srpObjHeader = srpObjHeader;
         this.bRFlag = bRFlag;
-        this.bSFlag = bSFlag;
         this.srpId = srpID;
         this.llOptionalTlv = llOptionalTlv;
     }
@@ -114,11 +110,6 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
         this.bRFlag = bRFlag;
     }
 
-    @Override
-    public void setSFlag(boolean bSFlag) {
-        this.bSFlag = bSFlag;
-    }
-
     /**
      * Returns SRP object header.
      *
@@ -136,11 +127,6 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
     @Override
     public boolean getRFlag() {
         return this.bRFlag;
-    }
-
-    @Override
-    public boolean getSFlag() {
-        return this.bSFlag;
     }
 
     @Override
@@ -166,7 +152,6 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
         log.debug("SrpObject::read");
         PcepObjectHeader srpObjHeader;
         boolean bRFlag;
-        boolean bSFlag;
 
         int srpID;
         int flags;
@@ -181,13 +166,12 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
         //take only SrpObject buffer.
         ChannelBuffer tempCb = cb.readBytes(srpObjHeader.getObjLen() - MINIMUM_COMMON_HEADER_LENGTH);
         flags = tempCb.readInt();
-        bRFlag = 0 < (flags & 0x1);
-        bSFlag = 0 < ((flags >> 1) & 0x1);
+        bRFlag = 0 < flags;
         srpID = tempCb.readInt();
 
         llOptionalTlv = parseOptionalTlv(tempCb);
 
-        return new PcepSrpObjectVer1(srpObjHeader, bRFlag, bSFlag, srpID, llOptionalTlv);
+        return new PcepSrpObjectVer1(srpObjHeader, bRFlag, srpID, llOptionalTlv);
     }
 
     @Override
@@ -202,7 +186,6 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
         byte bFlag;
 
         bFlag = (bRFlag) ? BBIT_SET : BBIT_RESET;
-        bFlag |= (((bSFlag) ? BBIT_SET : BBIT_RESET) << 1);
 
         cb.writeInt(bFlag);
 
@@ -238,23 +221,14 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
             short hLength = cb.readShort();
 
             switch (hType) {
+
             case SymbolicPathNameTlv.TYPE:
-                if (cb.readableBytes() < hLength) {
-                    throw new PcepParseException("Length is not valid in SymbolicPathNameTlv");
-                }
                 tlv = SymbolicPathNameTlv.read(cb, hLength);
-                break;
-            case PathSetupTypeTlv.TYPE:
-                if (cb.readableBytes() != PathSetupTypeTlv.LENGTH) {
-                    throw new PcepParseException("Length is not valid in PathSetupTypeTlv");
-                }
-                tlv = PathSetupTypeTlv.of(cb.readInt());
-                break;
-            default:
-                // Skip the unknown TLV.
                 cb.skipBytes(hLength);
-                tlv = null;
-                log.info("Received unsupported TLV type :" + hType + " in SRP object.");
+                break;
+
+            default:
+                throw new PcepParseException("Unsupported TLV received in SRP Object.");
             }
 
             // Check for the padding
@@ -265,10 +239,7 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
                     cb.skipBytes(pad);
                 }
             }
-
-            if (tlv != null) {
-                llOutOptionalTlv.add(tlv);
-            }
+            llOutOptionalTlv.add(tlv);
         }
 
         return llOutOptionalTlv;
@@ -314,12 +285,10 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
         private boolean bIsHeaderSet = false;
         private boolean bIsSrpIdset = false;
         private boolean bIsRFlagSet = false;
-        private boolean bIsSFlagSet = false;
 
         private PcepObjectHeader srpObjHeader;
         private int srpId;
         private boolean bRFlag;
-        private boolean bSFlag;
         LinkedList<PcepValueType> llOptionalTlv = new LinkedList<>();
 
         private boolean bIsPFlagSet = false;
@@ -332,8 +301,7 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
         public PcepSrpObject build() throws PcepParseException {
             PcepObjectHeader srpObjHeader = this.bIsHeaderSet ? this.srpObjHeader : DEFAULT_SRP_OBJECT_HEADER;
 
-            boolean bRFlag = this.bIsRFlagSet ? this.bRFlag : FLAG_DEFAULT_VALUE;
-            boolean bSFlag = this.bIsSFlagSet ? this.bSFlag : FLAG_DEFAULT_VALUE;
+            boolean bRFlag = this.bIsRFlagSet ? this.bRFlag : DEFAULT_RFLAG;
 
             if (!this.bIsSrpIdset) {
                 throw new PcepParseException("SrpID not set while building SRP Object.");
@@ -347,7 +315,7 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
                 srpObjHeader.setIFlag(bIFlag);
             }
 
-            return new PcepSrpObjectVer1(srpObjHeader, bRFlag, bSFlag, this.srpId, this.llOptionalTlv);
+            return new PcepSrpObjectVer1(srpObjHeader, bRFlag, this.srpId, this.llOptionalTlv);
         }
 
         @Override
@@ -387,18 +355,6 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
         }
 
         @Override
-        public boolean getSFlag() {
-            return this.bSFlag;
-        }
-
-        @Override
-        public Builder setSFlag(boolean bSFlag) {
-            this.bSFlag = bSFlag;
-            this.bIsSFlagSet = true;
-            return this;
-        }
-
-        @Override
         public Builder setOptionalTlv(LinkedList<PcepValueType> llOptionalTlv) {
             this.llOptionalTlv = llOptionalTlv;
             return this;
@@ -429,7 +385,6 @@ public class PcepSrpObjectVer1 implements PcepSrpObject {
     public String toString() {
         return MoreObjects.toStringHelper(getClass())
                 .add("RFlag", bRFlag)
-                .add("SFlag", bSFlag)
                 .add("SRPID", srpId)
                 .add("OptionalTlvList", llOptionalTlv)
                 .toString();

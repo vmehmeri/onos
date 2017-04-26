@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,6 @@ import org.rrd4j.core.RrdBackendFactory;
 import org.rrd4j.core.RrdDb;
 import org.rrd4j.core.RrdDef;
 import org.rrd4j.core.Sample;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,10 +43,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * An implementation of control plane metrics back-end database.
  */
 public final class DefaultMetricsDatabase implements MetricsDatabase {
-    private static final Logger log = LoggerFactory.getLogger(DefaultMetricsDatabase.class);
-
     private String metricName;
-    private String resourceName;
     private RrdDb rrdDb;
     private Sample sample;
     private static final long SECONDS_OF_DAY = 60L * 60L * 24L;
@@ -65,20 +60,14 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
      * @param metricName  metric name
      * @param rrdDb       round robin database
      */
-    private DefaultMetricsDatabase(String metricName, String resourceName, RrdDb rrdDb) {
+    private DefaultMetricsDatabase(String metricName, RrdDb rrdDb) {
         this.metricName = metricName;
-        this.resourceName = resourceName;
         this.rrdDb = rrdDb;
     }
 
     @Override
     public String metricName() {
         return this.metricName;
-    }
-
-    @Override
-    public String resourceName() {
-        return this.resourceName;
     }
 
     @Override
@@ -94,7 +83,7 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
             sample.setValue(metricType, value);
             sample.update();
         } catch (IOException e) {
-            log.error("Failed to update metric value due to {}", e);
+            e.printStackTrace();
         }
     }
 
@@ -112,12 +101,12 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
                     checkArgument(rrdDb.containsDs(k), NON_EXIST_METRIC);
                     sample.setValue(k, v);
                 } catch (IOException e) {
-                    log.error("Failed to update metric value due to {}", e);
+                    e.printStackTrace();
                 }
             });
             sample.update();
         } catch (IOException e) {
-            log.error("Failed to update metric values due to {}", e);
+            e.printStackTrace();
         }
     }
 
@@ -127,9 +116,9 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
             checkArgument(rrdDb.containsDs(metricType), NON_EXIST_METRIC);
             return rrdDb.getDatasource(metricType).getLastValue();
         } catch (IOException e) {
-            log.error("Failed to obtain metric value due to {}", e);
-            return 0D;
+            e.printStackTrace();
         }
+        return 0D;
     }
 
     @Override
@@ -141,14 +130,11 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
             if (checkTimeRange(startTime, endTime)) {
                 FetchRequest fr = rrdDb.createFetchRequest(CONSOL_FUNCTION, startTime, endTime);
                 return arrangeDataPoints(fr.fetchData().getValues(metricType));
-            } else {
-                log.warn("Data projection is out-of-range");
-                return new double[0];
             }
         } catch (IOException e) {
-            log.error("Failed to obtain metric values due to {}", e);
-            return new double[0];
+            e.printStackTrace();
         }
+        return new double[0];
     }
 
     @Override
@@ -159,9 +145,9 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
             long startTime = endTime - SECONDS_OF_DAY + 1;
             return minMetric(metricType, startTime, endTime);
         } catch (IOException e) {
-            log.error("Failed to obtain metric value due to {}", e);
-            return 0D;
+            e.printStackTrace();
         }
+        return 0D;
     }
 
     @Override
@@ -172,9 +158,9 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
             long startTime = endTime - SECONDS_OF_DAY;
             return maxMetric(metricType, startTime, endTime);
         } catch (IOException e) {
-            log.error("Failed to obtain metric value due to {}", e);
-            return 0D;
+            e.printStackTrace();
         }
+        return 0D;
     }
 
     @Override
@@ -185,9 +171,9 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
             long startTime = endTime - SECONDS_OF_DAY;
             return metrics(metricType, startTime, endTime);
         } catch (IOException e) {
-            log.error("Failed to obtain metric values due to {}", e);
-            return new double[0];
+            e.printStackTrace();
         }
+        return new double[0];
     }
 
     @Override
@@ -197,25 +183,22 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
             if (checkTimeRange(startTime, endTime)) {
                 FetchRequest fr = rrdDb.createFetchRequest(CONSOL_FUNCTION, startTime, endTime);
                 return arrangeDataPoints(fr.fetchData().getValues(metricType));
-            } else {
-                log.warn("Data projection is out-of-range");
-                return new double[0];
             }
         } catch (IOException e) {
-            log.error("Failed to obtain metric values due to {}", e);
-            return new double[0];
+            e.printStackTrace();
         }
+        return new double[0];
     }
 
     @Override
     public long lastUpdate(String metricType) {
         try {
             checkArgument(rrdDb.containsDs(metricType), NON_EXIST_METRIC);
-            return rrdDb.getLastUpdateTime();
+            rrdDb.getLastUpdateTime();
         } catch (IOException e) {
-            log.error("Failed to obtain last update time due to {}", e);
-            return 0L;
+            e.printStackTrace();
         }
+        return 0L;
     }
 
     // try to check whether projected time range is within a day
@@ -259,15 +242,12 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
         private static final int STEP_VALUE = 1;
         private static final int ROW_VALUE = 60 * 24;
         private static final String METRIC_NAME_MSG = "Must specify a metric name.";
-        private static final String RESOURCE_NAME_MSG = "Must specify a resource name.";
         private static final String METRIC_TYPE_MSG = "Must supply at least a metric type.";
-        private static final String SPLITTER = "_";
 
         private RrdDb rrdDb;
         private RrdDef rrdDef;
         private List<DsDef> dsDefs;
         private String metricName;
-        private String resourceName;
 
         public Builder() {
             // initialize data source definition list
@@ -275,14 +255,11 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
         }
 
         @Override
-        public Builder withMetricName(String metric) {
-            this.metricName = metric;
-            return this;
-        }
+        public Builder withMetricName(String metricName) {
+            this.metricName = metricName;
 
-        @Override
-        public MetricsDatabase.Builder withResourceName(String resource) {
-            this.resourceName = resource;
+            // define the resolution of monitored metrics
+            rrdDef = new RrdDef(DB_PATH + "_" + metricName, RESOLUTION_IN_SECOND);
             return this;
         }
 
@@ -295,12 +272,7 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
         @Override
         public MetricsDatabase build() {
             checkNotNull(metricName, METRIC_NAME_MSG);
-            checkNotNull(resourceName, RESOURCE_NAME_MSG);
-            checkArgument(!dsDefs.isEmpty(), METRIC_TYPE_MSG);
-
-            // define the resolution of monitored metrics
-            rrdDef = new RrdDef(DB_PATH + SPLITTER + metricName +
-                     SPLITTER + resourceName, RESOLUTION_IN_SECOND);
+            checkArgument(dsDefs.size() != 0, METRIC_TYPE_MSG);
 
             try {
                 DsDef[] dsDefArray = new DsDef[dsDefs.size()];
@@ -317,10 +289,10 @@ public final class DefaultMetricsDatabase implements MetricsDatabase {
                 // always store the metric data in memory...
                 rrdDb = new RrdDb(rrdDef, RrdBackendFactory.getFactory(STORING_METHOD));
             } catch (IOException e) {
-                log.warn("Failed to create a new round-robin database due to {}", e);
+                e.printStackTrace();
             }
 
-            return new DefaultMetricsDatabase(metricName, resourceName, rrdDb);
+            return new DefaultMetricsDatabase(metricName, rrdDb);
         }
 
         private DsDef defineSchema(String metricType) {

@@ -4,11 +4,9 @@
 # --------------------------------------------------------
 
 set -e
-set -x
 
 GERRIT_USER=${GERRIT_USER:-$USER}
 BRANCH=${2:-master}
-COMMAND=${3:--i}
 
 export ONOS_VERSION=${1:-$ONOS_VERSION}
 if [ -z "$ONOS_VERSION" ]; then
@@ -28,14 +26,10 @@ git fetch origin
 git checkout $BRANCH
 
 # Check existance of version
-git tag -l | grep -q "$ONOS_VERSION\$" &&
-  { echo "ERROR: Version already exists"; exit -1; }
-
-# Copy local buck configuration to new tree
-cp $ONOS_ROOT/.buckconfig.local $DIR/
+git tag -l | grep -q $ONOS_VERSION && { echo "ERROR: Version already exists"; exit -1; }
 
 export ONOS_ROOT=$DIR
 . $ONOS_ROOT/tools/build/envDefaults
-exec bash $COMMAND
+exec bash -i
 
 # TODO on exit, print "leaving directory"

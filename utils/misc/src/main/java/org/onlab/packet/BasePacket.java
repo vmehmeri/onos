@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,7 +94,7 @@ public abstract class BasePacket implements IPacket {
         }
 
         final byte[] data = this.serialize();
-        pkt.deserialize(data, 0, data.length);
+        pkt.deserialize(this.serialize(), 0, data.length);
         pkt.setParent(this.parent);
         return pkt;
     }

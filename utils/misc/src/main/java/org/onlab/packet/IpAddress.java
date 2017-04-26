@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,14 @@
  */
 package org.onlab.packet;
 
-import com.google.common.net.InetAddresses;
-import com.google.common.primitives.UnsignedBytes;
-
+import java.net.InetAddress;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
+import com.google.common.net.InetAddresses;
+import com.google.common.primitives.UnsignedBytes;
 
 
 /**
@@ -69,14 +67,6 @@ public class IpAddress implements Comparable<IpAddress> {
             this.octets = null;
             break;
         }
-    }
-
-    /**
-     * Default constructor for Kryo serialization.
-     */
-    protected IpAddress() {
-        this.version = null;
-        this.octets = null;
     }
 
     /**
@@ -149,20 +139,6 @@ public class IpAddress implements Comparable<IpAddress> {
      */
     public byte[] toOctets() {
         return Arrays.copyOf(octets, octets.length);
-    }
-
-    /**
-     * Returns the IP address as InetAddress.
-     *
-     * @return InetAddress
-     */
-    public InetAddress toInetAddress() {
-        try {
-            return InetAddress.getByAddress(octets);
-        } catch (UnknownHostException e) {
-            // Should never reach here
-            return null;
-        }
     }
 
     /**

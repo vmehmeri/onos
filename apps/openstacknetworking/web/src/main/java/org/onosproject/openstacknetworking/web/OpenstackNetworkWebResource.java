@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,8 +57,9 @@ public class OpenstackNetworkWebResource extends AbstractWebResource {
     @DELETE
     @Path("{id}")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response deleteNetwork(InputStream input) {
         log.debug("REST API networks is called {}", input.toString());
-        return Response.noContent().build();
+        return Response.status(Response.Status.OK).build();
     }
 }

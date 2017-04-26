@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,9 @@ package org.onosproject.net;
  * Number of the annotation keys have been deprecated as the use of annotations
  * is being phased out and instead network configuration subsystem is being
  * phased-in for majority of model meta-data.
+ * </p>
  */
 public final class AnnotationKeys {
-
-    private static final double DEFAULT_VALUE = 1.0;
 
     // Prohibit instantiation
     private AnnotationKeys() {
@@ -44,39 +43,14 @@ public final class AnnotationKeys {
     public static final String TYPE = "type";
 
     /**
-     * Annotation key for UI type (the glyph ID for rendering).
-     */
-    public static final String UI_TYPE = "uiType";
-
-    /**
-     * Annotation key for UI location type of device/host
-     * (either 'geo' or 'grid').
-     */
-    public static final String LOC_TYPE = "locType";
-
-    /**
-     * Annotation key for latitude (e.g. latitude of device/host
-     * in a geo-layout).
+     * Annotation key for latitude (e.g. latitude of device).
      */
     public static final String LATITUDE = "latitude";
 
     /**
-     * Annotation key for longitude (e.g. longitude of device/host
-     * in a geo-layout).
+     * Annotation key for longitute (e.g. longitude of device).
      */
     public static final String LONGITUDE = "longitude";
-
-    /**
-     * Annotation key for grid-Y (e.g. y-coordinate of device/host
-     * in a grid-layout).
-     */
-    public static final String GRID_Y = "gridY";
-
-    /**
-     * Annotation key for grid-X (e.g. x-coordinate of device/host
-     * in a grid-layout).
-     */
-    public static final String GRID_X = "gridX";
 
     /**
      * Annotation key for southbound protocol.
@@ -101,7 +75,6 @@ public final class AnnotationKeys {
 
     /**
      * Annotation key for latency.
-     * The value of this key is expected to be latency in microsecond.
      */
     public static final String LATENCY = "latency";
 
@@ -172,26 +145,9 @@ public final class AnnotationKeys {
     public static final String PASSWORD = "password";
 
     /**
-     * Link annotation key to express that a Link
-     * is backed by underlying protection mechanism.
-     */
-    // value is undefined at the moment, only using key existence
-    public static final String PROTECTED = "protected";
-
-    /**
-     * Annotation key for REST server identifier.
-     */
-    public static final String REST_SERVER = "restServer";
-
-    /**
-     * Annotation key for the sshkey.
-     */
-    public static final String SSHKEY = "sshkey";
-
-    /**
      * Returns the value annotated object for the specified annotation key.
      * The annotated value is expected to be String that can be parsed as double.
-     * If parsing fails, the returned value will be {@value DEFAULT_VALUE}.
+     * If parsing fails, the returned value will be 1.0.
      *
      * @param annotated annotated object whose annotated value is obtained
      * @param key       key of annotation
@@ -202,7 +158,7 @@ public final class AnnotationKeys {
         try {
             value = Double.parseDouble(annotated.annotations().value(key));
         } catch (NumberFormatException e) {
-            value = DEFAULT_VALUE;
+            value = 1.0;
         }
         return value;
     }

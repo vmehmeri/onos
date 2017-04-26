@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,7 +90,8 @@ public class PicaPipeline extends AbstractHandlerBehaviour implements Pipeliner 
     private KryoNamespace appKryo = new KryoNamespace.Builder()
             .register(KryoNamespaces.API)
             .register(PicaGroup.class)
-            .build("PicaPipeline");
+            .register(byte[].class)
+            .build();
 
     @Override
     public void init(DeviceId deviceId, PipelinerContext context) {
@@ -535,11 +536,5 @@ public class PicaPipeline extends AbstractHandlerBehaviour implements Pipeliner 
         public byte[] data() {
             return appKryo.serialize(nextActions);
         }
-    }
-
-    @Override
-    public List<String> getNextMappings(NextGroup nextGroup) {
-        // TODO Implementation deferred to vendor
-        return null;
     }
 }

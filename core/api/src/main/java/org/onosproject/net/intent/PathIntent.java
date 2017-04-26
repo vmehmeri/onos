@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.google.common.annotations.Beta;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.net.Link;
 import org.onosproject.net.Path;
-import org.onosproject.net.ResourceGroup;
 import org.onosproject.net.flow.TrafficSelector;
 import org.onosproject.net.flow.TrafficTreatment;
 
@@ -37,11 +36,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class PathIntent extends ConnectivityIntent {
 
     private final Path path;
-    private ProtectionType type;
 
     /**
      * Creates a new point-to-point intent with the supplied ingress/egress
-     * ports and using the specified explicit path. Path is primary by default.
+     * ports and using the specified explicit path.
      *
      * @param appId     application identifier
      * @param key       intent key
@@ -51,9 +49,7 @@ public class PathIntent extends ConnectivityIntent {
      * @param constraints  optional list of constraints
      * @param priority  priority to use for the generated flows
      * @throws NullPointerException {@code path} is null
-     * @deprecated 1.9.1
      */
-    @Deprecated
     protected PathIntent(ApplicationId appId,
                          Key key,
                          TrafficSelector selector,
@@ -61,40 +57,10 @@ public class PathIntent extends ConnectivityIntent {
                          Path path,
                          List<Constraint> constraints,
                          int priority) {
-        this(appId, key, selector, treatment, path, constraints, priority,
-             ProtectionType.PRIMARY, null);
-    }
-
-    /**
-     * Creates a new point-to-point intent with the supplied ingress/egress
-     * ports and using the specified explicit path, which can be classified
-     * as PRIMARY or BACKUP.
-     *
-     * @param appId     application identifier
-     * @param key       intent key
-     * @param selector  traffic selector
-     * @param treatment treatment
-     * @param path      traversed links
-     * @param constraints  optional list of constraints
-     * @param priority  priority to use for the generated flows
-     * @param type      PRIMARY or BACKUP
-     * @param resourceGroup resource group for this intent
-     * @throws NullPointerException {@code path} is null
-     */
-    protected PathIntent(ApplicationId appId,
-                         Key key,
-                         TrafficSelector selector,
-                         TrafficTreatment treatment,
-                         Path path,
-                         List<Constraint> constraints,
-                         int priority,
-                         ProtectionType type,
-                         ResourceGroup resourceGroup) {
         super(appId, key, resources(path.links()), selector, treatment, constraints,
-              priority, resourceGroup);
+                priority);
         PathIntent.validate(path.links());
         this.path = path;
-        this.type = type;
     }
 
     /**
@@ -103,7 +69,6 @@ public class PathIntent extends ConnectivityIntent {
     protected PathIntent() {
         super();
         this.path = null;
-        this.type = ProtectionType.PRIMARY;
     }
 
     /**
@@ -120,7 +85,6 @@ public class PathIntent extends ConnectivityIntent {
      */
     public static class Builder extends ConnectivityIntent.Builder {
         Path path;
-        ProtectionType type;
 
         protected Builder() {
             // Hide default constructor
@@ -156,11 +120,6 @@ public class PathIntent extends ConnectivityIntent {
             return (Builder) super.priority(priority);
         }
 
-        @Override
-        public Builder resourceGroup(ResourceGroup resourceGroup) {
-            return (Builder) super.resourceGroup(resourceGroup);
-        }
-
         /**
          * Sets the path of the intent that will be built.
          *
@@ -169,11 +128,6 @@ public class PathIntent extends ConnectivityIntent {
          */
         public Builder path(Path path) {
             this.path = path;
-            return this;
-        }
-
-        public Builder setType(ProtectionType type) {
-            this.type = type;
             return this;
         }
 
@@ -191,9 +145,7 @@ public class PathIntent extends ConnectivityIntent {
                     treatment,
                     path,
                     constraints,
-                    priority,
-                    type == null ? ProtectionType.PRIMARY : type,
-                    resourceGroup
+                    priority
             );
         }
     }
@@ -231,10 +183,6 @@ public class PathIntent extends ConnectivityIntent {
         return path;
     }
 
-    public ProtectionType type() {
-        return type;
-    }
-
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(getClass())
@@ -247,27 +195,7 @@ public class PathIntent extends ConnectivityIntent {
                 .add("treatment", treatment())
                 .add("constraints", constraints())
                 .add("path", path)
-                .add("type", type)
-                .add("resourceGroup", resourceGroup())
                 .toString();
-    }
-
-    // for path protection purposes
-    @Beta
-    public enum ProtectionType {
-        /**
-         * Intent within primary path.
-         */
-        PRIMARY,
-        /**
-         * Intent within backup path.
-         */
-        BACKUP,
-        /**
-         * Intent whose flow rule serves as the fast failover
-         * between primary and backup paths.
-         */
-        FAILOVER
     }
 
 }

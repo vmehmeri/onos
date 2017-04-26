@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,13 +36,13 @@ public class BellmanFordGraphSearchTest extends BreadthFirstSearchTest {
     @Test
     @Override
     public void defaultGraphTest() {
-        executeDefaultTest(7, 5, new TestDoubleWeight(5.0));
+        executeDefaultTest(7, 5, 5.0);
     }
 
     @Test
     public void defaultHopCountWeight() {
-        weigher = null;
-        executeDefaultTest(10, 3, new ScalarWeight(3.0));
+        weight = null;
+        executeDefaultTest(10, 3, 3.0);
     }
 
     @Test
@@ -51,25 +51,25 @@ public class BellmanFordGraphSearchTest extends BreadthFirstSearchTest {
         vertexes.add(Z);
 
         Set<TestEdge> edges = new HashSet<>(edges());
-        edges.add(new TestEdge(G, Z, new TestDoubleWeight(1.0)));
-        edges.add(new TestEdge(Z, G, new TestDoubleWeight(-2.0)));
+        edges.add(new TestEdge(G, Z, 1.0));
+        edges.add(new TestEdge(Z, G, -2.0));
 
         graph = new AdjacencyListsGraph<>(vertexes, edges);
 
         GraphPathSearch<TestVertex, TestEdge> search = graphSearch();
-        Set<Path<TestVertex, TestEdge>> paths = search.search(graph, A, H, weigher, ALL_PATHS).paths();
+        Set<Path<TestVertex, TestEdge>> paths = search.search(graph, A, H, weight, ALL_PATHS).paths();
         assertEquals("incorrect paths count", 1, paths.size());
 
         Path p = paths.iterator().next();
         assertEquals("incorrect src", A, p.src());
         assertEquals("incorrect dst", H, p.dst());
         assertEquals("incorrect path length", 5, p.edges().size());
-        assertEquals("incorrect path cost", new TestDoubleWeight(5), p.cost());
+        assertEquals("incorrect path cost", 5.0, p.cost(), 0.1);
 
-        paths = search.search(graph, A, G, weigher, ALL_PATHS).paths();
+        paths = search.search(graph, A, G, weight, ALL_PATHS).paths();
         assertEquals("incorrect paths count", 0, paths.size());
 
-        paths = search.search(graph, A, null, weigher, ALL_PATHS).paths();
+        paths = search.search(graph, A, null, weight, ALL_PATHS).paths();
         printPaths(paths);
         assertEquals("incorrect paths count", 6, paths.size());
     }

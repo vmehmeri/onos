@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015-2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,10 @@ import static org.slf4j.LoggerFactory.getLogger;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Set;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,7 +64,6 @@ import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 
 import static com.google.common.base.Preconditions.checkState;
-import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 /**
  * Provider of {@link ClusterMetadata cluster metadata} sourced from a local config file.
@@ -89,7 +88,7 @@ public class ConfigFileBasedClusterMetadataProvider implements ClusterMetadataPr
     private static final ProviderId PROVIDER_ID = new ProviderId("file", "none");
     private final AtomicReference<Versioned<ClusterMetadata>> cachedMetadata = new AtomicReference<>();
     private final ScheduledExecutorService configFileChangeDetector =
-            newSingleThreadScheduledExecutor(groupedThreads("onos/cluster/metadata/config-watcher", "", log));
+            Executors.newSingleThreadScheduledExecutor(groupedThreads("onos/cluster/metadata/config-watcher", ""));
 
     private String metadataUrl;
     private ObjectMapper mapper;
@@ -170,15 +169,13 @@ public class ConfigFileBasedClusterMetadataProvider implements ClusterMetadataPr
                 File file = new File(metadataUrl.replaceFirst("file://", ""));
                 return file.exists();
             } else if (url.getProtocol().equals("http")) {
-                try (InputStream file = url.openStream()) {
-                    return true;
-                }
+                url.openStream();
+                return true;
             } else {
                 // Unsupported protocol
                 return false;
             }
         } catch (Exception e) {
-            log.warn("Exception accessing metadata file at {}:", metadataUrl, e);
             return false;
         }
     }
@@ -275,6 +272,7 @@ public class ConfigFileBasedClusterMetadataProvider implements ClusterMetadataPr
 
     /**
      * Monitors the metadata url for any updates and notifies providerService accordingly.
+     * @throws IOException
      */
     private void watchUrl(String metadataUrl) {
         // TODO: We are merely polling the url.

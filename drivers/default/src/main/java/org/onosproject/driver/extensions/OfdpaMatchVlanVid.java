@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ public class OfdpaMatchVlanVid extends AbstractExtension implements ExtensionSel
         if (this == obj) {
             return true;
         }
-        if (obj != null && obj.getClass() == OfdpaMatchVlanVid.class) {
+        if (obj instanceof OfdpaMatchVlanVid) {
             OfdpaMatchVlanVid that = (OfdpaMatchVlanVid) obj;
             return Objects.equals(vlanId, that.vlanId);
 

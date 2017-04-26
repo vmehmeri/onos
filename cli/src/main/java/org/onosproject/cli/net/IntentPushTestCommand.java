@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -165,9 +165,7 @@ public class IntentPushTestCommand extends AbstractShellCommand
         }
 
         try {
-            // In this way with the tests in place the timeout will be
-            // 61 seconds.
-            if (latch.await(1000 + count * 60, TimeUnit.MILLISECONDS)) {
+            if (latch.await(1000 + count * 30, TimeUnit.MILLISECONDS)) {
                 printResults(count);
             } else {
                 print("Failure: %d intents not installed", latch.getCount());

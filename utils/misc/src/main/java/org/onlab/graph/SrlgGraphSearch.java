@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ public class SrlgGraphSearch<V extends Vertex, E extends Edge<V>>
 
     Graph<V, E> orig;
     V src, dst;
-    EdgeWeigher<V, E> weigher;
+    EdgeWeight<V, E> weight;
 
     /**
      * Creates an SRLG graph search object with the given number
@@ -86,18 +86,22 @@ public class SrlgGraphSearch<V extends Vertex, E extends Edge<V>>
     }
 
     @Override
-    protected Result<V, E> internalSearch(Graph<V, E> graph, V src, V dst,
-                               EdgeWeigher<V, E> weigher, int maxPaths) {
+    public Result<V, E> search(Graph<V, E> graph, V src, V dst,
+                               EdgeWeight<V, E> weight, int maxPaths) {
         if (maxPaths == ALL_PATHS) {
             maxPaths = POPSIZE;
         }
         if (useSuurballe) {
-            return new SuurballeGraphSearch<V, E>().search(graph, src, dst, weigher, ALL_PATHS);
+            return new SuurballeGraphSearch<V, E>().search(graph, src, dst, weight, ALL_PATHS);
         }
+        if (weight == null) {
+            weight = edge -> 1;
+        }
+        checkArguments(graph, src, dst);
         orig = graph;
         this.src = src;
         this.dst = dst;
-        this.weigher = weigher;
+        this.weight = weight;
         List<Subset> best = new GAPopulation<Subset>()
                 .runGA(ITERATIONS, POPSIZE, maxPaths, new Subset(new boolean[numGroups]));
         Set<DisjointPathPair> dpps = new HashSet<DisjointPathPair>();
@@ -105,7 +109,7 @@ public class SrlgGraphSearch<V extends Vertex, E extends Edge<V>>
             dpps.addAll(s.buildPaths());
         }
         Result<V, E> firstDijkstra = new DijkstraGraphSearch<V, E>()
-                .search(orig, src, dst, weigher, 1);
+                .search(orig, src, dst, weight, 1);
         return new Result<V, E>() {
             final DefaultResult search = (DefaultResult) firstDijkstra;
 
@@ -123,7 +127,7 @@ public class SrlgGraphSearch<V extends Vertex, E extends Edge<V>>
                 }
                 return pathsD;
             }
-            public Map<V, Weight> costs() {
+            public Map<V, Double> costs() {
                 return search.costs();
 
             }
@@ -137,25 +141,15 @@ public class SrlgGraphSearch<V extends Vertex, E extends Edge<V>>
     //finds the shortest path in the graph given a subset of edge types to use
     private Result<V, E> findShortestPathFromSubset(boolean[] subset) {
         Graph<V, E> graph = orig;
-        EdgeWeigher<V, E> modified = new EdgeWeigher<V, E>() {
+        EdgeWeight<V, E> modified = new EdgeWeight<V, E>() {
             final boolean[] subsetF = subset;
 
             @Override
-            public Weight weight(E edge) {
+            public double weight(E edge) {
                 if (subsetF[riskGrouping.get(edge)]) {
-                    return weigher.weight(edge);
+                    return weight.weight(edge);
                 }
-                return weigher.getNonViableWeight();
-            }
-
-            @Override
-            public Weight getInitialWeight() {
-                return weigher.getInitialWeight();
-            }
-
-            @Override
-            public Weight getNonViableWeight() {
-                return weigher.getNonViableWeight();
+                return INF;
             }
         };
 
@@ -187,13 +181,13 @@ public class SrlgGraphSearch<V extends Vertex, E extends Edge<V>>
         }
 
         @Override
-        public Comparable fitness() {
+        public double fitness() {
             Set<Path<V, E>> paths1 = findShortestPathFromSubset(subset).paths();
             Set<Path<V, E>> paths2 = findShortestPathFromSubset(not).paths();
-            if (paths1.isEmpty() || paths2.isEmpty()) {
-                return weigher.getNonViableWeight();
+            if (paths1.size() == 0 || paths2.size() == 0) {
+                return INF;
             }
-            return paths1.iterator().next().cost().merge(paths2.iterator().next().cost());
+            return paths1.iterator().next().cost() + paths2.iterator().next().cost();
         }
 
         @Override
@@ -242,7 +236,13 @@ public class SrlgGraphSearch<V extends Vertex, E extends Edge<V>>
         public Set<DisjointPathPair> buildPaths() {
             Set<DisjointPathPair> dpps = new HashSet<>();
             for (Path<V, E> path1: findShortestPathFromSubset(subset).paths()) {
+                if (path1.cost() >= INF) {
+                    continue;
+                }
                 for (Path<V, E> path2: findShortestPathFromSubset(not).paths()) {
+                    if (path2.cost() >= INF) {
+                        continue;
+                    }
                     DisjointPathPair<V, E> dpp = new DisjointPathPair<>(path1, path2);
                     dpps.add(dpp);
                 }

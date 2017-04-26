@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 package org.onosproject.store.serializers;
 
-import static org.onosproject.store.serializers.NodeIdSerializer.nodeIdSerializer;
-
 import org.onosproject.cluster.NodeId;
 import org.onosproject.mastership.MastershipTerm;
 
@@ -28,7 +26,7 @@ import com.esotericsoftware.kryo.io.Output;
 /**
  * Kryo Serializer for {@link org.onosproject.mastership.MastershipTerm}.
  */
-public final class MastershipTermSerializer extends Serializer<MastershipTerm> {
+public class MastershipTermSerializer extends Serializer<MastershipTerm> {
 
     /**
      * Creates {@link MastershipTerm} serializer instance.
@@ -40,14 +38,14 @@ public final class MastershipTermSerializer extends Serializer<MastershipTerm> {
 
     @Override
     public MastershipTerm read(Kryo kryo, Input input, Class<MastershipTerm> type) {
-        final NodeId node = kryo.readObjectOrNull(input, NodeId.class, nodeIdSerializer());
+        final NodeId node = (NodeId) kryo.readClassAndObject(input);
         final long term = input.readLong();
         return MastershipTerm.of(node, term);
     }
 
     @Override
     public void write(Kryo kryo, Output output, MastershipTerm object) {
-        kryo.writeObjectOrNull(output, object.master(), nodeIdSerializer());
+        kryo.writeClassAndObject(output, object.master());
         output.writeLong(object.termNumber());
     }
 }

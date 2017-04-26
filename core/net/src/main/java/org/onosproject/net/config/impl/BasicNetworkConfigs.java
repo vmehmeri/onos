@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,23 +34,14 @@ import org.onosproject.net.config.NetworkConfigRegistry;
 import org.onosproject.net.config.basics.BasicDeviceConfig;
 import org.onosproject.net.config.basics.BasicHostConfig;
 import org.onosproject.net.config.basics.BasicLinkConfig;
-import org.onosproject.net.config.basics.BasicRegionConfig;
-import org.onosproject.net.config.basics.BasicUiTopoLayoutConfig;
-import org.onosproject.net.config.basics.PortAnnotationConfig;
+import org.onosproject.net.config.basics.OpticalPortConfig;
 import org.onosproject.net.config.basics.SubjectFactories;
-import org.onosproject.net.region.RegionId;
-import org.onosproject.ui.model.topo.UiTopoLayoutId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 
-import static org.onosproject.net.config.basics.SubjectFactories.CONNECT_POINT_SUBJECT_FACTORY;
-import static org.onosproject.net.config.basics.SubjectFactories.DEVICE_SUBJECT_FACTORY;
-import static org.onosproject.net.config.basics.SubjectFactories.HOST_SUBJECT_FACTORY;
-import static org.onosproject.net.config.basics.SubjectFactories.LAYOUT_SUBJECT_FACTORY;
-import static org.onosproject.net.config.basics.SubjectFactories.LINK_SUBJECT_FACTORY;
-import static org.onosproject.net.config.basics.SubjectFactories.REGION_SUBJECT_FACTORY;
+import static org.onosproject.net.config.basics.SubjectFactories.*;
 
 /**
  * Component for registration of builtin basic network configurations.
@@ -59,67 +50,49 @@ import static org.onosproject.net.config.basics.SubjectFactories.REGION_SUBJECT_
 @Component(immediate = true)
 public class BasicNetworkConfigs implements BasicNetworkConfigService {
 
-    private static final String BASIC = "basic";
-    private static final String INTERFACES = "interfaces";
-
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     private final Set<ConfigFactory> factories = ImmutableSet.of(
             new ConfigFactory<DeviceId, BasicDeviceConfig>(DEVICE_SUBJECT_FACTORY,
-                    BasicDeviceConfig.class,
-                    BASIC) {
+                                                           BasicDeviceConfig.class,
+                                                           "basic") {
                 @Override
                 public BasicDeviceConfig createConfig() {
                     return new BasicDeviceConfig();
                 }
             },
             new ConfigFactory<ConnectPoint, InterfaceConfig>(CONNECT_POINT_SUBJECT_FACTORY,
-                    InterfaceConfig.class,
-                    INTERFACES,
-                    true) {
+                                                             InterfaceConfig.class,
+                                                             "interfaces",
+                                                             true) {
                 @Override
                 public InterfaceConfig createConfig() {
                     return new InterfaceConfig();
                 }
             },
             new ConfigFactory<HostId, BasicHostConfig>(HOST_SUBJECT_FACTORY,
-                    BasicHostConfig.class,
-                    BASIC) {
+                                                       BasicHostConfig.class,
+                                                       "basic") {
                 @Override
                 public BasicHostConfig createConfig() {
                     return new BasicHostConfig();
                 }
             },
             new ConfigFactory<LinkKey, BasicLinkConfig>(LINK_SUBJECT_FACTORY,
-                    BasicLinkConfig.class,
-                    BASIC) {
+                                                        BasicLinkConfig.class,
+                                                        "basic") {
                 @Override
                 public BasicLinkConfig createConfig() {
                     return new BasicLinkConfig();
                 }
             },
-            new ConfigFactory<RegionId, BasicRegionConfig>(REGION_SUBJECT_FACTORY,
-                    BasicRegionConfig.class,
-                    BASIC) {
+            // TODO move this optical specific configuration out to optical app
+            new ConfigFactory<ConnectPoint, OpticalPortConfig>(CONNECT_POINT_SUBJECT_FACTORY,
+                                                               OpticalPortConfig.class,
+                                                               "optical") {
                 @Override
-                public BasicRegionConfig createConfig() {
-                    return new BasicRegionConfig();
-                }
-            },
-            new ConfigFactory<UiTopoLayoutId, BasicUiTopoLayoutConfig>(LAYOUT_SUBJECT_FACTORY,
-                    BasicUiTopoLayoutConfig.class,
-                    BASIC) {
-                @Override
-                public BasicUiTopoLayoutConfig createConfig() {
-                    return new BasicUiTopoLayoutConfig();
-                }
-            },
-            new ConfigFactory<ConnectPoint, PortAnnotationConfig>(CONNECT_POINT_SUBJECT_FACTORY,
-                    PortAnnotationConfig.class,
-                    PortAnnotationConfig.CONFIG_KEY) {
-                @Override
-                public PortAnnotationConfig createConfig() {
-                    return new PortAnnotationConfig();
+                public OpticalPortConfig createConfig() {
+                    return new OpticalPortConfig();
                 }
             }
     );

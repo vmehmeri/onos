@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ import org.onlab.packet.BasePacket;
 import org.onlab.packet.DeserializationException;
 import org.onlab.packet.Deserializer;
 import org.onlab.packet.IPacket;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Objects;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -123,8 +121,14 @@ public class NeighborDiscoveryOptions extends BasePacket {
 
         @Override
         public String toString() {
-            return MoreObjects.toStringHelper(this).add("type", type).
-                    add("data", data).toString();
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            sb.append("type= ");
+            sb.append(type);
+            sb.append("data= ");
+            sb.append(data);
+            sb.append("]");
+            return sb.toString();
         }
     }
 
@@ -226,7 +230,14 @@ public class NeighborDiscoveryOptions extends BasePacket {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.options.toArray());
+        final int prime = 31;
+        int result = 1;
+
+        for (Option option : this.options) {
+            result = prime * result + option.type();
+            result = prime * result + Arrays.hashCode(option.data());
+        }
+        return result;
     }
 
     @Override
@@ -236,7 +247,7 @@ public class NeighborDiscoveryOptions extends BasePacket {
         }
         if (obj instanceof NeighborDiscoveryOptions) {
             NeighborDiscoveryOptions other = (NeighborDiscoveryOptions) obj;
-            return Objects.equal(this.options, other.options);
+            return this.options.equals(other.options);
         }
         return false;
     }

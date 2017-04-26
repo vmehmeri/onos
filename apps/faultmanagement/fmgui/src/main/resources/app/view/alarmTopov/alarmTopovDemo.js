@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,14 +27,26 @@
 
     // constants
     var displayStart = 'alarmTopovDisplayStart',
+        displayUpdate = 'alarmTopovDisplayUpdate',
         displayStop = 'alarmTopovDisplayStop';
+
+    // internal state
+    var currentMode = null;
 
 
     // === ---------------------------
     // === Helper functions
 
-    function sendDisplayStart() {
-        wss.sendEvent(displayStart);
+    function sendDisplayStart(mode) {
+        wss.sendEvent(displayStart, {
+            mode: mode
+        });
+    }
+
+    function sendDisplayUpdate(what) {
+        wss.sendEvent(displayUpdate, {
+            id: what ? what.id : ''
+        });
     }
 
     function sendDisplayStop() {
@@ -44,15 +56,30 @@
     // === ---------------------------
     // === Main API functions
 
-    function startDisplay() {
-        sendDisplayStart();
-        flash.flash('Showing alarm counts on devices');
+    function startDisplay(mode) {
+        if (currentMode === mode) {
+            $log.debug('(in mode', mode, 'already)');
+        } else {
+            currentMode = mode;
+            sendDisplayStart(mode);
+            flash.flash('Starting display mode: ' + mode);
+        }
+    }
+
+    function updateDisplay(m) {
+        if (currentMode) {
+            sendDisplayUpdate(m);
+        }
     }
 
     function stopDisplay() {
-        sendDisplayStop();
-        flash.flash('Canceling alarm counts on devices');
-        return true;
+        if (currentMode) {
+            currentMode = null;
+            sendDisplayStop();
+            flash.flash('Canceling display mode');
+            return true;
+        }
+        return false;
     }
 
     // === ---------------------------
@@ -70,6 +97,7 @@
 
             return {
                 startDisplay: startDisplay,
+                updateDisplay: updateDisplay,
                 stopDisplay: stopDisplay
             };
         }]);

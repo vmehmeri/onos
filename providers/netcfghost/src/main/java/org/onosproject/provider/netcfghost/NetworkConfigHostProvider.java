@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,9 +59,8 @@ public class NetworkConfigHostProvider extends AbstractProvider implements HostP
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected NetworkConfigRegistry networkConfigRegistry;
 
+    private static final String APP_NAME = "org.onosproject.provider.netcfghost";
     private ApplicationId appId;
-    private static final String APP_NAME = "org.onosproject.netcfghost";
-    private static final ProviderId PROVIDER_ID = new ProviderId("host", APP_NAME);
     protected HostProviderService providerService;
 
     private final Logger log = LoggerFactory.getLogger(getClass());
@@ -72,7 +71,7 @@ public class NetworkConfigHostProvider extends AbstractProvider implements HostP
      * Creates an network config host location provider.
      */
     public NetworkConfigHostProvider() {
-        super(PROVIDER_ID);
+        super(new ProviderId("host", APP_NAME));
     }
 
     @Activate
@@ -95,7 +94,7 @@ public class NetworkConfigHostProvider extends AbstractProvider implements HostP
     @Override
     public void triggerProbe(Host host) {
         /*
-         * Note: All hosts are configured in network config host provider.
+         * Note: In CORD deployment, we assume that all hosts are configured.
          * Therefore no probe is required.
          */
     }
@@ -111,9 +110,7 @@ public class NetworkConfigHostProvider extends AbstractProvider implements HostP
      */
     protected void addHost(MacAddress mac, VlanId vlan, HostLocation hloc, Set<IpAddress> ips) {
         HostId hid = HostId.hostId(mac, vlan);
-        HostDescription desc = (ips != null) ?
-                new DefaultHostDescription(mac, vlan, hloc, ips, true) :
-                new DefaultHostDescription(mac, vlan, hloc, true);
+        HostDescription desc = new DefaultHostDescription(mac, vlan, hloc, ips);
         providerService.hostDetected(hid, desc, false);
     }
 
@@ -128,7 +125,7 @@ public class NetworkConfigHostProvider extends AbstractProvider implements HostP
      */
     protected void updateHost(MacAddress mac, VlanId vlan, HostLocation hloc, Set<IpAddress> ips) {
         HostId hid = HostId.hostId(mac, vlan);
-        HostDescription desc = new DefaultHostDescription(mac, vlan, hloc, ips, true);
+        HostDescription desc = new DefaultHostDescription(mac, vlan, hloc, ips);
         providerService.hostDetected(hid, desc, true);
     }
 

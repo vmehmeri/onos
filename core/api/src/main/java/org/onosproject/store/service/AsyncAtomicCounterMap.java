@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,12 @@
  */
 package org.onosproject.store.service;
 
-import org.onosproject.store.primitives.DefaultAtomicCounterMap;
-
 import java.util.concurrent.CompletableFuture;
 
 /**
  * An async atomic counter map dispenses monotonically increasing values associated with key.
  */
-public interface AsyncAtomicCounterMap<K> extends DistributedPrimitive {
-
-    @Override
-    default DistributedPrimitive.Type primitiveType() {
-        return DistributedPrimitive.Type.COUNTER_MAP;
-    }
+public interface AsyncAtomicCounterMap<K> {
 
     /**
      * Increments by one the value currently associated with key, and returns the new value.
@@ -141,44 +134,4 @@ public interface AsyncAtomicCounterMap<K> extends DistributedPrimitive {
      * @return true if the value was removed, false otherwise
      */
     CompletableFuture<Boolean> remove(K key, long value);
-
-    /**
-     * Returns the number of entries in the map.
-     *
-     * @return the number of entries in the map
-     */
-    CompletableFuture<Integer> size();
-
-    /**
-     * Returns a boolean indicating whether the map is empty.
-     *
-     * @return true if the map is empty, false otherwise
-     */
-    CompletableFuture<Boolean> isEmpty();
-
-    /**
-     * Removes all entries from the map.
-     *
-     * @return void
-     */
-    CompletableFuture<Void> clear();
-
-    /**
-     * Returns a new {@link AtomicCounterMap} that is backed by this instance.
-     *
-     * @return new {@code AtomicCounterMap} instance
-     */
-    default AtomicCounterMap<K> asAtomicCounterMap() {
-        return asAtomicCounterMap(DistributedPrimitive.DEFAULT_OPERTATION_TIMEOUT_MILLIS);
-    }
-
-    /**
-     * Returns a new {@link AtomicCounterMap} that is backed by this instance.
-     *
-     * @param timeoutMillis timeout duration for the returned ConsistentMap operations
-     * @return new {@code AtomicCounterMap} instance
-     */
-    default AtomicCounterMap<K> asAtomicCounterMap(long timeoutMillis) {
-        return new DefaultAtomicCounterMap<>(this, timeoutMillis);
-    }
 }

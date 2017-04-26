@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,78 +29,40 @@ public final class OvsdbConstant {
     private OvsdbConstant() {
     }
 
-    /** Common column names. */
-    public static final String UUID = "_uuid";
-
     /** Ovsdb database Open_vSwitch. */
     public static final String DATABASENAME = "Open_vSwitch";
 
-    /** Open_vSwitch table. */
-    public static final String BRIDGES = "bridges";
-
-    /** Bridge table. */
+    /** Ovsdb table Bridge. */
     public static final String BRIDGE = "Bridge";
-    public static final String PORTS = "ports";
-    public static final String MIRRORS = "mirrors";
-    // other configs
-    public static final String DATAPATH_ID = "datapath-id";
-    public static final String DISABLE_INBAND = "disable-in-band";
 
-    /** Port table. */
-    public static final String PORT = "Port";
-    public static final String INTERFACES = "interfaces";
-    public static final String PORT_QOS = "qos";
-
-    /** Interface table. */
+    /** Ovsdb table Interface. */
     public static final String INTERFACE = "Interface";
-    // type
-    public static final String TYPEVXLAN = "vxlan";
-    // virtual machine identifiers
-    public static final String EXTERNAL_ID_INTERFACE_ID = "iface-id";
-    public static final String EXTERNAL_ID_VM_MAC = "attached-mac";
-    // tunnel interface options
-    public static final String TUNNEL_LOCAL_IP = "local_ip";
-    public static final String TUNNEL_REMOTE_IP = "remote_ip";
-    public static final String TUNNEL_KEY = "key";
-    // patch interface options
-    public static final String PATCH_PEER = "peer";
 
-    /** Controller table. */
+    /** Ovsdb table Controller. */
     public static final String CONTROLLER = "Controller";
 
-    /** Mirror table. */
-    public static final String MIRROR = "Mirror";
-
-    /* Qos table */
-    public static final String QOS = "QoS";
-    public static final String QUEUES = "queues";
-    public static final String CIR = "cir";
-    public static final String CBS = "cbs";
-    public static final String QOS_EXTERNAL_ID_KEY = "onos-qos-id";
-    public static final String QOS_TYPE_PREFIX = "linux-";
-    public static final String QOS_EGRESS_POLICER = "egress-policer";
-
-    /* Queue table */
-    public static final String QUEUE = "Queue";
-    public static final String MIN_RATE = "min-rate";
-    public static final String MAX_RATE = "max-rate";
-    public static final String BURST = "burst";
-    public static final String PRIORITY = "priority";
-    public static final String QUEUE_EXTERNAL_ID_KEY = "onos-queue-id";
-
-    /* external id */
-    public static final String EXTERNAL_ID = "external_ids";
+    /** Ovsdb table Port. */
+    public static final String PORT = "Port";
 
     /** Ovsdb bridge name. */
-    // TODO remove this particular bridge name from OVSDB provider
     public static final String INTEGRATION_BRIDGE = "br-int";
+
+    /** Ovsdb vxlan tunnel type. */
+    public static final String TYPEVXLAN = "vxlan";
 
     /** Openflow version. */
     public static final String OPENFLOW13 = "OpenFlow13";
+
+    /** Ovsdb external_id_interface_id.. */
+    public static final String EXTERNAL_ID_INTERFACE_ID = "iface-id";
+
+    /** Ovsdb external_id_vm_mac. */
+    public static final String EXTERNAL_ID_VM_MAC = "attached-mac";
 
     /** Openflow port. */
     public static final int OFPORT = 6653;
 
     /** Ovsdb port. */
     public static final int OVSDBPORT = 6640;
+
 }

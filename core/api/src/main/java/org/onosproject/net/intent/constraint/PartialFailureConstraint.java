@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.onosproject.net.Path;
 import org.onosproject.net.intent.ConnectivityIntent;
 import org.onosproject.net.intent.Constraint;
 import org.onosproject.net.intent.Intent;
-import org.onosproject.net.intent.ResourceContext;
+import org.onosproject.net.resource.link.LinkResourceService;
 
 /**
  * A constraint that allows intents that can only be partially compiled
@@ -28,15 +28,13 @@ import org.onosproject.net.intent.ResourceContext;
  * to be installed when some endpoints or paths are not found.
  */
 public class PartialFailureConstraint implements Constraint {
-    // doesn't use LinkResourceService
     @Override
-    public double cost(Link link, ResourceContext context) {
+    public double cost(Link link, LinkResourceService resourceService) {
         return 1;
     }
 
-    // doesn't use LinkResourceService
     @Override
-    public boolean validate(Path path, ResourceContext context) {
+    public boolean validate(Path path, LinkResourceService resourceService) {
         return true;
     }
 
@@ -47,26 +45,5 @@ public class PartialFailureConstraint implements Constraint {
                     .anyMatch(c -> c instanceof PartialFailureConstraint);
         }
         return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return 1;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public String toString() {
-        return "PartialFailureConstraint";
     }
 }

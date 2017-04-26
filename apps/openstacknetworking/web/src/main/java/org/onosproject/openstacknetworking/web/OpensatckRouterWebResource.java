@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,25 +81,18 @@ public class OpensatckRouterWebResource extends AbstractWebResource {
     @Path("{id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response updateRouter(@PathParam("id") String id, InputStream input) {
+    public Response updateRouter(InputStream input) {
         checkNotNull(input);
         try {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode routerNode = (ObjectNode) mapper.readTree(input);
 
-            OpenstackRouter or = ROUTER_CODEC.decode(routerNode, this);
-
-            OpenstackRouter.Builder osBuilder = new OpenstackRouter.Builder()
-                    .tenantId(or.tenantId())
-                    .id(id)
-                    .name(or.name())
-                    .status(OpenstackRouter.RouterStatus.ACTIVE)
-                    .adminStateUp(Boolean.valueOf(or.adminStateUp()))
-                    .gatewayExternalInfo(or.gatewayExternalInfo());
+            OpenstackRouter openstackRouter
+                    = ROUTER_CODEC.decode(routerNode, this);
 
             OpenstackRoutingService routingService
                     = getService(OpenstackRoutingService.class);
-            routingService.updateRouter(osBuilder.build());
+            routingService.updateRouter(openstackRouter);
 
             log.debug("REST API UPDATE router is called from router {}", input.toString());
             return Response.status(Response.Status.OK).build();
@@ -115,7 +108,7 @@ public class OpensatckRouterWebResource extends AbstractWebResource {
     @Path("{id}/add_router_interface")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response addRouterInterface(@PathParam("id") String id, InputStream input) {
+    public Response addRouterInterface(InputStream input) {
         checkNotNull(input);
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -126,7 +119,7 @@ public class OpensatckRouterWebResource extends AbstractWebResource {
 
             OpenstackRoutingService routingService
                     = getService(OpenstackRoutingService.class);
-            routingService.addRouterInterface(openstackRouterInterface);
+            routingService.updateRouterInterface(openstackRouterInterface);
 
             log.debug("REST API AddRouterInterface is called from router {} portId: {}, subnetId: {}, tenantId: {}",
                     openstackRouterInterface.id(), openstackRouterInterface.portId(),
@@ -143,15 +136,15 @@ public class OpensatckRouterWebResource extends AbstractWebResource {
 
     @DELETE
     @Path("{id}")
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response deleteRouter(@PathParam("id") String id) {
         checkNotNull(id);
         OpenstackRoutingService routingService
                 = getService(OpenstackRoutingService.class);
-        routingService.removeRouter(id);
+        routingService.deleteRouter(id);
 
         log.debug("REST API DELETE routers is called {}", id);
-        return Response.noContent().build();
+        return Response.status(Response.Status.OK).build();
     }
 
     @PUT

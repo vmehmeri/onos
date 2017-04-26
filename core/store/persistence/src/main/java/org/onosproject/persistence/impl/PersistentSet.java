@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,8 +82,9 @@ public class PersistentSet<E> implements Set<E> {
     public Object[] toArray() {
         Object[] retArray = new Object[items.size()];
         int index = 0;
-        for (byte[] item : items) {
-            retArray[index] = serializer.decode(item);
+        Iterator<byte[]> iterator = items.iterator();
+        while (iterator.hasNext()) {
+            retArray[index] = serializer.decode(iterator.next());
             index++;
         }
         return retArray;
@@ -111,7 +112,7 @@ public class PersistentSet<E> implements Set<E> {
 
     @Override
     public boolean add(E item) {
-        checkNotNull(item, "Item to be added cannot be null.");
+        checkNotNull("Item to be added cannot be null.");
         return items.add(serializer.encode(item));
     }
 

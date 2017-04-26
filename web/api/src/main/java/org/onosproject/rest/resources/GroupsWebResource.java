@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,15 +36,13 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 
-import org.onlab.util.HexString;
 import static org.onlab.util.Tools.nullIsNotFound;
 
 /**
@@ -53,21 +51,17 @@ import static org.onlab.util.Tools.nullIsNotFound;
 
 @Path("groups")
 public class GroupsWebResource extends AbstractWebResource {
+    public static final String DEVICE_INVALID = "Invalid deviceId in group creation request";
+    public static final String GROUP_NOT_FOUND = "Group was not found";
 
-    @Context
-    private UriInfo uriInfo;
-
-    private static final String DEVICE_INVALID = "Invalid deviceId in group creation request";
-    private static final String GROUP_NOT_FOUND = "Group was not found";
-
-    private final GroupService groupService = get(GroupService.class);
-    private final ObjectNode root = mapper().createObjectNode();
-    private final ArrayNode groupsNode = root.putArray("groups");
+    final GroupService groupService = get(GroupService.class);
+    final ObjectNode root = mapper().createObjectNode();
+    final ArrayNode groupsNode = root.putArray("groups");
 
     /**
      * Returns all groups of all devices.
      *
-     * @return 200 OK with array of all the groups in the system
+     * @return array of all the groups in the system
      * @onos.rsModel Groups
      */
     @GET
@@ -88,7 +82,7 @@ public class GroupsWebResource extends AbstractWebResource {
      * Returns all groups associated with the given device.
      *
      * @param deviceId device identifier
-     * @return 200 OK with array of all the groups in the system
+     * @return array of all the groups in the system
      * @onos.rsModel Groups
      */
     @GET
@@ -107,7 +101,7 @@ public class GroupsWebResource extends AbstractWebResource {
      *
      * @param deviceId device identifier
      * @param appCookie group key
-     * @return 200 OK with a group entry in the system
+     * @return a group entry in the system
      * @onos.rsModel Group
      */
     @GET
@@ -116,12 +110,7 @@ public class GroupsWebResource extends AbstractWebResource {
     public Response getGroupByDeviceIdAndAppCookie(@PathParam("deviceId") String deviceId,
                                                    @PathParam("appCookie") String appCookie) {
         final DeviceId deviceIdInstance = DeviceId.deviceId(deviceId);
-
-        if (!appCookie.startsWith("0x")) {
-            throw new IllegalArgumentException("APP_COOKIE must be a hex string starts with 0x");
-        }
-        final GroupKey appCookieInstance = new DefaultGroupKey(HexString.fromHexString(
-                appCookie.split("0x")[1], ""));
+        final GroupKey appCookieInstance = new DefaultGroupKey(appCookie.getBytes());
 
         Group group = nullIsNotFound(groupService.getGroup(deviceIdInstance, appCookieInstance),
                 GROUP_NOT_FOUND);
@@ -146,8 +135,8 @@ public class GroupsWebResource extends AbstractWebResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response createGroup(@PathParam("deviceId") String deviceId,
                                 InputStream stream) {
+        URI location;
         try {
-
             ObjectNode jsonTree = (ObjectNode) mapper().readTree(stream);
             JsonNode specifiedDeviceId = jsonTree.get("deviceId");
 
@@ -161,16 +150,14 @@ public class GroupsWebResource extends AbstractWebResource {
                     group.deviceId(), group.type(), group.buckets(),
                     group.appCookie(), group.id().id(), group.appId());
             groupService.addGroup(description);
-            UriBuilder locationBuilder = uriInfo.getBaseUriBuilder()
-                    .path("groups")
-                    .path(deviceId)
-                    .path(Long.toString(group.id().id()));
-            return Response
-                    .created(locationBuilder.build())
-                    .build();
-        } catch (IOException ex) {
+            location = new URI(Long.toString(group.id().id()));
+        } catch (IOException | URISyntaxException ex) {
             throw new IllegalArgumentException(ex);
         }
+
+        return Response
+                .created(location)
+                .build();
     }
 
     /**
@@ -178,21 +165,15 @@ public class GroupsWebResource extends AbstractWebResource {
      *
      * @param deviceId  device identifier
      * @param appCookie application cookie to be used for lookup
-     * @return 204 NO CONTENT
      */
     @DELETE
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("{deviceId}/{appCookie}")
-    public Response deleteGroupByDeviceIdAndAppCookie(@PathParam("deviceId") String deviceId,
-                                                      @PathParam("appCookie") String appCookie) {
+    public void deleteGroupByDeviceIdAndAppCookie(@PathParam("deviceId") String deviceId,
+                                                  @PathParam("appCookie") String appCookie) {
         DeviceId deviceIdInstance = DeviceId.deviceId(deviceId);
-
-        if (!appCookie.startsWith("0x")) {
-            throw new IllegalArgumentException("APP_COOKIE must be a hex string starts with 0x");
-        }
-        GroupKey appCookieInstance = new DefaultGroupKey(HexString.fromHexString(
-                appCookie.split("0x")[1], ""));
+        GroupKey appCookieInstance = new DefaultGroupKey(appCookie.getBytes());
 
         groupService.removeGroup(deviceIdInstance, appCookieInstance, null);
-        return Response.noContent().build();
     }
 }

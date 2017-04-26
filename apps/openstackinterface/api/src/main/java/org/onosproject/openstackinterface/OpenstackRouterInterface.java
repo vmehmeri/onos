@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.util.Objects;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * An OpenStack Neutron router interface model.
+ * An Openstack Neutron Router Interface Model.
  */
 public final class OpenstackRouterInterface {
     private final String id;
@@ -37,9 +37,9 @@ public final class OpenstackRouterInterface {
     }
 
     /**
-     * Returns router interface ID.
+     * Returns Router Interface ID.
      *
-     * @return router interface id
+     * @return router interface ID
      */
     public String id() {
         return id;
@@ -48,7 +48,7 @@ public final class OpenstackRouterInterface {
     /**
      * Returns tenant ID.
      *
-     * @return tenant id
+     * @return tenant ID
      */
     public String tenantId() {
         return tenantId;
@@ -57,7 +57,7 @@ public final class OpenstackRouterInterface {
     /**
      * Returns subnet ID.
      *
-     * @return subnet id
+     * @return subnet ID
      */
     public String subnetId() {
         return subnetId;
@@ -66,7 +66,7 @@ public final class OpenstackRouterInterface {
     /**
      * Returns port ID.
      *
-     * @return port id
+     * @return port ID
      */
     public String portId() {
         return portId;
@@ -96,16 +96,7 @@ public final class OpenstackRouterInterface {
     }
 
     /**
-     * Returns OpenStack router interface builder.
-     *
-     * @return openstack router interface builder
-     */
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    /**
-     * An OpenStack Router interface builder class.
+     * An Openstack Router Interface Builder class.
      */
     public static final class Builder {
         private String id;
@@ -114,10 +105,10 @@ public final class OpenstackRouterInterface {
         private String portId;
 
         /**
-         * Sets router interface ID.
+         * Sets Router Interface ID.
          *
-         * @param id router interface id
-         * @return builder object
+         * @param id router interface ID
+         * @return Builder object
          */
         public Builder id(String id) {
             this.id = id;
@@ -128,7 +119,7 @@ public final class OpenstackRouterInterface {
          * Sets tenant ID.
          *
          * @param tenantId tenant ID
-         * @return builder object
+         * @return Builder object
          */
         public Builder tenantId(String tenantId) {
             this.tenantId = tenantId;
@@ -139,7 +130,7 @@ public final class OpenstackRouterInterface {
          * Sets subnet ID.
          *
          * @param subnetId subnet ID
-         * @return builder object
+         * @return Builder object
          */
         public Builder subnetId(String subnetId) {
             this.subnetId = subnetId;
@@ -150,7 +141,7 @@ public final class OpenstackRouterInterface {
          * Sets port ID.
          *
          * @param portId port ID
-         * @return builder object
+         * @return Builder object
          */
         public Builder portId(String portId) {
             this.portId = portId;
@@ -158,13 +149,14 @@ public final class OpenstackRouterInterface {
         }
 
         /**
-         * Builds an OpenStack router interface object.
+         * Builds an Openstack Router Interface object.
          *
-         * @return openstack router interface object
+         * @return OpenstackRouterInterface object
          */
         public OpenstackRouterInterface build() {
             return new OpenstackRouterInterface(checkNotNull(id), checkNotNull(tenantId),
                     checkNotNull(subnetId), checkNotNull(portId));
         }
+
     }
 }

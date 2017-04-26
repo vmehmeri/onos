@@ -1,0 +1,174 @@
+{
+  "devices": {},
+  "apps": {
+    "org.onosproject.provider.lldp": {
+      "suppression": {
+        "deviceTypes": [
+          "ROADM",
+          "OTN",
+          "FIBER_SWITCH"
+        ],
+        "annotation": "{\"no-lldp\":null}"
+      }
+    }
+  },
+  "ports": {},
+  "hosts": {},
+  "links": {
+    "of:0000000000000002/2-of:0000000000000013/1": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          2
+        ]
+      }
+    },
+    "of:0000000000000001/3-of:0000000000000011/2": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000003/4-of:0000000000000015/5": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          2
+        ]
+      }
+    },
+    "of:0000000000000012/2-of:0000000000000013/3": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          1
+        ]
+      }
+    },
+    "of:0000000000000011/3-of:0000000000000012/1": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          1
+        ]
+      }
+    },
+    "of:0000000000000014/2-of:0000000000000015/1": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          1,
+          2
+        ]
+      }
+    },
+    "of:0000000000000016/2-of:0000000000000013/5": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000011/4-of:0000000000000017/1": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000017/3-of:0000000000000016/1": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000016/3-of:0000000000000015/2": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000003/3-of:0000000000000015/4": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000002/3-of:0000000000000013/2": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000003/2-of:0000000000000015/3": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          1
+        ]
+      }
+    },
+    "of:0000000000000013/4-of:0000000000000014/1": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          1,
+          2
+        ]
+      }
+    },
+    "of:0000000000000001/2-of:0000000000000011/1": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          1
+        ]
+      }
+    },
+    "of:0000000000000003/5-of:0000000000000015/6": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    },
+    "of:0000000000000017/2-of:0000000000000014/3": {
+      "basic": {
+        "durable": "true",
+        "type": "OPTICAL",
+        "vno-ids": [
+          -1
+        ]
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,12 +41,11 @@ import org.onosproject.net.flow.instructions.L1ModificationInstruction.ModOduSig
 import org.onosproject.net.flow.instructions.L2ModificationInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModEtherInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModMplsBosInstruction;
-import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModMplsHeaderInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModMplsLabelInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModTunnelIdInstruction;
-import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModVlanHeaderInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModVlanIdInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModVlanPcpInstruction;
+import org.onosproject.net.flow.instructions.L2ModificationInstruction.PushHeaderInstructions;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.ModArpEthInstruction;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.ModArpIPInstruction;
@@ -56,8 +55,6 @@ import org.onosproject.net.flow.instructions.L3ModificationInstruction.ModIPv6Fl
 import org.onosproject.net.flow.instructions.L4ModificationInstruction;
 import org.onosproject.net.flow.instructions.L4ModificationInstruction.ModTransportPortInstruction;
 import org.onosproject.openflow.controller.ExtensionTreatmentInterpreter;
-import org.onosproject.provider.of.flow.util.NoMappingFoundException;
-import org.onosproject.provider.of.flow.util.OpenFlowValueMapper;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;
@@ -132,10 +129,10 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
         if (treatment.clearedDeferred()) {
             instructions.add(factory().instructions().clearActions());
         }
-        if (!immediateActions.isEmpty()) {
+        if (immediateActions.size() > 0) {
             instructions.add(factory().instructions().applyActions(immediateActions));
         }
-        if (!deferredActions.isEmpty()) {
+        if (deferredActions.size() > 0) {
             instructions.add(factory().instructions().writeActions(deferredActions));
         }
         if (treatment.tableTransition() != null) {
@@ -159,7 +156,6 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
                 .setFlags(Collections.singleton(OFFlowModFlags.SEND_FLOW_REM))
                 .setPriority(flowRule().priority())
                 .setTableId(TableId.of(flowRule().tableId()))
-                .setHardTimeout(flowRule().hardTimeout())
                 .build();
 
         return fm;
@@ -167,19 +163,20 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
 
     @Override
     public OFFlowMod buildFlowMod() {
+        log.warn(">>>> buildFlowMod()");
         Match match = buildMatch();
         List<OFAction> deferredActions = buildActions(treatment.deferred());
         List<OFAction> immediateActions = buildActions(treatment.immediate());
         List<OFInstruction> instructions = Lists.newLinkedList();
 
 
-        if (!immediateActions.isEmpty()) {
+        if (immediateActions.size() > 0) {
             instructions.add(factory().instructions().applyActions(immediateActions));
         }
         if (treatment.clearedDeferred()) {
             instructions.add(factory().instructions().clearActions());
         }
-        if (!deferredActions.isEmpty()) {
+        if (deferredActions.size() > 0) {
             instructions.add(factory().instructions().writeActions(deferredActions));
         }
         if (treatment.tableTransition() != null) {
@@ -203,7 +200,6 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
                 .setFlags(Collections.singleton(OFFlowModFlags.SEND_FLOW_REM))
                 .setPriority(flowRule().priority())
                 .setTableId(TableId.of(flowRule().tableId()))
-                .setHardTimeout(flowRule().hardTimeout())
                 .build();
 
         return fm;
@@ -223,7 +219,6 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
                 .setFlags(Collections.singleton(OFFlowModFlags.SEND_FLOW_REM))
                 .setPriority(flowRule().priority())
                 .setTableId(TableId.of(flowRule().tableId()))
-                .setHardTimeout(flowRule().hardTimeout())
                 .build();
 
         return fm;
@@ -238,6 +233,7 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
         List<OFAction> actions = new LinkedList<>();
         for (Instruction i : treatments) {
             switch (i.type()) {
+                case DROP:
                 case NOACTION:
                     return Collections.emptyList();
                 case L0MODIFICATION:
@@ -345,7 +341,7 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
 
     private OFAction buildModLambdaInstruction(ModLambdaInstruction instruction) {
         return factory().actions().circuit(factory().oxms().expOchSigId(
-           new CircuitSignalID((byte) 1, (byte) 2, instruction.lambda(), (short) 1)));
+                new CircuitSignalID((byte) 1, (byte) 2, instruction.lambda(), (short) 1)));
     }
 
     private OFAction buildModOchSignalInstruction(ModOchSignalInstruction instruction) {
@@ -406,13 +402,13 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
                 oxm = factory().oxms().vlanPcp(VlanPcp.of(vlanPcp.vlanPcp()));
                 break;
             case MPLS_PUSH:
-                ModMplsHeaderInstruction pushHeaderInstructions =
-                        (ModMplsHeaderInstruction) l2m;
+                PushHeaderInstructions pushHeaderInstructions =
+                        (PushHeaderInstructions) l2m;
                 return factory().actions().pushMpls(EthType.of(pushHeaderInstructions
                                                                .ethernetType().toShort()));
             case MPLS_POP:
-                ModMplsHeaderInstruction popHeaderInstructions =
-                        (ModMplsHeaderInstruction) l2m;
+                PushHeaderInstructions popHeaderInstructions =
+                        (PushHeaderInstructions) l2m;
                 return factory().actions().popMpls(EthType.of(popHeaderInstructions
                                                               .ethernetType().toShort()));
             case MPLS_LABEL:
@@ -431,7 +427,7 @@ public class FlowModBuilderVer13 extends FlowModBuilder {
             case VLAN_POP:
                 return factory().actions().popVlan();
             case VLAN_PUSH:
-                ModVlanHeaderInstruction pushVlanInstruction = (ModVlanHeaderInstruction) l2m;
+                PushHeaderInstructions pushVlanInstruction = (PushHeaderInstructions) l2m;
                 return factory().actions().pushVlan(
                         EthType.of(pushVlanInstruction.ethernetType().toShort()));
             case TUNNEL_ID:

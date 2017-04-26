@@ -1,2 +1,0 @@
-onosAuth = '';
-userPrefs = {};

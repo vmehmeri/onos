@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.onosproject.openflow.ExecutorServiceAdapter;
 import org.onosproject.openflow.MockOfFeaturesReply;
+import org.onosproject.openflow.MockOfPacketIn;
 import org.onosproject.openflow.MockOfPortStatus;
 import org.onosproject.openflow.OfMessageAdapter;
 import org.onosproject.openflow.OpenFlowSwitchListenerAdapter;
@@ -37,9 +38,7 @@ import java.util.List;
 
 import static junit.framework.TestCase.fail;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Tests for packet processing in the open flow controller impl class.
@@ -52,7 +51,9 @@ public class OpenFlowControllerImplPacketsTest {
     OpenFlowSwitchListenerAdapter switchListener;
     TestPacketListener packetListener;
     TestExecutorService statsExecutorService;
-    TestExecutorService errorMsgExecutorService;
+    TestExecutorService pktInExecutorService;
+    TestExecutorService flowRmvExecutorService;
+
     /**
      * Mock packet listener that accumulates packets.
      */
@@ -68,6 +69,7 @@ public class OpenFlowControllerImplPacketsTest {
             return contexts;
         }
     }
+
 
     /**
      * Mock executor service that tracks submits.
@@ -104,15 +106,19 @@ public class OpenFlowControllerImplPacketsTest {
         agent = controller.agent;
         switchListener = new OpenFlowSwitchListenerAdapter();
         controller.addListener(switchListener);
+        controller.monitorAllEvents(true);
 
         packetListener = new TestPacketListener();
         controller.addPacketListener(100, packetListener);
 
         statsExecutorService = new TestExecutorService();
-        errorMsgExecutorService = new TestExecutorService();
+        pktInExecutorService = new TestExecutorService();
+        flowRmvExecutorService = new TestExecutorService();
 
         controller.executorMsgs = statsExecutorService;
-        controller.executorErrorMsgs = errorMsgExecutorService;
+        controller.executorPacketIn = pktInExecutorService;
+        controller.executorFlowRemoved = flowRmvExecutorService;
+
     }
 
     /**
@@ -142,6 +148,19 @@ public class OpenFlowControllerImplPacketsTest {
     }
 
     /**
+     * Tests a packet in listen operation.
+     */
+    @Test
+    public void testPacketInListen() {
+        agent.addConnectedSwitch(dpid1, switch1);
+        OFMessage packetInPacket = new MockOfPacketIn();
+        controller.processPacket(dpid1, packetInPacket);
+        assertThat(packetListener.contexts(), hasSize(1));
+        assertThat(pktInExecutorService.submittedMessages(), hasSize(1));
+        assertThat(pktInExecutorService.submittedMessages().get(0), is(packetInPacket));
+    }
+
+    /**
      * Tests an error operation.
      */
     @Test
@@ -149,7 +168,19 @@ public class OpenFlowControllerImplPacketsTest {
         agent.addConnectedSwitch(dpid1, switch1);
         OfMessageAdapter errorPacket = new OfMessageAdapter(OFType.ERROR);
         controller.processPacket(dpid1, errorPacket);
-        assertThat(errorMsgExecutorService.submittedMessages(), hasSize(1));
-        assertThat(errorMsgExecutorService.submittedMessages().get(0), is(errorPacket));
+        assertThat(statsExecutorService.submittedMessages(), hasSize(1));
+        assertThat(statsExecutorService.submittedMessages().get(0), is(errorPacket));
+    }
+
+    /**
+     * Tests a packet in operation.
+     */
+    @Test
+    public void testFlowRemoved() {
+        agent.addConnectedSwitch(dpid1, switch1);
+        OFMessage flowRemovedPacket = new MockOfFlowRemoved();
+        controller.processPacket(dpid1, flowRemovedPacket);
+        assertThat(flowRmvExecutorService.submittedMessages(), hasSize(1));
+        assertThat(flowRmvExecutorService.submittedMessages().get(0), is(flowRemovedPacket));
     }
 }

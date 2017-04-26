@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.onosproject.net.intent.impl;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.collect.SetMultimap;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -25,6 +26,7 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.ReferencePolicy;
 import org.apache.felix.scr.annotations.Service;
+import org.onosproject.core.ApplicationId;
 import org.onosproject.event.Event;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.ElementId;
@@ -43,13 +45,13 @@ import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.IntentData;
 import org.onosproject.net.intent.IntentService;
 import org.onosproject.net.intent.Key;
-import org.onosproject.net.intent.WorkPartitionEvent;
-import org.onosproject.net.intent.WorkPartitionEventListener;
-import org.onosproject.net.intent.WorkPartitionService;
+import org.onosproject.net.intent.IntentPartitionEvent;
+import org.onosproject.net.intent.IntentPartitionEventListener;
+import org.onosproject.net.intent.IntentPartitionService;
 import org.onosproject.net.link.LinkEvent;
-import org.onosproject.net.resource.ResourceEvent;
-import org.onosproject.net.resource.ResourceListener;
-import org.onosproject.net.resource.ResourceService;
+import org.onosproject.net.newresource.ResourceEvent;
+import org.onosproject.net.newresource.ResourceListener;
+import org.onosproject.net.newresource.ResourceService;
 import org.onosproject.net.topology.TopologyEvent;
 import org.onosproject.net.topology.TopologyListener;
 import org.onosproject.net.topology.TopologyService;
@@ -61,6 +63,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -68,7 +71,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Multimaps.synchronizedSetMultimap;
-import static java.util.concurrent.Executors.newScheduledThreadPool;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.onlab.util.Tools.groupedThreads;
 import static org.onlab.util.Tools.isNullOrEmpty;
@@ -113,18 +115,18 @@ public class ObjectiveTracker implements ObjectiveTrackerService {
     protected IntentService intentService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected WorkPartitionService partitionService;
+    protected IntentPartitionService partitionService;
 
     private ExecutorService executorService =
-            newSingleThreadExecutor(groupedThreads("onos/intent", "objectivetracker", log));
-    private ScheduledExecutorService executor =
-            newScheduledThreadPool(1, groupedThreads("onos/intent", "scheduledIntentUpdate", log));
+            newSingleThreadExecutor(groupedThreads("onos/intent", "objectivetracker"));
+    private ScheduledExecutorService executor = Executors
+            .newScheduledThreadPool(1);
 
     private TopologyListener listener = new InternalTopologyListener();
     private ResourceListener resourceListener = new InternalResourceListener();
     private DeviceListener deviceListener = new InternalDeviceListener();
     private HostListener hostListener = new InternalHostListener();
-    private WorkPartitionEventListener partitionListener = new InternalPartitionListener();
+    private IntentPartitionEventListener partitionListener = new InternalPartitionListener();
     private TopologyChangeDelegate delegate;
 
     protected final AtomicBoolean updateScheduled = new AtomicBoolean(false);
@@ -314,6 +316,27 @@ public class ObjectiveTracker implements ObjectiveTrackerService {
 
     //TODO consider adding flow rule event tracking
 
+    private void updateTrackedResources(ApplicationId appId, boolean track) {
+        if (intentService == null) {
+            log.warn("Intent service is not bound yet");
+            return;
+        }
+        intentService.getIntents().forEach(intent -> {
+            if (intent.appId().equals(appId)) {
+                Key key = intent.key();
+                Collection<NetworkResource> resources = Lists.newArrayList();
+                intentService.getInstallableIntents(key).stream()
+                        .map(installable -> installable.resources())
+                        .forEach(resources::addAll);
+                if (track) {
+                    addTrackedResources(key, resources);
+                } else {
+                    removeTrackedResources(key, resources);
+                }
+            }
+        });
+    }
+
     /*
      * Re-dispatcher of device and host events.
      */
@@ -391,7 +414,7 @@ public class ObjectiveTracker implements ObjectiveTrackerService {
         }
     }
 
-    private void doIntentUpdate() {
+    protected void doIntentUpdate() {
         updateScheduled.set(false);
         if (intentService == null) {
             log.warn("Intent service is not bound yet");
@@ -417,9 +440,9 @@ public class ObjectiveTracker implements ObjectiveTrackerService {
         }
     }
 
-    private final class InternalPartitionListener implements WorkPartitionEventListener {
+    private final class InternalPartitionListener implements IntentPartitionEventListener {
         @Override
-        public void event(WorkPartitionEvent event) {
+        public void event(IntentPartitionEvent event) {
             log.debug("got message {}", event.subject());
             scheduleIntentUpdate(1);
         }

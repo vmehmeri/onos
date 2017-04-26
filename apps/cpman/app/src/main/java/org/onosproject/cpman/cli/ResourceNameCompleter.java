@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import org.apache.karaf.shell.console.completer.ArgumentCompleter;
 import org.apache.karaf.shell.console.completer.StringsCompleter;
 import org.onosproject.cli.AbstractCompleter;
 import org.onosproject.cli.AbstractShellCommand;
-import org.onosproject.cluster.NodeId;
 import org.onosproject.cpman.ControlPlaneMonitorService;
 import org.onosproject.cpman.ControlResource;
 import org.slf4j.Logger;
@@ -41,7 +40,7 @@ public class ResourceNameCompleter extends AbstractCompleter {
     private static final String NETWORK = "network";
     private static final String DISK = "disk";
     private static final String CONTROL_MESSAGE = "control_message";
-    private final Set<String> resourceTypes = ImmutableSet.of(NETWORK, DISK, CONTROL_MESSAGE);
+    Set<String> resourceTypes = ImmutableSet.of(NETWORK, DISK, CONTROL_MESSAGE);
     private static final String INVALID_MSG = "Invalid type name";
 
 
@@ -52,8 +51,7 @@ public class ResourceNameCompleter extends AbstractCompleter {
 
         // Resource type is the second argument.
         ArgumentCompleter.ArgumentList list = getArgumentList();
-        String nodeId = list.getArguments()[1];
-        String type = list.getArguments()[2];
+        String type = list.getArguments()[1];
 
         if (resourceTypes.contains(type)) {
             ControlPlaneMonitorService monitorService =
@@ -62,16 +60,13 @@ public class ResourceNameCompleter extends AbstractCompleter {
             Set<String> set = Sets.newHashSet();
             switch (type) {
                 case NETWORK:
-                    set = monitorService.availableResourcesSync(NodeId.nodeId(nodeId),
-                            ControlResource.Type.NETWORK);
+                    set = monitorService.availableResources(ControlResource.Type.NETWORK);
                     break;
                 case DISK:
-                    set = monitorService.availableResourcesSync(NodeId.nodeId(nodeId),
-                            ControlResource.Type.DISK);
+                    set = monitorService.availableResources(ControlResource.Type.DISK);
                     break;
                 case CONTROL_MESSAGE:
-                    set = monitorService.availableResourcesSync(NodeId.nodeId(nodeId),
-                            ControlResource.Type.CONTROL_MESSAGE);
+                    set = monitorService.availableResources(ControlResource.Type.CONTROL_MESSAGE);
                     break;
                 default:
                     log.warn(INVALID_MSG);
@@ -80,8 +75,8 @@ public class ResourceNameCompleter extends AbstractCompleter {
 
             SortedSet<String> strings = delegate.getStrings();
 
-            if (!set.isEmpty()) {
-                set.forEach(strings::add);
+            if (set.size() != 0) {
+                set.forEach(s -> strings.add(s));
             }
         }
 

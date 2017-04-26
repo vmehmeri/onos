@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 package org.onosproject.net.flow;
 
 
-import java.util.concurrent.TimeUnit;
-
 public interface StoredFlowEntry extends FlowEntry {
 
     /**
@@ -33,23 +31,9 @@ public interface StoredFlowEntry extends FlowEntry {
 
     /**
      * Sets how long this entry has been entered in the system.
-     * @param lifeSecs seconds
+     * @param life epoch time
      */
-    void setLife(long lifeSecs);
-
-    /**
-     * Sets how long this entry has been entered in the system.
-     * @param life time
-     * @param timeUnit unit of time
-     */
-    void setLife(long life, TimeUnit timeUnit);
-
-    /**
-     * Sets the flow live type,
-     * i.e., IMMEDIATE, SHORT, MID, LONG.
-     * @param liveType flow live type
-     */
-    void setLiveType(FlowLiveType liveType);
+    void setLife(long life);
 
     /**
      * Number of packets seen by this entry.

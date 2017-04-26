@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,20 +21,11 @@ import org.onosproject.net.Device;
 import org.onosproject.net.Host;
 import org.onosproject.net.Link;
 import org.onosproject.net.device.DeviceAdminService;
-import org.onosproject.net.flow.FlowRuleService;
-import org.onosproject.net.group.GroupService;
 import org.onosproject.net.host.HostAdminService;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.IntentService;
 import org.onosproject.net.intent.IntentState;
 import org.onosproject.net.link.LinkAdminService;
-import org.onosproject.net.region.RegionAdminService;
-import org.onosproject.ui.UiTopoLayoutService;
-import java.util.EnumSet;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import static org.onosproject.net.intent.IntentState.FAILED;
-import static org.onosproject.net.intent.IntentState.WITHDRAWN;
 
 /**
  * Wipes-out the entire network information base, i.e. devices, links, hosts, intents.
@@ -44,7 +35,7 @@ import static org.onosproject.net.intent.IntentState.WITHDRAWN;
 public class WipeOutCommand extends ClustersListCommand {
 
     private static final String PLEASE = "please";
-    private static final EnumSet<IntentState> CAN_PURGE = EnumSet.of(WITHDRAWN, FAILED);
+
     @Argument(index = 0, name = "please", description = "Confirmation phrase",
             required = false, multiValued = false)
     String please = null;
@@ -58,50 +49,18 @@ public class WipeOutCommand extends ClustersListCommand {
 
         wipeOutIntents();
         wipeOutHosts();
-        wipeOutFlows();
-        wipeOutGroups();
         wipeOutDevices();
         wipeOutLinks();
-
-        wipeOutLayouts();
-        wipeOutRegions();
     }
 
     private void wipeOutIntents() {
         print("Wiping intents");
         IntentService intentService = get(IntentService.class);
-        final CountDownLatch withdrawLatch;
-        withdrawLatch = new CountDownLatch(1);
         for (Intent intent : intentService.getIntents()) {
             if (intentService.getIntentState(intent.key()) != IntentState.WITHDRAWN) {
                 intentService.withdraw(intent);
-                try { // wait for withdraw event
-                    withdrawLatch.await(5, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    print("Timed out waiting for intent {} withdraw");
-                }
             }
-            if (CAN_PURGE.contains(intentService.getIntentState(intent.key()))) {
-                intentService.purge(intent);
-            }
-        }
-    }
-
-    private void wipeOutFlows() {
-        print("Wiping Flows");
-        FlowRuleService flowRuleService = get(FlowRuleService.class);
-        DeviceAdminService deviceAdminService = get(DeviceAdminService.class);
-        for (Device device : deviceAdminService.getDevices()) {
-            flowRuleService.purgeFlowRules(device.id());
-        }
-    }
-
-    private void wipeOutGroups() {
-        print("Wiping groups");
-        GroupService groupService = get(GroupService.class);
-        DeviceAdminService deviceAdminService = get(DeviceAdminService.class);
-        for (Device device : deviceAdminService.getDevices()) {
-            groupService.purgeGroupEntries(device.id());
+            intentService.purge(intent);
         }
     }
 
@@ -114,7 +73,7 @@ public class WipeOutCommand extends ClustersListCommand {
                     hostAdminService.removeHost(host.id());
                 }
             } catch (Exception e) {
-                log.info("Unable to wipe-out hosts", e);
+                log.warn("Unable to wipe-out hosts", e);
             }
         }
     }
@@ -128,7 +87,7 @@ public class WipeOutCommand extends ClustersListCommand {
                     deviceAdminService.removeDevice(device.id());
                 }
             } catch (Exception e) {
-                log.info("Unable to wipe-out devices", e);
+                log.warn("Unable to wipe-out devices", e);
             }
         }
     }
@@ -143,25 +102,8 @@ public class WipeOutCommand extends ClustersListCommand {
                     linkAdminService.removeLinks(link.dst());
                 }
             } catch (Exception e) {
-                log.info("Unable to wipe-out links", e);
+                log.warn("Unable to wipe-out links", e);
             }
         }
-    }
-
-    private void wipeOutLayouts() {
-        print("Wiping UI layouts");
-        UiTopoLayoutService service = get(UiTopoLayoutService.class);
-        // wipe out all layouts except the default, which should always be there
-        service.getLayouts().forEach(l -> {
-            if (!l.id().isDefault()) {
-                service.removeLayout(l);
-            }
-        });
-    }
-
-    private void wipeOutRegions() {
-        print("Wiping regions");
-        RegionAdminService service = get(RegionAdminService.class);
-        service.getRegions().forEach(r -> service.removeRegion(r.id()));
     }
 }

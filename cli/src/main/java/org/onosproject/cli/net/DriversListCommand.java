@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,17 +68,10 @@ public class DriversListCommand extends AbstractShellCommand {
     private void printDriver(Driver driver) {
         if (outputJson()) {
             json(driver);
-        } else if (driver.parents() != null) {
-            driver.parents().forEach(parent -> {
-                print(FMT, driver.name(), parent != null ? parent.name() : "none",
-                           driver.manufacturer(), driver.hwVersion(), driver.swVersion());
-                driver.behaviours().forEach(b -> print(FMT_B, b.getCanonicalName(),
-                                                       driver.implementation(b).getCanonicalName()));
-                driver.properties().forEach((k, v) -> print(FMT_P, k, v));
-            });
-        } else if (driver.parents() == null) {
-            print(FMT, driver.name(), "none", driver.manufacturer(),
-                    driver.hwVersion(), driver.swVersion());
+        } else {
+            Driver parent = driver.parent();
+            print(FMT, driver.name(), parent != null ? parent.name() : "none",
+                    driver.manufacturer(), driver.hwVersion(), driver.swVersion());
             driver.behaviours().forEach(b -> print(FMT_B, b.getCanonicalName(),
                     driver.implementation(b).getCanonicalName()));
             driver.properties().forEach((k, v) -> print(FMT_P, k, v));

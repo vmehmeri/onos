@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ import org.onosproject.net.intent.IntentEvent;
 import org.onosproject.net.intent.IntentListener;
 import org.onosproject.net.intent.IntentService;
 import org.onosproject.net.intent.Key;
-import org.onosproject.net.intent.WorkPartitionService;
+import org.onosproject.net.intent.IntentPartitionService;
 import org.onosproject.net.intent.PointToPointIntent;
 import org.onosproject.store.cluster.messaging.ClusterCommunicationService;
 import org.onosproject.store.cluster.messaging.MessageSubject;
@@ -139,7 +139,7 @@ public class IntentPerfInstaller {
     protected MastershipService mastershipService;
 
     @Reference(cardinality = MANDATORY_UNARY)
-    protected WorkPartitionService partitionService;
+    protected IntentPartitionService partitionService;
 
     @Reference(cardinality = MANDATORY_UNARY)
     protected ComponentConfigService configService;
@@ -178,7 +178,7 @@ public class IntentPerfInstaller {
         workers = Executors.newFixedThreadPool(DEFAULT_NUM_WORKERS, groupedThreads("onos/intent-perf", "worker-%d"));
 
         // disable flow backups for testing
-        configService.setProperty("org.onosproject.store.flow.impl.DistributedFlowRuleStore",
+        configService.setProperty("org.onosproject.store.flow.impl.NewDistributedFlowRuleStore",
                                   "backupEnabled", "true");
 
         // TODO: replace with shared executor
@@ -358,7 +358,7 @@ public class IntentPerfInstaller {
                 .forEach(device -> devices.put(mastershipService.getMasterFor(device.id()), device));
 
         // ensure that we have at least one device per neighbor
-        neighbors.forEach(node -> checkState(!devices.get(node).isEmpty(),
+        neighbors.forEach(node -> checkState(devices.get(node).size() > 0,
                                              "There are no devices for {}", node));
 
         // TODO pull this outside so that createIntent can use it
@@ -371,7 +371,7 @@ public class IntentPerfInstaller {
         for (int count = 0, k = firstKey; count < numberOfKeys; k++) {
             Key key = Key.of(keyPrefix + k, appId);
 
-            NodeId leader = partitionService.getLeader(key, Key::hash);
+            NodeId leader = partitionService.getLeader(key);
             if (!neighbors.contains(leader) || intents.get(leader).size() >= maxKeysPerNode) {
                 // Bail if we are not sending to this node or we have enough for this node
                 continue;
@@ -425,7 +425,7 @@ public class IntentPerfInstaller {
         private Iterable<Intent> subset(Set<Intent> intents) {
             List<Intent> subset = Lists.newArrayList(intents);
             Collections.shuffle(subset);
-            return subset.subList(0, Math.min(intents.size(), lastCount));
+            return subset.subList(0, lastCount);
         }
 
         // Submits the specified intent.

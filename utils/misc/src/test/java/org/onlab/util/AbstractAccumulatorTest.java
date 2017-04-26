@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import org.junit.Test;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.onlab.junit.TestTools.assertAfter;
 
 /**
@@ -140,8 +142,7 @@ public class AbstractAccumulatorTest {
         IntStream.range(0, 1000).forEach(i -> accumulator.add(new TestItem("#" + i)));
         timer.advanceTimeMillis(1);
         assertAfter(100, () -> assertEquals("wrong item count", 1000, accumulator.itemCount));
-        //TODO this assertion could fail under heavy load
-        assertTrue("batch count not near 200", Math.abs(200 - accumulator.batchCount) < 10);
+        assertEquals("wrong batch count", 200, accumulator.batchCount);
     }
 
     private class TestItem {

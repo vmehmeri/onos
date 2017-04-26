@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ public interface DeviceProviderService extends ProviderService<DeviceProvider> {
     void deviceDisconnected(DeviceId deviceId);
 
     /**
-     * Updates information about all ports of a device. It is up to the core to
+     * Sends information about all ports of a device. It is up to the core to
      * determine what has changed.
      *
      * @param deviceId         identity of the device
@@ -55,7 +55,7 @@ public interface DeviceProviderService extends ProviderService<DeviceProvider> {
     void updatePorts(DeviceId deviceId, List<PortDescription> portDescriptions);
 
     /**
-     * Notifies the core about port status change of a single port.
+     * Used to notify the core about port status change of a single port.
      *
      * @param deviceId        identity of the device
      * @param portDescription description of the port that changed
@@ -72,7 +72,7 @@ public interface DeviceProviderService extends ProviderService<DeviceProvider> {
     void receivedRoleReply(DeviceId deviceId, MastershipRole requested, MastershipRole response);
 
     /**
-     * Updates statistics about all ports of a device.
+     * Sends statistics about all ports of a device.
      *
      * @param deviceId          identity of the device
      * @param portStatistics  list of device port statistics

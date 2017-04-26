@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015,2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,14 +58,6 @@
                     ns.navTo(path, { devId: $scope.devId });
                 }
             };
-
-             Object.defineProperty($scope, "queryFilter", {
-                 get: function() {
-                     var out = {};
-                     out[$scope.queryBy || "$"] = $scope.query;
-                     return out;
-                 }
-             });
 
             $log.log('OvPortCtrl has been created');
         }]);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ public class ComponentManager implements ComponentService {
         components = Sets.newSetFromMap(new ConcurrentHashMap<>());
 
         executor = Executors.newScheduledThreadPool(NUM_THREADS,
-                groupedThreads("onos/component", "%d", log));
+                groupedThreads("onos/component", "%d"));
 
         executor.scheduleAtFixedRate(() -> components.forEach(this::enableComponent),
                 0, POLLING_PERIOD_MS, TimeUnit.MILLISECONDS);

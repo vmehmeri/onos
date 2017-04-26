@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package org.onosproject.net.group;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkArgument;
 
 import java.util.Objects;
 
@@ -62,10 +61,6 @@ public class DefaultGroupDescription implements GroupDescription {
         this.type = checkNotNull(type);
         this.deviceId = checkNotNull(deviceId);
         this.buckets = checkNotNull(buckets);
-        if (this.type == GroupDescription.Type.INDIRECT) {
-            checkArgument(buckets.buckets().size() == 1, "Indirect group " +
-                    "should have only one action bucket");
-       }
         this.appCookie = appCookie;
         this.givenGroupId = groupId;
         this.appId = appId;
@@ -203,7 +198,6 @@ public class DefaultGroupDescription implements GroupDescription {
                 .add("type", type)
                 .add("buckets", buckets)
                 .add("appId", appId)
-                .add("appCookie", appCookie)
                 .add("givenGroupId", givenGroupId)
                 .toString();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.onosproject.pcepio.protocol.PcepVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * NexthopIPv6addressTlv provides Ipv6  address of next hop.
@@ -135,7 +135,7 @@ public class NexthopIPv6addressTlv implements PcepValueType {
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(rawValue);
+        return Objects.hash(rawValue);
     }
 
     @Override
@@ -145,7 +145,7 @@ public class NexthopIPv6addressTlv implements PcepValueType {
         }
         if (obj instanceof NexthopIPv6addressTlv) {
             NexthopIPv6addressTlv other = (NexthopIPv6addressTlv) obj;
-            return Arrays.equals(this.rawValue, other.rawValue);
+            return Objects.equals(this.rawValue, other.rawValue);
         }
         return false;
     }

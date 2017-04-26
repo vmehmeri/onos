@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ public final class BgpSelectionAlgo implements Comparator<PathAttrNlriDetailsLoc
         if (!obj1Aspath.equals(obj2Aspath)) {
             Integer obj1Size = countASSize(obj1Aspath);
             Integer obj2Size = countASSize(obj2Aspath);
-            if (!obj1Size.equals(obj2Size)) {
+            if (obj1Size != obj2Size) {
                 return compareAsPath(obj1Size, obj2Size);
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,8 +33,15 @@ class GAPopulation<Organism extends GAOrganism> extends ArrayList<Organism> {
      * 25% (as well as some "random" newcomers).
      */
     void step() {
-        Collections.sort(this, (org1, org2) ->
-                org1.fitness().compareTo(org2.fitness()));
+        Collections.sort(this, (org1, org2) -> {
+            double d = org1.fitness() - org2.fitness();
+            if (d < 0) {
+                return -1;
+            } else if (d == 0) {
+                return 0;
+            }
+            return 1;
+        });
         int maxSize = size();
         for (int i = size() - 1; i > maxSize / 4; i--) {
             remove(i);

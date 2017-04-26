@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import org.onlab.util.HexString;
 import org.onosproject.codec.CodecContext;
 import org.onosproject.net.OchSignal;
 import org.onosproject.net.OduSignalId;
-import org.onosproject.net.IndexedLambda;
 import org.onosproject.net.flow.criteria.Criterion;
 import org.onosproject.net.flow.criteria.EthCriterion;
 import org.onosproject.net.flow.criteria.EthTypeCriterion;
@@ -365,15 +364,16 @@ public final class EncodeCriterionCodecHelper {
     private static class FormatOchSigId implements CriterionTypeFormatter {
         @Override
         public ObjectNode encodeCriterion(ObjectNode root, Criterion criterion) {
-
             if (criterion instanceof IndexedLambdaCriterion) {
-                IndexedLambda lambda = ((IndexedLambdaCriterion) criterion).lambda();
+                int lambda = (int) (((IndexedLambdaCriterion) criterion).lambda().index());
+
                 ObjectNode child = root.putObject(CriterionCodec.OCH_SIGNAL_ID);
 
-                child.put(CriterionCodec.GRID_TYPE, (byte) 1);
-                child.put(CriterionCodec.CHANNEL_SPACING, (byte) 2);
-                child.put(CriterionCodec.SPACING_MULIPLIER, (short) lambda.index());
-                child.put(CriterionCodec.SLOT_GRANULARITY, (short) 1);
+                child.put(CriterionCodec.GRID_TYPE, "DWDM");
+                child.put(CriterionCodec.CHANNEL_SPACING, "CHL_50GHZ");
+                child.put(CriterionCodec.SPACING_MULIPLIER, lambda);
+                child.put(CriterionCodec.SLOT_GRANULARITY, 1);
+
             } else {
                 OchSignal ochSignal = ((OchSignalCriterion) criterion).lambda();
                 ObjectNode child = root.putObject(CriterionCodec.OCH_SIGNAL_ID);
@@ -382,11 +382,8 @@ public final class EncodeCriterionCodecHelper {
                 child.put(CriterionCodec.CHANNEL_SPACING, ochSignal.channelSpacing().name());
                 child.put(CriterionCodec.SPACING_MULIPLIER, ochSignal.spacingMultiplier());
                 child.put(CriterionCodec.SLOT_GRANULARITY, ochSignal.slotGranularity());
-
             }
-
             return root;
-
         }
     }
 

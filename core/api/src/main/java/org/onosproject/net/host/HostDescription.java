@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,12 +55,4 @@ public interface HostDescription extends Description {
      * @return host IP address
      */
     Set<IpAddress> ipAddress();
-
-    /**
-     * Returns true if configured by NetworkConfiguration.
-     * @return configured/learnt dynamically
-     */
-    default boolean configured() {
-        return false;
-    }
 }

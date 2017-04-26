@@ -20,8 +20,9 @@ import com.google.common.base.MoreObjects;
 /**
  * Implementation of Lambda simply designated by an index number of wavelength.
  *
- * deprecated in Emu (ONOS 1.4).
+ * @deprecated in Emu (ONOS 1.4).
  */
+
 public class IndexedLambda implements Lambda {
 
     private final long index;

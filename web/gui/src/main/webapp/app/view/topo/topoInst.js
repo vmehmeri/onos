@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,20 @@
      */
 
     // configuration
-    var showLogicErrors = true,
+    var instCfg = {
+            rectPad: 8,
+            nodeOx: 9,
+            nodeOy: 9,
+            nodeDim: 40,
+            birdOx: 19,
+            birdOy: 21,
+            birdDim: 21,
+            uiDy: 45,
+            titleDy: 30,
+            textYOff: 20,
+            textYSpc: 15
+        },
+        showLogicErrors = true,
         idIns = 'topo-p-instance',
         instOpts = {
             edge: 'left',
@@ -43,8 +56,11 @@
     var onosInstances,
         onosOrder,
         oiShowMaster,
-        oiBox;
+        oiBox,
+        themeListener;
 
+
+    // ==========================
 
     function addInstance(data) {
         var id = data.id;
@@ -86,6 +102,14 @@
 
     // ==========================
 
+    function computeDim(self) {
+        var css = window.getComputedStyle(self);
+        return {
+            w: sus.stripPx(css.width),
+            h: sus.stripPx(css.height)
+        };
+    }
+
     function clickInst(d) {
         var el = d3.select(this),
             aff = el.classed('affinity');
@@ -115,14 +139,24 @@
         oiShowMaster = false;
     }
 
-    function attachUiBadge(svg) {
-        gs.addGlyph(svg, 'uiAttached', 24, true, [14, 54])
-            .classed('badgeIcon uiBadge', true);
+    function instRectAttr(dim) {
+        var pad = instCfg.rectPad;
+        return {
+            x: pad,
+            y: pad,
+            width: dim.w - pad*2,
+            height: dim.h - pad*2,
+            rx: 6
+        };
     }
 
-    function attachReadyBadge(svg) {
-        gs.addGlyph(svg, 'checkMark', 16, true, [18, 40])
-            .classed('badgeIcon readyBadge', true);
+    function viewBox(dim) {
+        return '0 0 ' + dim.w + ' ' + dim.h;
+    }
+
+    function attachUiBadge(svg) {
+        gs.addGlyph(svg, 'uiAttached', 30, true, [12, instCfg.uiDy])
+            .classed('badgeIcon uiBadge', true);
     }
 
     function instColor(id, online) {
@@ -132,50 +166,23 @@
     // ==============================
 
     function updateInstances() {
-        var rox = 5,
-            roy = 5,
-            rw = 160,
-            rhh = 30,
-            rbh = 45,
-            tx = 48,
-            instSvg = {
-                width: 170,
-                height: 85,
-                viewBox: '0 0 170 85'
-            },
-            headRect = {
-                x: rox,
-                y: roy,
-                width: rw,
-                height: rhh
-            },
-            bodyRect = {
-                x: rox,
-                y: roy + rhh,
-                width: rw,
-                height: rbh
-            },
-            titleAttr = {
-                class: 'instTitle',
-                x: tx,
-                y: 27
-            };
-
         var onoses = oiBox.el().selectAll('.onosInst')
-                .data(onosOrder, function (d) { return d.id; });
+                .data(onosOrder, function (d) { return d.id; }),
+            instDim = {w:0,h:0},
+            c = instCfg;
 
         function nSw(n) {
-            return 'Devices: ' + n;
+            return '# Switches: ' + n;
         }
 
         // operate on existing onos instances if necessary
         onoses.each(function (d) {
             var el = d3.select(this),
                 svg = el.select('svg');
+            instDim = computeDim(this);
 
             // update online state
             el.classed('online', d.online);
-            el.classed('ready', d.ready);
 
             // update ui-attached state
             svg.select('use.uiBadge').remove();
@@ -195,39 +202,56 @@
         // operate on new onos instances
         var entering = onoses.enter()
             .append('div')
-            .classed('onosInst', true)
+            .attr('class', 'onosInst')
             .classed('online', function (d) { return d.online; })
-            .classed('ready', function (d) { return d.ready; })
             .on('click', clickInst);
 
         entering.each(function (d) {
             var el = d3.select(this),
-                svg = el.append('svg').attr(instSvg);
+                rectAttr,
+                svg;
+            instDim = computeDim(this);
+            rectAttr = instRectAttr(instDim);
 
-            svg.append('rect').attr(headRect);
-            svg.append('rect').attr(bodyRect);
+            svg = el.append('svg').attr({
+                width: instDim.w,
+                height: instDim.h,
+                viewBox: viewBox(instDim)
+            });
 
-            gs.addGlyph(svg, 'bird', 20, false, [15, 10])
-                .classed('badgeIcon bird', true);
+            svg.append('rect').attr(rectAttr);
 
-            attachReadyBadge(svg);
+            gs.addGlyph(svg, 'bird', 28, true, [14, 14])
+                .classed('badgeIcon', true);
 
             if (d.uiAttached) {
                 attachUiBadge(svg);
             }
 
+            var left = c.nodeOx + c.nodeDim,
+                len = rectAttr.width - left,
+                hlen = len / 2,
+                midline = hlen + left;
+
+            // title
             svg.append('text')
-                .attr(titleAttr)
+                .attr({
+                    class: 'instTitle',
+                    x: midline,
+                    y: c.titleDy
+                })
                 .text(d.id);
 
-            var ty = 55;
+            // a couple of attributes
+            var ty = c.titleDy + c.textYOff;
+
             function addAttr(id, label) {
                 svg.append('text').attr({
                     class: 'instLabel ' + id,
-                    x: tx,
+                    x: midline,
                     y: ty
                 }).text(label);
-                ty += 18;
+                ty += c.textYSpc;
             }
 
             addAttr('ip', d.ip);
@@ -244,8 +268,8 @@
         });
 
         // adjust the panel size appropriately...
-        oiBox.width(instSvg.width * onosOrder.length);
-        oiBox.height(instSvg.height);
+        oiBox.width(instDim.w * onosOrder.length);
+        oiBox.height(instDim.h);
 
         // remove any outgoing instances
         onoses.exit().remove();
@@ -270,11 +294,12 @@
         oiShowMaster = false;
 
         // we want to update the instances, each time the theme changes
-        ts.addListener(updateInstances);
+        themeListener = ts.addListener(updateInstances);
     }
 
     function destroyInst() {
-        ts.removeListener(updateInstances);
+        ts.removeListener(themeListener);
+        themeListener = null;
 
         ps.destroyPanel(idIns);
         oiBox = null;

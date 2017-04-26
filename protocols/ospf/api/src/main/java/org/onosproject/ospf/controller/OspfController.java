@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 package org.onosproject.ospf.controller;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.List;
 import java.util.Set;
@@ -57,9 +55,9 @@ public interface OspfController {
     /**
      * Updates configuration of processes.
      *
-     * @param processesNode process info to update
+     * @param processes process info to update
      */
-    void updateConfig(JsonNode processesNode);
+    public void updateConfig(List<OspfProcess> processes);
 
     /**
      * Deletes configuration parameters.
@@ -67,7 +65,7 @@ public interface OspfController {
      * @param processes list of process instance
      * @param attribute attribute to delete
      */
-    void deleteConfig(List<OspfProcess> processes, String attribute);
+    public void deleteConfig(List<OspfProcess> processes, String attribute);
 
     /**
      * Gets the list of listeners registered for router events.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package org.onosproject.rest.resources;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.onosproject.cluster.ClusterAdminService;
@@ -29,8 +28,6 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,17 +42,16 @@ import static org.onlab.util.Tools.nullIsNotFound;
 @Path("cluster")
 public class ClusterWebResource extends AbstractWebResource {
 
-    private static final String NODE_NOT_FOUND = "Node is not found";
+    public static final String NODE_NOT_FOUND = "Node is not found";
 
     /**
      * Get all cluster nodes.
      * Returns array of all cluster nodes.
      *
-     * @return 200 OK with a collection of cluster nodes
+     * @return 200 OK
      * @onos.rsModel Cluster
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
     public Response getClusterNodes() {
         Iterable<ControllerNode> nodes = get(ClusterService.class).getNodes();
         return ok(encodeArray(ControllerNode.class, "nodes", nodes)).build();
@@ -66,12 +62,11 @@ public class ClusterWebResource extends AbstractWebResource {
      * Returns details of the specified cluster node.
      *
      * @param id cluster node identifier
-     * @return 200 OK with a cluster node
+     * @return 200 OK
      * @onos.rsModel ClusterNode
      */
     @GET
     @Path("{id}")
-    @Produces(MediaType.APPLICATION_JSON)
     public Response getClusterNode(@PathParam("id") String id) {
         ControllerNode node = nullIsNotFound(get(ClusterService.class).getNode(new NodeId(id)),
                                              NODE_NOT_FOUND);
@@ -89,23 +84,14 @@ public class ClusterWebResource extends AbstractWebResource {
      */
     @POST
     @Path("configuration")
-    @Produces(MediaType.APPLICATION_JSON)
     public Response formCluster(InputStream config) throws IOException {
         JsonCodec<ControllerNode> codec = codec(ControllerNode.class);
         ObjectNode root = (ObjectNode) mapper().readTree(config);
 
         List<ControllerNode> nodes = codec.decode((ArrayNode) root.path("nodes"), this);
-        JsonNode partitionSizeNode = root.get("partitionSize");
-        if (partitionSizeNode != null) {
-            int partitionSize = partitionSizeNode.asInt();
-            if (partitionSize == 0) {
-                return Response.notAcceptable(null).build();
-            }
-            get(ClusterAdminService.class).formCluster(new HashSet<>(nodes), partitionSize);
-        } else {
-            get(ClusterAdminService.class).formCluster(new HashSet<>(nodes));
-        }
+        get(ClusterAdminService.class).formCluster(new HashSet<>(nodes));
 
         return Response.ok().build();
     }
+
 }

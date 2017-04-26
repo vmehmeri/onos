@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,11 @@ package org.onosproject.store.intent.impl;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.IntStream;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.onosproject.cfg.ComponentConfigService;
-import org.onosproject.cfg.ConfigProperty;
 import org.onosproject.cluster.ClusterServiceAdapter;
 import org.onosproject.core.IdGenerator;
 import org.onosproject.net.intent.HostToHostIntent;
@@ -33,7 +30,7 @@ import org.onosproject.net.intent.IntentData;
 import org.onosproject.net.intent.IntentState;
 import org.onosproject.net.intent.IntentTestsMocks;
 import org.onosproject.net.intent.MockIdGenerator;
-import org.onosproject.net.intent.WorkPartitionServiceAdapter;
+import org.onosproject.net.intent.IntentPartitionServiceAdapter;
 import org.onosproject.store.service.TestStorageService;
 
 import static org.hamcrest.Matchers.is;
@@ -55,18 +52,16 @@ public class GossipIntentStoreTest {
     public void setUp() {
         intentStore = new GossipIntentStore();
         intentStore.storageService = new TestStorageService();
-        intentStore.partitionService = new WorkPartitionServiceAdapter();
+        intentStore.partitionService = new IntentPartitionServiceAdapter();
         intentStore.clusterService = new ClusterServiceAdapter();
         idGenerator = new MockIdGenerator();
-        Intent.unbindIdGenerator(idGenerator);
         Intent.bindIdGenerator(idGenerator);
         builder1 = HostToHostIntent
                         .builder()
                         .one(hid("12:34:56:78:91:ab/1"))
                         .two(hid("12:34:56:78:91:ac/1"))
                         .appId(APP_ID);
-        intentStore.configService = new MockComponentConfigService();
-        intentStore.activate(null);
+        intentStore.activate();
     }
 
     @After
@@ -235,47 +230,5 @@ public class GossipIntentStoreTest {
         pendingDataIteratorSelected.forEach(
                 data -> assertThat(data, is(installed))
         );
-    }
-
-    private class MockComponentConfigService implements ComponentConfigService {
-
-        public MockComponentConfigService() {
-
-        }
-
-        @Override
-        public Set<String> getComponentNames() {
-            return null;
-        }
-
-        @Override
-        public void registerProperties(Class<?> componentClass) {
-
-        }
-
-        @Override
-        public void unregisterProperties(Class<?> componentClass, boolean clear) {
-
-        }
-
-        @Override
-        public Set<ConfigProperty> getProperties(String componentName) {
-            return null;
-        }
-
-        @Override
-        public void setProperty(String componentName, String name, String value) {
-
-        }
-
-        @Override
-        public void preSetProperty(String componentName, String name, String value) {
-
-        }
-
-        @Override
-        public void unsetProperty(String componentName, String name) {
-
-        }
     }
 }

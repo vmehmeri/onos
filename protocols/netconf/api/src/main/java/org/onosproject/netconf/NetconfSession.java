@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.onosproject.netconf;
 
-import com.google.common.annotations.Beta;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -47,28 +46,6 @@ public interface NetconfSession {
      * the underlying connection
      */
     String get(String request) throws NetconfException;
-
-    /**
-     * Retrives the requested data.
-     *
-     * @param filterSchema XML subtrees to include in the reply
-     * @param withDefaultsMode with-defaults mode
-     * @return Server response
-     * @throws NetconfException when there is a problem in the communication process on
-     * the underlying connection
-     */
-    String get(String filterSchema, String withDefaultsMode)
-            throws NetconfException;
-
-    /**
-     * Executes an synchronous RPC to the server and wrap the request in RPC header.
-     *
-     * @param request the XML containing the request to the server.
-     * @return Server response or ERROR
-     * @throws NetconfException when there is a problem in the communication process on
-     * the underlying connection
-     */
-    String doWrappedRpc(String request) throws NetconfException;
 
     /**
      * Executes an synchronous RPC to the server.
@@ -152,50 +129,7 @@ public interface NetconfSession {
     boolean deleteConfig(String targetConfiguration) throws NetconfException;
 
     /**
-     * Starts subscription to the device's notifications.
-     *
-     * @throws NetconfException when there is a problem starting the subscription
-     */
-    void startSubscription() throws NetconfException;
-
-    /**
-     * Starts subscription to the device's notifications.
-     *
-     * @param filterSchema XML subtrees to indicate specific notification
-     * @throws NetconfException when there is a problem starting the subscription
-     */
-    @Beta
-    void startSubscription(String filterSchema) throws NetconfException;
-
-    /**
-     * Ends subscription to the device's notifications.
-     *
-     * @throws NetconfException when there is a problem ending the subscription
-     */
-    void endSubscription() throws NetconfException;
-
-    /**
-     * Locks the specified configuration.
-     *
-     * @param configType type of configuration to be locked
-     * @return true if successful.
-     * @throws NetconfException when there is a problem in the communication process on
-     * the underlying connection
-     */
-    boolean lock(String configType) throws NetconfException;
-
-    /**
-     * Unlocks the specified configuration.
-     *
-     * @param configType type of configuration to be locked
-     * @return true if successful.
-     * @throws NetconfException when there is a problem in the communication process on
-     * the underlying connection
-     */
-    boolean unlock(String configType) throws NetconfException;
-
-    /**
-     * Locks the running configuration.
+     * Locks the candidate configuration.
      *
      * @return true if successful.
      * @throws NetconfException when there is a problem in the communication process on
@@ -204,7 +138,7 @@ public interface NetconfSession {
     boolean lock() throws NetconfException;
 
     /**
-     * Unlocks the running configuration.
+     * Unlocks the candidate configuration.
      *
      * @return true if successful.
      * @throws NetconfException when there is a problem in the communication process on

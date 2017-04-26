@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,11 @@ import org.onosproject.net.AnnotationKeys;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.Host;
 import org.onosproject.net.Link;
 import org.onosproject.net.Port;
 import org.onosproject.net.config.NetworkConfigService;
 import org.onosproject.net.config.basics.BasicDeviceConfig;
 import org.onosproject.net.device.DeviceService;
-import org.onosproject.net.host.HostService;
 import org.onosproject.net.link.LinkService;
 import org.onosproject.ui.RequestHandler;
 import org.onosproject.ui.UiMessageHandler;
@@ -41,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -57,7 +56,6 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
     private static final String DEV_DATA_REQ = "deviceDataRequest";
     private static final String DEV_DATA_RESP = "deviceDataResponse";
     private static final String DEVICES = "devices";
-    private static final String DEVICE = "device";
 
     private static final String DEV_DETAILS_REQ = "deviceDetailsRequest";
     private static final String DEV_DETAILS_RESP = "deviceDetailsResponse";
@@ -181,7 +179,7 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
         }
 
         @Override
-        public void process(ObjectNode payload) {
+        public void process(long sid, ObjectNode payload) {
             String id = string(payload, ID, ZERO_URI);
 
             DeviceId deviceId = deviceId(id);
@@ -206,7 +204,7 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
             ArrayNode ports = arrayNode();
 
             List<Port> portList = new ArrayList<>(service.getPorts(deviceId));
-            portList.sort((p1, p2) -> {
+            Collections.sort(portList, (p1, p2) -> {
                 long delta = p1.number().toLong() - p2.number().toLong();
                 return delta == 0 ? 0 : (delta < 0 ? -1 : +1);
             });
@@ -218,11 +216,7 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
 
             ObjectNode rootNode = objectNode();
             rootNode.set(DETAILS, data);
-
-            // use the codec context to get a JSON of the device. See ONOS-5976.
-            rootNode.set(DEVICE, getJsonCodecContext().encode(device, Device.class));
-
-            sendMessage(DEV_DETAILS_RESP, rootNode);
+            sendMessage(DEV_DETAILS_RESP, 0, rootNode);
         }
 
         private ObjectNode portData(Port p, DeviceId id) {
@@ -236,8 +230,7 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
             port.put(ENABLED, p.isEnabled());
             port.put(NAME, name != null ? name : "");
 
-            ConnectPoint connectPoint = new ConnectPoint(id, p.number());
-            Set<Link> links = ls.getEgressLinks(connectPoint);
+            Set<Link> links = ls.getEgressLinks(new ConnectPoint(id, p.number()));
             if (!links.isEmpty()) {
                 StringBuilder egressLinks = new StringBuilder();
                 for (Link l : links) {
@@ -246,12 +239,6 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
                             .append(dest.port()).append(" ");
                 }
                 port.put(LINK_DEST, egressLinks.toString());
-            } else {
-                HostService hs = get(HostService.class);
-                Set<Host> hosts = hs.getConnectedHosts(connectPoint);
-                if (hosts != null && !hosts.isEmpty()) {
-                    port.put(LINK_DEST, hosts.iterator().next().id().toString());
-                }
             }
 
             return port;
@@ -266,7 +253,7 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
         }
 
         @Override
-        public void process(ObjectNode payload) {
+        public void process(long sid, ObjectNode payload) {
             DeviceId deviceId = deviceId(string(payload, ID, ZERO_URI));
             String name = emptyToNull(string(payload, NAME, null));
             log.debug("Name change request: {} -- '{}'", deviceId, name);
@@ -279,7 +266,7 @@ public class DeviceViewMessageHandler extends UiMessageHandler {
             // means that the friendly name should be unset.
             cfg.name(name);
             cfg.apply();
-            sendMessage(DEV_NAME_CHANGE_RESP, payload);
+            sendMessage(DEV_NAME_CHANGE_RESP, 0, payload);
         }
     }
 }

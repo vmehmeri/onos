@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package org.onosproject.cli.net;
 import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.onosproject.cli.AbstractShellCommand;
-import org.onosproject.utils.Comparators;
+import org.onosproject.cli.Comparators;
 import org.onosproject.net.region.Region;
 import org.onosproject.net.region.RegionId;
 import org.onosproject.net.region.RegionService;
@@ -42,11 +42,10 @@ public class RegionListCommand extends AbstractShellCommand {
             required = false, multiValued = false)
     String id = null;
 
-    private RegionService regionService;
-
     @Override
     protected void execute() {
-        regionService = get(RegionService.class);
+        RegionService regionService = get(RegionService.class);
+
         if (id == null) {
             for (Region region : getSortedRegions(regionService)) {
                 printRegion(region);
@@ -77,6 +76,5 @@ public class RegionListCommand extends AbstractShellCommand {
     private void printRegion(Region region) {
         print(FMT, region.id(), region.name(), region.type());
         region.masters().forEach(m -> print(FMT_MASTER, m));
-        regionService.getRegionDevices(region.id()).forEach(id -> print("  %s", id));
     }
 }

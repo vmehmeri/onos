@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,36 +15,8 @@
  */
 package org.onosproject.segmentrouting.grouphandler;
 
-import com.google.common.collect.Iterables;
-import org.apache.commons.lang3.RandomUtils;
-import org.onlab.packet.Ip4Prefix;
-import org.onlab.packet.IpPrefix;
-import org.onlab.packet.MacAddress;
-import org.onlab.packet.MplsLabel;
-import org.onlab.packet.VlanId;
-import org.onlab.util.KryoNamespace;
-import org.onosproject.core.ApplicationId;
-import org.onosproject.net.DeviceId;
-import org.onosproject.net.Link;
-import org.onosproject.net.PortNumber;
-import org.onosproject.net.flow.DefaultTrafficSelector;
-import org.onosproject.net.flow.DefaultTrafficTreatment;
-import org.onosproject.net.flow.TrafficSelector;
-import org.onosproject.net.flow.TrafficTreatment;
-import org.onosproject.net.flowobjective.DefaultNextObjective;
-import org.onosproject.net.flowobjective.DefaultObjectiveContext;
-import org.onosproject.net.flowobjective.FlowObjectiveService;
-import org.onosproject.net.flowobjective.NextObjective;
-import org.onosproject.net.flowobjective.ObjectiveContext;
-import org.onosproject.net.link.LinkService;
-import org.onosproject.segmentrouting.SegmentRoutingManager;
-import org.onosproject.segmentrouting.config.DeviceConfigNotFoundException;
-import org.onosproject.segmentrouting.config.DeviceProperties;
-import org.onosproject.segmentrouting.storekey.NeighborSetNextObjectiveStoreKey;
-import org.onosproject.segmentrouting.storekey.PortNextObjectiveStoreKey;
-import org.onosproject.segmentrouting.storekey.SubnetNextObjectiveStoreKey;
-import org.onosproject.store.service.EventuallyConsistentMap;
-import org.slf4j.Logger;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -56,8 +28,33 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static org.slf4j.LoggerFactory.getLogger;
+import org.onlab.packet.Ip4Prefix;
+import org.onlab.packet.IpPrefix;
+import org.onlab.packet.MacAddress;
+import org.onlab.packet.MplsLabel;
+import org.onlab.packet.VlanId;
+import org.onlab.util.KryoNamespace;
+import org.onosproject.core.ApplicationId;
+import org.onosproject.net.ConnectPoint;
+import org.onosproject.net.DeviceId;
+import org.onosproject.net.Link;
+import org.onosproject.net.PortNumber;
+import org.onosproject.net.flow.DefaultTrafficSelector;
+import org.onosproject.net.flow.DefaultTrafficTreatment;
+import org.onosproject.net.flow.TrafficSelector;
+import org.onosproject.net.flow.TrafficTreatment;
+import org.onosproject.net.flowobjective.DefaultNextObjective;
+import org.onosproject.net.flowobjective.FlowObjectiveService;
+import org.onosproject.net.flowobjective.NextObjective;
+import org.onosproject.net.flowobjective.Objective;
+import org.onosproject.net.flowobjective.ObjectiveContext;
+import org.onosproject.net.flowobjective.ObjectiveError;
+import org.onosproject.net.link.LinkService;
+import org.onosproject.segmentrouting.SegmentRoutingManager;
+import org.onosproject.segmentrouting.config.DeviceConfigNotFoundException;
+import org.onosproject.segmentrouting.config.DeviceProperties;
+import org.onosproject.store.service.EventuallyConsistentMap;
+import org.slf4j.Logger;
 
 /**
  * Default ECMP group handler creation module. This component creates a set of
@@ -71,8 +68,7 @@ public class DefaultGroupHandler {
     protected final ApplicationId appId;
     protected final DeviceProperties deviceConfig;
     protected final List<Integer> allSegmentIds;
-    protected int ipv4NodeSegmentId = -1;
-    protected int ipv6NodeSegmentId = -1;
+    protected int nodeSegmentId = -1;
     protected boolean isEdgeRouter = false;
     protected MacAddress nodeMacAddr = null;
     protected LinkService linkService;
@@ -81,18 +77,17 @@ public class DefaultGroupHandler {
     // that connect to the same neighbor
     protected ConcurrentHashMap<DeviceId, Set<PortNumber>> devicePortMap =
             new ConcurrentHashMap<>();
-    // local store for ports on this device connected to neighbor-device-id
+    //local store for ports on this device connected to neighbor-device-id
     protected ConcurrentHashMap<PortNumber, DeviceId> portDeviceMap =
             new ConcurrentHashMap<>();
-    // distributed store for (device+neighborset) mapped to next-id
     protected EventuallyConsistentMap<NeighborSetNextObjectiveStoreKey, Integer>
             nsNextObjStore = null;
-    // distributed store for (device+subnet-ip-prefix) mapped to next-id
     protected EventuallyConsistentMap<SubnetNextObjectiveStoreKey, Integer>
             subnetNextObjStore = null;
-    // distributed store for (device+port+treatment) mapped to next-id
     protected EventuallyConsistentMap<PortNextObjectiveStoreKey, Integer>
             portNextObjStore = null;
+    protected EventuallyConsistentMap<XConnectNextObjectiveStoreKey, Integer>
+            xConnectNextObjStore = null;
     private SegmentRoutingManager srManager;
 
     protected KryoNamespace.Builder kryo = new KryoNamespace.Builder()
@@ -114,8 +109,7 @@ public class DefaultGroupHandler {
         this.linkService = checkNotNull(linkService);
         this.allSegmentIds = checkNotNull(config.getAllDeviceSegmentIds());
         try {
-            this.ipv4NodeSegmentId = config.getIPv4SegmentId(deviceId);
-            this.ipv6NodeSegmentId = config.getIPv6SegmentId(deviceId);
+            this.nodeSegmentId = config.getSegmentId(deviceId);
             this.isEdgeRouter = config.isEdgeDevice(deviceId);
             this.nodeMacAddr = checkNotNull(config.getDeviceMac(deviceId));
         } catch (DeviceConfigNotFoundException e) {
@@ -126,6 +120,7 @@ public class DefaultGroupHandler {
         this.nsNextObjStore = srManager.nsNextObjStore;
         this.subnetNextObjStore = srManager.subnetNextObjStore;
         this.portNextObjStore = srManager.portNextObjStore;
+        this.xConnectNextObjStore = srManager.xConnectNextObjStore;
         this.srManager = srManager;
 
         populateNeighborMaps();
@@ -199,10 +194,6 @@ public class DefaultGroupHandler {
 
         log.info("* LinkUP: Device {} linkUp at local port {} to neighbor {}", deviceId,
                  newLink.src().port(), newLink.dst().deviceId());
-        // ensure local state is updated even if linkup is aborted later on
-        addNeighborAtPort(newLink.dst().deviceId(),
-                          newLink.src().port());
-
         MacAddress dstMac;
         try {
             dstMac = deviceConfig.getDeviceMac(newLink.dst().deviceId());
@@ -211,6 +202,8 @@ public class DefaultGroupHandler {
             return;
         }
 
+        addNeighborAtPort(newLink.dst().deviceId(),
+                          newLink.src().port());
         /*if (devicePortMap.get(newLink.dst().deviceId()) == null) {
             // New Neighbor
             newNeighbor(newLink);
@@ -261,15 +254,21 @@ public class DefaultGroupHandler {
                         deviceId,
                         newLink.src().port(),
                         nextId);
-
-                ObjectiveContext context = new DefaultObjectiveContext(
-                        (objective) -> log.debug("LinkUp addedTo NextObj {} on {}",
-                                nextId, deviceId),
-                        (objective, error) ->
-                                log.warn("LinkUp failed to addTo NextObj {} on {}: {}",
-                                        nextId, deviceId, error));
-                NextObjective nextObjective = nextObjBuilder.addToExisting(context);
+                NextObjective nextObjective = nextObjBuilder.
+                        addToExisting(new SRNextObjectiveContext(deviceId));
                 flowObjectiveService.next(deviceId, nextObjective);
+
+                // the addition of a bucket may actually change the neighborset
+                // update the global store
+                /*
+                Set<DeviceId> neighbors = new HashSet<DeviceId>(ns.getDeviceIds());
+                boolean newadd = neighbors.add(newLink.dst().deviceId());
+                if (newadd) {
+                    NeighborSet nsnew = new NeighborSet(neighbors, ns.getEdgeLabel());
+                    nsNextObjStore.put(new NeighborSetNextObjectiveStoreKey(deviceId, nsnew),
+                                       nextId);
+                    nsNextObjStore.remove(new NeighborSetNextObjectiveStoreKey(deviceId, ns));
+                }*/
             } else if (isMaster) {
                 log.warn("linkUp in device {}, but global store has no record "
                         + "for neighbor-set {}", deviceId, ns);
@@ -278,8 +277,7 @@ public class DefaultGroupHandler {
     }
 
     /**
-     * Performs hash group recovery procedures when a switch-to-switch
-     * port goes down on this device.
+     * Performs group recovery procedures when a port goes down on this device.
      *
      * @param port port number that has gone down
      * @param isMaster true if local instance is the master
@@ -314,9 +312,8 @@ public class DefaultGroupHandler {
         log.debug("portDown: nsNextObjStore contents for device {}:{}",
                   deviceId, nsSet);
         for (NeighborSet ns : nsSet) {
-            NeighborSetNextObjectiveStoreKey nsStoreKey =
-                    new NeighborSetNextObjectiveStoreKey(deviceId, ns);
-            Integer nextId = nsNextObjStore.get(nsStoreKey);
+            Integer nextId = nsNextObjStore.
+                    get(new NeighborSetNextObjectiveStoreKey(deviceId, ns));
             if (nextId != null && isMaster) {
                 log.info("**portDown in device {}: Removing Bucket "
                         + "with Port {} to next object id {}",
@@ -340,85 +337,28 @@ public class DefaultGroupHandler {
                         .withId(nextId)
                         .fromApp(appId)
                         .addTreatment(tBuilder.build());
-                ObjectiveContext context = new DefaultObjectiveContext(
-                    (objective) -> log.debug("portDown removedFrom NextObj {} on {}",
-                                             nextId, deviceId),
-                    (objective, error) ->
-                    log.warn("portDown failed to removeFrom NextObj {} on {}: {}",
-                             nextId, deviceId, error));
                 NextObjective nextObjective = nextObjBuilder.
-                        removeFromExisting(context);
+                        removeFromExisting(new SRNextObjectiveContext(deviceId));
 
                 flowObjectiveService.next(deviceId, nextObjective);
+
+                // the removal of a bucket may actually change the neighborset
+                // update the global store
+                /*
+                Set<DeviceId> neighbors = new HashSet<DeviceId>(ns.getDeviceIds());
+                boolean removed = neighbors.remove(portDeviceMap.get(port));
+                if (removed) {
+                    NeighborSet nsnew = new NeighborSet(neighbors, ns.getEdgeLabel());
+                    nsNextObjStore.put(new NeighborSetNextObjectiveStoreKey(deviceId, nsnew),
+                                       nextId);
+                    nsNextObjStore.remove(new NeighborSetNextObjectiveStoreKey(deviceId, ns));
+                }*/
             }
+
         }
 
         devicePortMap.get(portDeviceMap.get(port)).remove(port);
         portDeviceMap.remove(port);
-    }
-
-    /**
-     * Adds or removes a port that has been configured with a subnet to a broadcast group
-     * for bridging. Note that this does not create the broadcast group itself.
-     *
-     * @param port the port on this device that needs to be added/removed to a bcast group
-     * @param subnet the subnet corresponding  to the broadcast group
-     * @param portUp true if port is enabled, false if disabled
-     * @param isMaster true if local instance is the master
-     */
-    public void processEdgePort(PortNumber port, Ip4Prefix subnet,
-                                boolean portUp, boolean isMaster) {
-        if (!isMaster) {
-            return;
-        }
-        //get the next id for the subnet and edit it.
-        Integer nextId = getSubnetNextObjectiveId(subnet);
-        if (nextId == -1) {
-            if (portUp) {
-                log.debug("**Creating flooding group for first port enabled in"
-                        + " subnet {} on dev {} port {}", subnet, deviceId, port);
-                createBcastGroupFromSubnet(subnet, Collections.singletonList(port));
-            } else {
-                log.warn("Could not find flooding group for subnet {} on dev:{} when"
-                        + " removing port:{}", subnet, deviceId, port);
-            }
-            return;
-        }
-
-        log.info("**port{} in device {}: {} Bucket with Port {} to"
-                + " next-id {}", (portUp) ? "UP" : "DOWN", deviceId,
-                                          (portUp) ? "Adding" : "Removing",
-                                          port, nextId);
-        // Create the bucket to be added or removed
-        TrafficTreatment.Builder tBuilder = DefaultTrafficTreatment.builder();
-        tBuilder.popVlan();
-        tBuilder.setOutput(port);
-
-        VlanId assignedVlanId =
-                srManager.getSubnetAssignedVlanId(this.deviceId, subnet);
-        TrafficSelector metadata =
-                DefaultTrafficSelector.builder().matchVlanId(assignedVlanId).build();
-
-        NextObjective.Builder nextObjBuilder = DefaultNextObjective
-                .builder().withId(nextId)
-                .withType(NextObjective.Type.BROADCAST).fromApp(appId)
-                .addTreatment(tBuilder.build())
-                .withMeta(metadata);
-
-        ObjectiveContext context = new DefaultObjectiveContext(
-            (objective) -> log.debug("port {} successfully {} NextObj {} on {}",
-                                     port, (portUp) ? "addedTo" : "removedFrom",
-                                     nextId, deviceId),
-            (objective, error) ->
-            log.warn("port {} failed to {} NextObj {} on {}: {}",
-                     port, (portUp) ? "addTo" : "removeFrom",
-                     nextId, deviceId, error));
-
-        NextObjective nextObj = (portUp) ? nextObjBuilder.addToExisting(context)
-                                         : nextObjBuilder.removeFromExisting(context);
-        log.debug("edgePort processed: Submited next objective {} in device {}",
-                  nextId, deviceId);
-        flowObjectiveService.next(deviceId, nextObj);
     }
 
     /**
@@ -429,11 +369,10 @@ public class DefaultGroupHandler {
      *
      * @param ns neighborset
      * @param meta metadata passed into the creation of a Next Objective
-     * @param isBos if Bos is set
      * @return int if found or -1 if there are errors in the creation of the
      *          neighbor set.
      */
-    public int getNextObjectiveId(NeighborSet ns, TrafficSelector meta, boolean isBos) {
+    public int getNextObjectiveId(NeighborSet ns, TrafficSelector meta) {
         Integer nextId = nsNextObjStore.
                 get(new NeighborSetNextObjectiveStoreKey(deviceId, ns));
         if (nextId == null) {
@@ -446,7 +385,7 @@ public class DefaultGroupHandler {
                       .filter((nsStoreEntry) ->
                       (nsStoreEntry.getKey().deviceId().equals(deviceId)))
                       .collect(Collectors.toList()));
-            createGroupsFromNeighborsets(Collections.singleton(ns), meta, isBos);
+            createGroupsFromNeighborsets(Collections.singleton(ns), meta);
             nextId = nsNextObjStore.
                     get(new NeighborSetNextObjectiveStoreKey(deviceId, ns));
             if (nextId == null) {
@@ -467,8 +406,7 @@ public class DefaultGroupHandler {
      * Returns the next objective of type broadcast associated with the subnet,
      * or -1 if no such objective exists. Note that this method does NOT create
      * the next objective as a side-effect. It is expected that is objective is
-     * created at startup from network configuration. Typically this is used
-     * for L2 flooding within the subnet configured on the switch.
+     * created at startup from network configuration.
      *
      * @param prefix subnet information
      * @return int if found or -1
@@ -485,9 +423,7 @@ public class DefaultGroupHandler {
      * device, given the treatment. Different treatments to the same port result
      * in different next objectives. If no such objective exists, this method
      * creates one and returns the id. Optionally metadata can be passed in for
-     * the creation of the objective. Typically this is used for L2 and L3 forwarding
-     * to compute nodes and containers/VMs on the compute nodes directly attached
-     * to the switch.
+     * the creation of the objective.
      *
      * @param portNum the port number for the simple next objective
      * @param treatment the actions to apply on the packets (should include outport)
@@ -508,6 +444,32 @@ public class DefaultGroupHandler {
             if (nextId == null) {
                 log.warn("getPortNextObjectiveId: unable to create next obj"
                         + "for dev:{} port:{}", deviceId, portNum);
+                return -1;
+            }
+        }
+        return nextId;
+    }
+
+    /**
+     * Returns the next objective ID of type broadcast associated with the VLAN
+     * cross-connection.
+     *
+     * @param vlanId VLAN ID for the cross-connection
+     * @return int if found or created, -1 if there are errors during the
+     *         creation of the next objective
+     */
+    public int getXConnectNextObjectiveId(VlanId vlanId) {
+        Integer nextId = xConnectNextObjStore
+                .get(new XConnectNextObjectiveStoreKey(deviceId, vlanId));
+        if (nextId == null) {
+            log.trace("getXConnectNextObjectiveId: Next objective id "
+                    + "not found for device {} and vlan {}. Creating", deviceId, vlanId);
+            createGroupsForXConnect(deviceId);
+            nextId = xConnectNextObjStore.get(
+                    new XConnectNextObjectiveStoreKey(deviceId, vlanId));
+            if (nextId == null) {
+                log.warn("getXConnectNextObjectiveId: Next objective id "
+                        + "not found for device {} and vlan {}.", deviceId, vlanId);
                 return -1;
             }
         }
@@ -602,8 +564,7 @@ public class DefaultGroupHandler {
     private boolean isSegmentIdSameAsNodeSegmentId(DeviceId deviceId, int sId) {
         int segmentId;
         try {
-            // IPv6 sid is not inserted. this part of the code is not used for now.
-            segmentId = deviceConfig.getIPv4SegmentId(deviceId);
+            segmentId = deviceConfig.getSegmentId(deviceId);
         } catch (DeviceConfigNotFoundException e) {
             log.warn(e.getMessage() + " Aborting isSegmentIdSameAsNodeSegmentId.");
             return false;
@@ -624,7 +585,7 @@ public class DefaultGroupHandler {
         // Filter out SegmentIds matching with the
         // nodes in the combo
         for (Integer sId : allSegmentIds) {
-            if (sId.equals(this.ipv4NodeSegmentId)) {
+            if (sId.equals(nodeSegmentId)) {
                 continue;
             }
             boolean filterOut = false;
@@ -644,37 +605,24 @@ public class DefaultGroupHandler {
     }
 
     /**
-     * Creates hash groups from a set of NeighborSet given.
+     * Creates Groups from a set of NeighborSet given.
      *
      * @param nsSet a set of NeighborSet
      * @param meta metadata passed into the creation of a Next Objective
-     * @param isBos if BoS is set
      */
     public void createGroupsFromNeighborsets(Set<NeighborSet> nsSet,
-                                             TrafficSelector meta,
-                                             boolean isBos) {
+                                             TrafficSelector meta) {
         for (NeighborSet ns : nsSet) {
             int nextId = flowObjectiveService.allocateNextId();
-            NextObjective.Type type = NextObjective.Type.HASHED;
-            Set<DeviceId> neighbors = ns.getDeviceIds();
-            // If Bos == False and MPLS-ECMP == false, we have
-            // to use simple group and we will pick a single neighbor.
-            if (!isBos && !srManager.getMplsEcmp()) {
-                type = NextObjective.Type.SIMPLE;
-                neighbors = Collections.singleton(ns.getFirstNeighbor());
-            }
             NextObjective.Builder nextObjBuilder = DefaultNextObjective
-                    .builder()
-                    .withId(nextId)
-                    .withType(type)
-                    .fromApp(appId);
-            // For each neighbor, we have to update the sent actions
-            for (DeviceId neighborId : neighbors) {
+                    .builder().withId(nextId)
+                    .withType(NextObjective.Type.HASHED).fromApp(appId);
+            for (DeviceId neighborId : ns.getDeviceIds()) {
                 if (devicePortMap.get(neighborId) == null) {
                     log.warn("Neighbor {} is not in the port map yet for dev:{}",
                              neighborId, deviceId);
                     return;
-                } else if (devicePortMap.get(neighborId).isEmpty()) {
+                } else if (devicePortMap.get(neighborId).size() == 0) {
                     log.warn("There are no ports for "
                             + "the Device {} in the port map yet", neighborId);
                     return;
@@ -687,17 +635,8 @@ public class DefaultGroupHandler {
                     log.warn(e.getMessage() + " Aborting createGroupsFromNeighborsets.");
                     return;
                 }
-                // For each port, we have to create a new treatment
-                Set<PortNumber> neighborPorts = devicePortMap.get(neighborId);
-                // In this case we are using a SIMPLE group. We randomly pick a port
-                if (!isBos && !srManager.getMplsEcmp()) {
-                    int size = devicePortMap.get(neighborId).size();
-                    int index = RandomUtils.nextInt(0, size);
-                    neighborPorts = Collections.singleton(
-                            Iterables.get(devicePortMap.get(neighborId), index)
-                    );
-                }
-                for (PortNumber sp : neighborPorts) {
+
+                for (PortNumber sp : devicePortMap.get(neighborId)) {
                     TrafficTreatment.Builder tBuilder = DefaultTrafficTreatment
                             .builder();
                     tBuilder.setEthDst(neighborMac)
@@ -714,17 +653,9 @@ public class DefaultGroupHandler {
             if (meta != null) {
                 nextObjBuilder.withMeta(meta);
             }
-
-            ObjectiveContext context = new DefaultObjectiveContext(
-                    (objective) ->
-                            log.debug("createGroupsFromNeighborsets installed NextObj {} on {}",
-                            nextId, deviceId),
-                    (objective, error) ->
-                            log.warn("createGroupsFromNeighborsets failed to install NextObj {} on {}: {}",
-                                    nextId, deviceId, error)
-            );
-            NextObjective nextObj = nextObjBuilder.add(context);
-            log.debug("**createGroupsFromNeighborsets: Submited "
+            NextObjective nextObj = nextObjBuilder.
+                    add(new SRNextObjectiveContext(deviceId));
+            log.info("**createGroupsFromNeighborsets: Submited "
                     + "next objective {} in device {}",
                     nextId, deviceId);
             flowObjectiveService.next(deviceId, nextObj);
@@ -734,68 +665,99 @@ public class DefaultGroupHandler {
     }
 
     /**
-     * Creates broadcast groups for all ports in the same subnet for
-     * all configured subnets.
+     * Creates broadcast groups for all ports in the same configured subnet.
      */
     public void createGroupsFromSubnetConfig() {
-        Map<IpPrefix, List<PortNumber>> subnetPortMap;
-        try {
-            subnetPortMap = this.deviceConfig.getSubnetPortsMap(this.deviceId);
-        } catch (DeviceConfigNotFoundException e) {
-            log.warn(e.getMessage()
-                     + " Not creating broadcast groups for device: " + deviceId);
-            return;
-        }
+        Map<Ip4Prefix, List<PortNumber>> subnetPortMap =
+                this.deviceConfig.getSubnetPortsMap(this.deviceId);
         // Construct a broadcast group for each subnet
         subnetPortMap.forEach((subnet, ports) -> {
-            if (subnet.isIp4()) {
-                createBcastGroupFromSubnet(subnet.getIp4Prefix(), ports);
+            SubnetNextObjectiveStoreKey key =
+                    new SubnetNextObjectiveStoreKey(deviceId, subnet);
+
+            if (subnetNextObjStore.containsKey(key)) {
+                log.debug("Broadcast group for device {} and subnet {} exists",
+                          deviceId, subnet);
+                return;
             }
+
+            VlanId assignedVlanId =
+                    srManager.getSubnetAssignedVlanId(this.deviceId, subnet);
+            TrafficSelector metadata =
+                    DefaultTrafficSelector.builder().matchVlanId(assignedVlanId).build();
+
+            int nextId = flowObjectiveService.allocateNextId();
+
+            NextObjective.Builder nextObjBuilder = DefaultNextObjective
+                    .builder().withId(nextId)
+                    .withType(NextObjective.Type.BROADCAST).fromApp(appId)
+                    .withMeta(metadata);
+
+            ports.forEach(port -> {
+                TrafficTreatment.Builder tBuilder = DefaultTrafficTreatment.builder();
+                tBuilder.popVlan();
+                tBuilder.setOutput(port);
+                nextObjBuilder.addTreatment(tBuilder.build());
+            });
+
+            NextObjective nextObj = nextObjBuilder.add();
+            flowObjectiveService.next(deviceId, nextObj);
+            log.debug("createGroupFromSubnetConfig: Submited "
+                              + "next objective {} in device {}",
+                      nextId, deviceId);
+
+            subnetNextObjStore.put(key, nextId);
         });
     }
 
     /**
-     * Creates a single broadcast group from a given subnet and list of ports.
+     * Creates broadcast groups for VLAN cross-connect ports.
      *
-     * @param subnet a configured subnet
-     * @param ports list of ports in the subnet
+     * @param deviceId the DPID of the switch
      */
-    public void createBcastGroupFromSubnet(Ip4Prefix subnet, List<PortNumber> ports) {
-        SubnetNextObjectiveStoreKey key =
-                new SubnetNextObjectiveStoreKey(deviceId, subnet);
+    public void createGroupsForXConnect(DeviceId deviceId) {
+        Map<VlanId, List<ConnectPoint>> xConnectsForDevice = deviceConfig.getXConnects();
 
-        if (subnetNextObjStore.containsKey(key)) {
-            log.debug("Broadcast group for device {} and subnet {} exists",
-                      deviceId, subnet);
-            return;
-        }
+        xConnectsForDevice.forEach((vlanId, connectPoints) -> {
+            // Only proceed  the xConnect for given device
+            for (ConnectPoint connectPoint : connectPoints) {
+                if (!connectPoint.deviceId().equals(deviceId)) {
+                    return;
+                }
+            }
 
-        VlanId assignedVlanId =
-                srManager.getSubnetAssignedVlanId(this.deviceId, subnet);
-        TrafficSelector metadata =
-                DefaultTrafficSelector.builder().matchVlanId(assignedVlanId).build();
+            // Check if the next obj is already in the store
+            XConnectNextObjectiveStoreKey key =
+                    new XConnectNextObjectiveStoreKey(deviceId, vlanId);
+            if (xConnectNextObjStore.containsKey(key)) {
+                log.debug("Cross-connect Broadcast group for device {} and vlanId {} exists",
+                        deviceId, vlanId);
+                return;
+            }
 
-        int nextId = flowObjectiveService.allocateNextId();
+            TrafficSelector metadata =
+                    DefaultTrafficSelector.builder().matchVlanId(vlanId).build();
+            int nextId = flowObjectiveService.allocateNextId();
 
-        NextObjective.Builder nextObjBuilder = DefaultNextObjective
-                .builder().withId(nextId)
-                .withType(NextObjective.Type.BROADCAST).fromApp(appId)
-                .withMeta(metadata);
+            NextObjective.Builder nextObjBuilder = DefaultNextObjective
+                    .builder().withId(nextId)
+                    .withType(NextObjective.Type.BROADCAST).fromApp(appId)
+                    .withMeta(metadata);
 
-        ports.forEach(port -> {
-            TrafficTreatment.Builder tBuilder = DefaultTrafficTreatment.builder();
-            tBuilder.popVlan();
-            tBuilder.setOutput(port);
-            nextObjBuilder.addTreatment(tBuilder.build());
+            connectPoints.forEach(connectPoint -> {
+                TrafficTreatment.Builder tBuilder = DefaultTrafficTreatment.builder();
+                tBuilder.setOutput(connectPoint.port());
+                nextObjBuilder.addTreatment(tBuilder.build());
+            });
+
+            NextObjective nextObj = nextObjBuilder.add();
+            flowObjectiveService.next(deviceId, nextObj);
+            log.debug("createGroupsForXConnect: Submited next objective {} in device {}",
+                    nextId, deviceId);
+            xConnectNextObjStore.put(key, nextId);
         });
-
-        NextObjective nextObj = nextObjBuilder.add();
-        flowObjectiveService.next(deviceId, nextObj);
-        log.debug("createBcastGroupFromSubnet: Submited next objective {} in device {}",
-                  nextId, deviceId);
-
-        subnetNextObjStore.put(key, nextId);
     }
+
 
     /**
      * Create simple next objective for a single port. The treatments can include
@@ -838,13 +800,8 @@ public class DefaultGroupHandler {
             NextObjective.Builder nextObjBuilder = DefaultNextObjective
                     .builder().withId(objectiveId)
                     .withType(NextObjective.Type.HASHED).fromApp(appId);
-            ObjectiveContext context = new DefaultObjectiveContext(
-                    (objective) -> log.debug("RemoveGroup removes NextObj {} on {}",
-                            objectiveId, deviceId),
-                    (objective, error) ->
-                            log.warn("RemoveGroup failed to remove NextObj {} on {}: {}",
-                                    objectiveId, deviceId, error));
-            NextObjective nextObjective = nextObjBuilder.remove(context);
+            NextObjective nextObjective = nextObjBuilder.
+                    remove(new SRNextObjectiveContext(deviceId));
             log.info("**removeGroup: Submited "
                     + "next objective {} in device {}",
                     objectiveId, deviceId);
@@ -879,5 +836,24 @@ public class DefaultGroupHandler {
             removeGroup(entry.getValue());
         }
         // should probably clean local stores port-neighbor
+    }
+
+    protected static class SRNextObjectiveContext implements ObjectiveContext {
+        final DeviceId deviceId;
+
+        SRNextObjectiveContext(DeviceId deviceId) {
+            this.deviceId = deviceId;
+        }
+        @Override
+        public void onSuccess(Objective objective) {
+            log.info("Next objective {} operation successful in device {}",
+                      objective.id(), deviceId);
+        }
+
+        @Override
+        public void onError(Objective objective, ObjectiveError error) {
+            log.warn("Next objective {} operation failed with error: {} in device {}",
+                     objective.id(), error, deviceId);
+        }
     }
 }

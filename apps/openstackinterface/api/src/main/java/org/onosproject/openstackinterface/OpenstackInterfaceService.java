@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015-2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,9 @@
  */
 package org.onosproject.openstackinterface;
 
-import org.onlab.packet.Ip4Address;
 import org.onosproject.net.Port;
 
 import java.util.Collection;
-import java.util.Optional;
 
 /**
  * Handles port management REST API from Openstack for VMs.
@@ -51,7 +49,7 @@ public interface OpenstackInterfaceService {
     /**
      * Returns port information for the port ID given.
      *
-     * @param portId port id
+     * @param portId Port ID
      * @return port information
      */
     OpenstackPort port(String portId);
@@ -59,7 +57,7 @@ public interface OpenstackInterfaceService {
     /**
      * Returns network information list for the network ID given.
      *
-     * @param networkId network id
+     * @param networkId Network ID
      * @return network information, or null if not present
      */
     OpenstackNetwork network(String networkId);
@@ -74,7 +72,7 @@ public interface OpenstackInterfaceService {
     /**
      * Returns subnet information for the subnet ID give.
      *
-     * @param subnetId subnet id
+     * @param subnetId Subnet ID
      * @return subnet information, or null if not present
      */
     OpenstackSubnet subnet(String subnetId);
@@ -96,7 +94,7 @@ public interface OpenstackInterfaceService {
     /**
      * Returns the router information for the router ID given.
      *
-     * @param routerId router id
+     * @param routerId router ID
      * @return router information
      */
     OpenstackRouter router(String routerId);
@@ -107,25 +105,6 @@ public interface OpenstackInterfaceService {
      * @param id security group id
      * @return security group information
      */
-    OpenstackSecurityGroup securityGroup(String id);
-
-    /**
-     * Returns collection of OpenStack floating IP information.
-     *
-     * @return collection of OpenStack floating IP information
-     */
-    Collection<OpenstackFloatingIP> floatingIps();
-
-    /**
-     * Updates a floating IP and its association with an internal port.
-     *
-     * @param id floating ip id
-     * @param portId port id
-     * @param fixedIpAddress fixed ip address of the port
-     * @return true if the update succeed
-     */
-    boolean updateFloatingIp(String id, String portId, Optional<Ip4Address> fixedIpAddress);
-
-
+    OpenstackSecurityGroup getSecurityGroup(String id);
 
 }

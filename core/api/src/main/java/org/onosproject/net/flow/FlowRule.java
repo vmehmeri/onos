@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,29 +27,6 @@ public interface FlowRule {
 
     int MAX_TIMEOUT = 60;
     int MIN_PRIORITY = 0;
-    int MAX_PRIORITY = 65535;
-
-    /**
-     * Reason for flow parameter received from switches.
-     * Used to check reason parameter in flows.
-     */
-    enum FlowRemoveReason {
-        NO_REASON,
-        IDLE_TIMEOUT,
-        HARD_TIMEOUT;
-        public static FlowRemoveReason parseShort(short reason) {
-            switch (reason) {
-                case -1 :
-                    return NO_REASON;
-                case 0:
-                    return IDLE_TIMEOUT;
-                case 1:
-                    return HARD_TIMEOUT;
-                default :
-                    return NO_REASON;
-            }
-        }
-    }
 
     /**
      * Returns the ID of this flow.
@@ -108,21 +85,6 @@ public interface FlowRule {
      * @return integer value of the timeout
      */
     int timeout();
-
-    /**
-     * Returns the hard timeout for this flow requested by an application.
-     * This parameter configure switch's flow hard timeout.
-     * In case of controller-switch connection lost, this variable can be useful.
-     * @return integer value of the hard Timeout
-     */
-    int hardTimeout();
-
-    /**
-     * Returns the reason for the flow received from switches.
-     *
-     * @return FlowRemoveReason value of reason
-     */
-    FlowRemoveReason reason();
 
     /**
      * Returns whether the flow is permanent i.e. does not time out.
@@ -249,20 +211,6 @@ public interface FlowRule {
         Builder makeTemporary(int timeout);
 
         /**
-         * Sets hard timeout parameter in flow table.
-         * @param timeout an integer
-         * @return this
-         */
-        Builder withHardTimeout(int timeout);
-
-        /**
-         * Sets reason parameter received from switches .
-         * @param reason a short
-         * @return this
-         */
-        Builder withReason(FlowRemoveReason reason);
-
-        /**
          * Builds a flow rule object.
          *
          * @return a flow rule.
@@ -275,8 +223,6 @@ public interface FlowRule {
      * Returns the third party original flow rule.
      *
      * @return FlowRuleExtPayLoad
-     * @deprecated in Junco release
      */
-    @Deprecated
     FlowRuleExtPayLoad payLoad();
 }

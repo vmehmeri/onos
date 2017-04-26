@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,16 @@
  */
 package org.onosproject.vtnweb.resources;
 
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertThat;
+import static org.onosproject.net.NetTestTools.device;
+import static org.onosproject.net.NetTestTools.did;
+
 import com.eclipsesource.json.Json;
-import com.eclipsesource.json.JsonObject;
-import com.google.common.collect.ImmutableList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,17 +37,9 @@ import org.onosproject.net.DeviceId;
 import org.onosproject.vtnrsc.classifier.ClassifierService;
 import org.onosproject.vtnweb.web.SfcCodecContext;
 
-import javax.ws.rs.client.WebTarget;
-
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertThat;
-import static org.onosproject.net.NetTestTools.device;
-import static org.onosproject.net.NetTestTools.did;
-
+import com.eclipsesource.json.JsonObject;
+import com.google.common.collect.ImmutableList;
+import com.sun.jersey.api.client.WebResource;
 /**
  * Unit tests for classifier REST APIs.
  */
@@ -76,8 +75,8 @@ public class ClassifierResourceTest extends VtnResourceTest {
 
         expect(classifierService.getClassifiers()).andReturn(null).anyTimes();
         replay(classifierService);
-        final WebTarget wt = target();
-        final String response = wt.path("classifiers").request().get(String.class);
+        final WebResource rs = resource();
+        final String response = rs.path("classifiers").get(String.class);
         assertThat(response, is("{\"classifiers\":[]}"));
     }
 
@@ -93,8 +92,8 @@ public class ClassifierResourceTest extends VtnResourceTest {
         expect(classifierService.getClassifiers()).andReturn(ImmutableList.of(devId1)).anyTimes();
         replay(classifierService);
 
-        final WebTarget wt = target();
-        final String response = wt.path("classifiers").request().get(String.class);
+        final WebResource rs = resource();
+        final String response = rs.path("classifiers").get(String.class);
         final JsonObject result = Json.parse(response).asObject();
         assertThat(result, notNullValue());
     }

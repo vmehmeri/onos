@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,19 +25,19 @@ public interface UiExtensionService {
     /**
      * Registers the specified user interface extension.
      *
-     * @param extension UI extension to register
+     * @param extension GUI extension to register
      */
     void register(UiExtension extension);
 
     /**
      * Unregisters the specified user interface extension.
      *
-     * @param extension UI extension to unregister
+     * @param extension GUI extension to unregister
      */
     void unregister(UiExtension extension);
 
     /**
-     * Returns the list of registered user interface extensions.
+     * Returns the list of user interface extensions.
      *
      * @return list of extensions
      */
@@ -47,7 +47,7 @@ public interface UiExtensionService {
      * Returns the user interface extension that contributed the specified view.
      *
      * @param viewId view identifier
-     * @return contributing user interface extension
+     * @return user interface extension
      */
     UiExtension getViewExtension(String viewId);
 }

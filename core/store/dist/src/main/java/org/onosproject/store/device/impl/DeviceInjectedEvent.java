@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,6 @@ import org.onosproject.net.DeviceId;
 import org.onosproject.net.device.DeviceDescription;
 import org.onosproject.net.provider.ProviderId;
 
-/**
- * Remnant of ConfigProvider.
- * @deprecated in Hummingbird(1.7.0)
- */
-@Deprecated
 public class DeviceInjectedEvent {
     private final ProviderId providerId;
     private final DeviceId deviceId;

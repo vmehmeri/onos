@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,19 +38,19 @@ import com.google.common.base.MoreObjects;
 public class PcepLabelObjectVer1 implements PcepLabelObject {
 
     /*
-     *   ref : draft-zhao-pce-pcep-extension-for-pce-controller-03, section : 7.3.
+     *   ref : draft-zhao-pce-pcep-extension-for-pce-controller-01 , section : 7.4.
 
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |          Reserved            |              Flags           |O|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                 Label                 |     Reserved          |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                                                               |
-   //                        Optional TLV                         //
-   |                                                               |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        0                   1                   2                   3
+           0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | Reserved                      | Flags                       |O|
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                            Label                              |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                                                               |
+       //                        Optional TLV                          //
+       |                                                               |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                      The LABEL Object format
      */
     protected static final Logger log = LoggerFactory.getLogger(PcepLspObjectVer1.class);
@@ -65,7 +65,6 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
     public static final short LABEL_OBJ_MINIMUM_LENGTH = 12;
 
     public static final int OFLAG_SET = 1;
-    public static final int SHIFT_LABEL = 12;
     public static final int OFLAG_RESET = 0;
     public static final int MINIMUM_COMMON_HEADER_LENGTH = 4;
 
@@ -73,45 +72,45 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
             PcepObjectHeader.REQ_OBJ_OPTIONAL_PROCESS, PcepObjectHeader.RSP_OBJ_PROCESSED, LABEL_OBJ_MINIMUM_LENGTH);
 
     private PcepObjectHeader labelObjHeader;
-    private boolean oBit;
+    private boolean bOFlag;
     private int label;
     // Optional TLV
-    private LinkedList<PcepValueType> optionalTlv;
+    private LinkedList<PcepValueType> llOptionalTlv;
 
     /**
      * Constructor to initialize parameters for PCEP label object.
      *
      * @param labelObjHeader label object header
-     * @param oBit O flag
+     * @param bOFlag O flag
      * @param label label
-     * @param optionalTlv list of optional tlvs
+     * @param llOptionalTlv list of optional tlvs
      */
-    public PcepLabelObjectVer1(PcepObjectHeader labelObjHeader, boolean oBit, int label,
-            LinkedList<PcepValueType> optionalTlv) {
+    public PcepLabelObjectVer1(PcepObjectHeader labelObjHeader, boolean bOFlag, int label,
+            LinkedList<PcepValueType> llOptionalTlv) {
         this.labelObjHeader = labelObjHeader;
-        this.oBit = oBit;
+        this.bOFlag = bOFlag;
         this.label = label;
-        this.optionalTlv = optionalTlv;
+        this.llOptionalTlv = llOptionalTlv;
     }
 
     @Override
     public LinkedList<PcepValueType> getOptionalTlv() {
-        return this.optionalTlv;
+        return this.llOptionalTlv;
     }
 
     @Override
-    public void setOptionalTlv(LinkedList<PcepValueType> optionalTlv) {
-        this.optionalTlv = optionalTlv;
+    public void setOptionalTlv(LinkedList<PcepValueType> llOptionalTlv) {
+        this.llOptionalTlv = llOptionalTlv;
     }
 
     @Override
     public boolean getOFlag() {
-        return this.oBit;
+        return this.bOFlag;
     }
 
     @Override
     public void setOFlag(boolean value) {
-        this.oBit = value;
+        this.bOFlag = value;
     }
 
     @Override
@@ -135,24 +134,23 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
 
         PcepObjectHeader labelObjHeader;
 
-        boolean oBit;
+        boolean bOFlag;
         int label;
 
         // Optional TLV
-        LinkedList<PcepValueType> optionalTlv = new LinkedList<>();
+        LinkedList<PcepValueType> llOptionalTlv = new LinkedList<>();
         labelObjHeader = PcepObjectHeader.read(cb);
 
         //take only LspObject buffer.
         ChannelBuffer tempCb = cb.readBytes(labelObjHeader.getObjLen() - OBJECT_HEADER_LENGTH);
 
         int iTemp = tempCb.readInt();
-        oBit = (iTemp & (byte) OFLAG_SET) == OFLAG_SET;
-        iTemp = tempCb.readInt();
-        label = (int) iTemp >> SHIFT_LABEL;
+        bOFlag = (iTemp & (byte) 0x01) == 1;
+        label = tempCb.readInt();
 
         // parse optional TLV
-        optionalTlv = parseOptionalTlv(tempCb);
-        return new PcepLabelObjectVer1(labelObjHeader, oBit, label, optionalTlv);
+        llOptionalTlv = parseOptionalTlv(tempCb);
+        return new PcepLabelObjectVer1(labelObjHeader, bOFlag, label, llOptionalTlv);
     }
 
     @Override
@@ -168,11 +166,9 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
 
         byte oFlag;
 
-        oFlag = (byte) ((oBit) ? OFLAG_SET : OFLAG_RESET);
+        oFlag = (byte) ((bOFlag) ? OFLAG_SET : OFLAG_RESET);
         cb.writeInt(oFlag);
-        int temp = label;
-        temp = (int) label << SHIFT_LABEL;
-        cb.writeInt(temp);
+        cb.writeInt(label);
 
         // Add optional TLV
         packOptionalTlv(cb);
@@ -249,7 +245,7 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
      */
     protected int packOptionalTlv(ChannelBuffer cb) {
 
-        ListIterator<PcepValueType> listIterator = optionalTlv.listIterator();
+        ListIterator<PcepValueType> listIterator = llOptionalTlv.listIterator();
 
         while (listIterator.hasNext()) {
             PcepValueType tlv = listIterator.next();
@@ -273,10 +269,10 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
         private boolean bIsLabelSet = false;
 
         private PcepObjectHeader labelObjHeader;
-        private boolean oBit;
+        private boolean bOFlag;
         private int label;
 
-        LinkedList<PcepValueType> optionalTlv = new LinkedList<>();
+        LinkedList<PcepValueType> llOptionalTlv = new LinkedList<>();
 
         private boolean bIsPFlagSet = false;
         private boolean bPFlag;
@@ -287,7 +283,7 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
         @Override
         public PcepLabelObject build() throws PcepParseException {
             PcepObjectHeader labelObjHeader = this.bIsHeaderSet ? this.labelObjHeader : DEFAULT_LABEL_OBJECT_HEADER;
-            boolean oBit = this.bIsOFlagSet ? this.oBit : DEFAULT_OFLAG;
+            boolean bOFlag = this.bIsOFlagSet ? this.bOFlag : DEFAULT_OFLAG;
 
             if (!this.bIsLabelSet) {
                 throw new PcepParseException(" Label NOT Set while building PcepLabelObject.");
@@ -298,7 +294,7 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
             if (bIsIFlagSet) {
                 labelObjHeader.setIFlag(bIFlag);
             }
-            return new PcepLabelObjectVer1(labelObjHeader, oBit, this.label, this.optionalTlv);
+            return new PcepLabelObjectVer1(labelObjHeader, bOFlag, this.label, this.llOptionalTlv);
         }
 
         @Override
@@ -315,12 +311,12 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
 
         @Override
         public boolean getOFlag() {
-            return this.oBit;
+            return this.bOFlag;
         }
 
         @Override
         public Builder setOFlag(boolean value) {
-            this.oBit = value;
+            this.bOFlag = value;
             this.bIsOFlagSet = true;
             return this;
         }
@@ -339,12 +335,12 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
 
         @Override
         public LinkedList<PcepValueType> getOptionalTlv() {
-            return this.optionalTlv;
+            return this.llOptionalTlv;
         }
 
         @Override
-        public Builder setOptionalTlv(LinkedList<PcepValueType> optionalTlv) {
-            this.optionalTlv = optionalTlv;
+        public Builder setOptionalTlv(LinkedList<PcepValueType> llOptionalTlv) {
+            this.llOptionalTlv = llOptionalTlv;
             return this;
         }
 
@@ -366,9 +362,9 @@ public class PcepLabelObjectVer1 implements PcepLabelObject {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(getClass())
-                .add("oBit", oBit)
+                .add("OFlag", bOFlag)
                 .add("label", label)
-                .add("optionalTlv", optionalTlv)
+                .add("OptionalTlvList", llOptionalTlv)
                 .toString();
     }
 }

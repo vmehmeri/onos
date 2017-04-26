@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,6 @@ import org.onosproject.net.provider.ProviderId;
 
 import java.util.List;
 
-/**
- * Remnant of ConfigProvider.
- * @deprecated in Hummingbird(1.7.0)
- */
-@Deprecated
 public class PortInjectedEvent {
 
     private ProviderId providerId;

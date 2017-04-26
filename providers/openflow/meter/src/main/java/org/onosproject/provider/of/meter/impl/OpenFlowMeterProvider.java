@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalCause;
 import com.google.common.cache.RemovalNotification;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -34,7 +33,6 @@ import org.onosproject.net.meter.DefaultBand;
 import org.onosproject.net.meter.DefaultMeter;
 import org.onosproject.net.meter.Meter;
 import org.onosproject.net.meter.MeterFailReason;
-import org.onosproject.net.meter.MeterFeatures;
 import org.onosproject.net.meter.MeterId;
 import org.onosproject.net.meter.MeterOperation;
 import org.onosproject.net.meter.MeterOperations;
@@ -42,7 +40,6 @@ import org.onosproject.net.meter.MeterProvider;
 import org.onosproject.net.meter.MeterProviderRegistry;
 import org.onosproject.net.meter.MeterProviderService;
 import org.onosproject.net.meter.MeterState;
-import org.onosproject.net.Device;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.provider.AbstractProvider;
 import org.onosproject.net.provider.ProviderId;
@@ -52,13 +49,11 @@ import org.onosproject.openflow.controller.OpenFlowEventListener;
 import org.onosproject.openflow.controller.OpenFlowSwitch;
 import org.onosproject.openflow.controller.OpenFlowSwitchListener;
 import org.onosproject.openflow.controller.RoleState;
-import org.onosproject.provider.of.meter.util.MeterFeaturesBuilder;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFErrorType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFMeterBandStats;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
-import org.projectfloodlight.openflow.protocol.OFMeterFeatures;
 import org.projectfloodlight.openflow.protocol.OFMeterStats;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
@@ -69,16 +64,12 @@ import org.projectfloodlight.openflow.protocol.errormsg.OFMeterModFailedErrorMsg
 import org.slf4j.Logger;
 
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import static org.onosproject.net.DeviceId.deviceId;
-import static org.onosproject.openflow.controller.Dpid.uri;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -111,12 +102,6 @@ public class OpenFlowMeterProvider extends AbstractProvider implements MeterProv
 
     private InternalMeterListener listener = new InternalMeterListener();
     private Map<Dpid, MeterStatsCollector> collectors = Maps.newHashMap();
-
-    private static final Set<Device.Type> NO_METER_SUPPORT =
-            ImmutableSet.copyOf(EnumSet.of(Device.Type.ROADM,
-                                           Device.Type.ROADM_OTN,
-                                           Device.Type.FIBER_SWITCH,
-                                           Device.Type.OTN));
 
     /**
      * Creates a OpenFlow meter provider.
@@ -219,16 +204,10 @@ public class OpenFlowMeterProvider extends AbstractProvider implements MeterProv
     }
 
     private void createStatsCollection(OpenFlowSwitch sw) {
-        if (sw != null && isMeterSupported(sw)) {
+        if (isMeterSupported(sw)) {
             MeterStatsCollector msc = new MeterStatsCollector(sw, POLL_INTERVAL);
             msc.start();
-            stopCollectorIfNeeded(collectors.put(new Dpid(sw.getId()), msc));
-        }
-    }
-
-    private void stopCollectorIfNeeded(MeterStatsCollector collector) {
-        if (collector != null) {
-            collector.stop();
+            collectors.put(new Dpid(sw.getId()), msc);
         }
     }
 
@@ -237,7 +216,6 @@ public class OpenFlowMeterProvider extends AbstractProvider implements MeterProv
         if (sw.factory().getVersion() == OFVersion.OF_10 ||
                 sw.factory().getVersion() == OFVersion.OF_11 ||
                 sw.factory().getVersion() == OFVersion.OF_12 ||
-                NO_METER_SUPPORT.contains(sw.deviceType()) ||
                 sw.softwareDescription().equals("OF-DPA 2.0")) {
             return false;
         }
@@ -258,25 +236,6 @@ public class OpenFlowMeterProvider extends AbstractProvider implements MeterProv
             // FIXME: Map<Long, Meter> meters = collectMeters(deviceId, reply);
         }
 
-    }
-
-    private MeterFeatures buildMeterFeatures(Dpid dpid, OFMeterFeatures mf) {
-        if (mf != null) {
-            return new MeterFeaturesBuilder(mf, deviceId(uri(dpid)))
-                    .build();
-        } else {
-            // This will usually happen for OpenFlow devices prior to 1.3
-            return MeterFeaturesBuilder.noMeterFeatures(deviceId(uri(dpid)));
-        }
-    }
-
-    private void pushMeterFeatures(Dpid dpid, OFMeterFeatures meterFeatures) {
-        providerService.pushMeterFeatures(deviceId(uri(dpid)),
-                buildMeterFeatures(dpid, meterFeatures));
-    }
-
-    private void destroyMeterFeatures(Dpid dpid) {
-        providerService.deleteMeterFeatures(deviceId(uri(dpid)));
     }
 
     private Map<Long, Meter> collectMeters(DeviceId deviceId,
@@ -407,13 +366,14 @@ public class OpenFlowMeterProvider extends AbstractProvider implements MeterProv
         @Override
         public void switchAdded(Dpid dpid) {
             createStatsCollection(controller.getSwitch(dpid));
-            pushMeterFeatures(dpid, controller.getSwitch(dpid).getMeterFeatures());
         }
 
         @Override
         public void switchRemoved(Dpid dpid) {
-            stopCollectorIfNeeded(collectors.remove(dpid));
-            destroyMeterFeatures(dpid);
+            MeterStatsCollector msc = collectors.remove(dpid);
+            if (msc != null) {
+                msc.stop();
+            }
         }
 
         @Override

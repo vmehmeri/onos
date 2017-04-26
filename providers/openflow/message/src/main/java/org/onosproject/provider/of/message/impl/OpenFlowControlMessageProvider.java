@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.onlab.metrics.MetricsService;
-import org.onlab.util.SharedScheduledExecutorService;
 import org.onlab.util.SharedScheduledExecutors;
 import org.onosproject.cpman.message.ControlMessageProvider;
 import org.onosproject.cpman.message.ControlMessageProviderRegistry;
@@ -32,17 +31,16 @@ import org.onosproject.net.provider.AbstractProvider;
 import org.onosproject.net.provider.ProviderId;
 import org.onosproject.openflow.controller.Dpid;
 import org.onosproject.openflow.controller.OpenFlowController;
-import org.onosproject.openflow.controller.OpenFlowMessageListener;
+import org.onosproject.openflow.controller.OpenFlowEventListener;
 import org.onosproject.openflow.controller.OpenFlowSwitch;
 import org.onosproject.openflow.controller.OpenFlowSwitchListener;
 import org.onosproject.openflow.controller.RoleState;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
-import org.projectfloodlight.openflow.protocol.OFType;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
-import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -72,11 +70,14 @@ public class OpenFlowControlMessageProvider extends AbstractProvider
 
     private final InternalDeviceProvider listener = new InternalDeviceProvider();
 
-    private final InternalControlMessageListener messageListener =
-                    new InternalControlMessageListener();
+    private final InternalIncomingMessageProvider inMsgListener =
+                    new InternalIncomingMessageProvider();
+
+    private final InternalOutgoingMessageProvider outMsgListener =
+                    new InternalOutgoingMessageProvider();
 
     private HashMap<Dpid, OpenFlowControlMessageAggregator> aggregators = Maps.newHashMap();
-    private SharedScheduledExecutorService executor;
+    private ScheduledExecutorService executor;
     private static final int AGGR_INIT_DELAY = 1;
     private static final int AGGR_PERIOD = 1;
     private static final TimeUnit AGGR_TIME_UNIT = TimeUnit.MINUTES;
@@ -96,8 +97,12 @@ public class OpenFlowControlMessageProvider extends AbstractProvider
         // listens all OpenFlow device related events
         controller.addListener(listener);
 
-        // listens all OpenFlow control message
-        controller.addMessageListener(messageListener);
+        // listens all OpenFlow incoming message events
+        controller.addEventListener(inMsgListener);
+        controller.monitorAllEvents(true);
+
+        // listens all OpenFlow outgoing message events
+        controller.getSwitches().forEach(sw -> sw.addEventListener(outMsgListener));
 
         executor = SharedScheduledExecutors.getSingleThreadExecutor();
 
@@ -107,13 +112,16 @@ public class OpenFlowControlMessageProvider extends AbstractProvider
 
     @Deactivate
     protected void deactivate() {
-        disconnectDevices();
         controller.removeListener(listener);
         providerRegistry.unregister(this);
         providerService = null;
 
-        // stops listening all OpenFlow control message events
-        controller.removeMessageListener(messageListener);
+        // stops listening all OpenFlow incoming message events
+        controller.monitorAllEvents(false);
+        controller.removeEventListener(inMsgListener);
+
+        // stops listening all OpenFlow outgoing message events
+        controller.getSwitches().forEach(sw -> sw.removeEventListener(outMsgListener));
 
         log.info("Stopped");
     }
@@ -124,17 +132,6 @@ public class OpenFlowControlMessageProvider extends AbstractProvider
                 listener.switchAdded(new Dpid(sw.getId()));
             } catch (Exception e) {
                 log.warn("Failed initially adding {} : {}", sw.getStringId(), e.getMessage());
-                log.debug("Error details:", e);
-            }
-        }
-    }
-
-    private void disconnectDevices() {
-        for (OpenFlowSwitch sw: controller.getSwitches()) {
-            try {
-                listener.switchRemoved(new Dpid(sw.getId()));
-            } catch (Exception e) {
-                log.warn("Failed to remove {} : {}", sw.getStringId(), e.getMessage());
                 log.debug("Error details:", e);
             }
         }
@@ -151,12 +148,18 @@ public class OpenFlowControlMessageProvider extends AbstractProvider
                 return;
             }
 
+            OpenFlowSwitch sw = controller.getSwitch(dpid);
+            if (sw != null) {
+                // start to monitor the outgoing control messages
+                sw.addEventListener(outMsgListener);
+            }
+
             DeviceId deviceId = deviceId(uri(dpid));
             OpenFlowControlMessageAggregator ofcma =
                     new OpenFlowControlMessageAggregator(metricsService,
                             providerService, deviceId);
             ScheduledFuture result = executor.scheduleAtFixedRate(ofcma,
-                    AGGR_INIT_DELAY, AGGR_PERIOD, AGGR_TIME_UNIT, true);
+                    AGGR_INIT_DELAY, AGGR_PERIOD, AGGR_TIME_UNIT);
             aggregators.put(dpid, ofcma);
             executorResults.put(dpid, result);
         }
@@ -165,6 +168,12 @@ public class OpenFlowControlMessageProvider extends AbstractProvider
         public void switchRemoved(Dpid dpid) {
             if (providerService == null) {
                 return;
+            }
+
+            OpenFlowSwitch sw = controller.getSwitch(dpid);
+            if (sw != null) {
+                // stop monitoring the outgoing control messages
+                sw.removeEventListener(outMsgListener);
             }
 
             // removes the aggregator when switch is removed
@@ -190,34 +199,24 @@ public class OpenFlowControlMessageProvider extends AbstractProvider
     }
 
     /**
-     * A listener for all OpenFlow control messages.
+     * A listener for incoming OpenFlow messages.
      */
-    private class InternalControlMessageListener implements OpenFlowMessageListener {
+    private class InternalIncomingMessageProvider implements OpenFlowEventListener {
 
         @Override
-        public void handleIncomingMessage(Dpid dpid, OFMessage msg) {
-            if (msg.getType() == OFType.PACKET_IN ||
-                    msg.getType() == OFType.FLOW_MOD ||
-                    msg.getType() == OFType.STATS_REPLY) {
-                aggregators.computeIfPresent(dpid, (k, v) -> {
-                    v.increment(msg);
-                    return v;
-                });
-            }
+        public void handleMessage(Dpid dpid, OFMessage msg) {
+            aggregators.get(dpid).increment(msg);
         }
+    }
+
+    /**
+     * A listener for outgoing OpenFlow messages.
+     */
+    private class InternalOutgoingMessageProvider implements OpenFlowEventListener {
 
         @Override
-        public void handleOutgoingMessage(Dpid dpid, List<OFMessage> msgs) {
-            for (OFMessage msg : msgs) {
-                if (msg.getType() == OFType.PACKET_OUT ||
-                        msg.getType() == OFType.FLOW_MOD ||
-                        msg.getType() == OFType.STATS_REQUEST) {
-                    aggregators.computeIfPresent(dpid, (k, v) -> {
-                        v.increment(msg);
-                        return v;
-                    });
-                }
-            }
+        public void handleMessage(Dpid dpid, OFMessage msg) {
+            aggregators.get(dpid).increment(msg);
         }
     }
 }

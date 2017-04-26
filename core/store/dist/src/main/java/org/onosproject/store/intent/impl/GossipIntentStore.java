@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,18 @@
 package org.onosproject.store.intent.impl;
 
 import com.google.common.collect.ImmutableList;
+
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Modified;
-import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.ReferenceCardinality;
 import org.apache.felix.scr.annotations.Service;
 import org.onlab.util.KryoNamespace;
-import org.onosproject.cfg.ComponentConfigService;
 import org.onosproject.cluster.ClusterService;
 import org.onosproject.cluster.ControllerNode;
 import org.onosproject.cluster.NodeId;
-import org.onosproject.incubator.net.virtual.NetworkId;
-import org.onosproject.incubator.net.virtual.VirtualNetworkIntent;
 import org.onosproject.net.intent.Intent;
 import org.onosproject.net.intent.IntentData;
 import org.onosproject.net.intent.IntentEvent;
@@ -39,30 +35,24 @@ import org.onosproject.net.intent.IntentState;
 import org.onosproject.net.intent.IntentStore;
 import org.onosproject.net.intent.IntentStoreDelegate;
 import org.onosproject.net.intent.Key;
-import org.onosproject.net.intent.WorkPartitionService;
+import org.onosproject.net.intent.IntentPartitionService;
 import org.onosproject.store.AbstractStore;
+import org.onosproject.store.service.MultiValuedTimestamp;
+import org.onosproject.store.service.WallClockTimestamp;
 import org.onosproject.store.serializers.KryoNamespaces;
 import org.onosproject.store.service.EventuallyConsistentMap;
-import org.onosproject.store.service.EventuallyConsistentMapBuilder;
 import org.onosproject.store.service.EventuallyConsistentMapEvent;
 import org.onosproject.store.service.EventuallyConsistentMapListener;
-import org.onosproject.store.service.MultiValuedTimestamp;
 import org.onosproject.store.service.StorageService;
-import org.onosproject.store.service.WallClockTimestamp;
-import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 
 import java.util.Collection;
-import java.util.Dictionary;
 import java.util.List;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Strings.isNullOrEmpty;
-import static org.onlab.util.Tools.get;
 import static org.onosproject.net.intent.IntentState.PURGE_REQ;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -72,15 +62,13 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 //FIXME we should listen for leadership changes. if the local instance has just
 // ...  become a leader, scan the pending map and process those
-@Component(immediate = true)
+@Component(immediate = true, enabled = true)
 @Service
 public class GossipIntentStore
         extends AbstractStore<IntentEvent, IntentStoreDelegate>
         implements IntentStore {
 
     private final Logger log = getLogger(getClass());
-
-    private static final boolean PERSIST = false;
 
     // Map of intent key => current intent state
     private EventuallyConsistentMap<Key, IntentData> currentMap;
@@ -89,146 +77,53 @@ public class GossipIntentStore
     private EventuallyConsistentMap<Key, IntentData> pendingMap;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected ComponentConfigService configService;
-
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected ClusterService clusterService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected StorageService storageService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
-    protected WorkPartitionService partitionService;
+    protected IntentPartitionService partitionService;
 
     private final AtomicLong sequenceNumber = new AtomicLong(0);
 
-    private EventuallyConsistentMapListener<Key, IntentData>
-            mapCurrentListener = new InternalCurrentListener();
-
-    private EventuallyConsistentMapListener<Key, IntentData>
-            mapPendingListener = new InternalPendingListener();
-
-    //Denotes the initial persistence value for this structure
-    private boolean initiallyPersistent = false;
-
-    //TODO this is currently an experimental feature used for performance
-    // evalutaion, enabling persistence with persist the intents but they will
-    // not be reinstalled and network state will not be consistent with the
-    // intents on cluster restart
-    @Property(name = "persistenceEnabled", boolValue = PERSIST,
-            label = "EXPERIMENTAL: Enable intent persistence")
-    private boolean persistenceEnabled;
-
-
     @Activate
-    public void activate(ComponentContext context) {
-        configService.registerProperties(getClass());
-        modified(context);
-        //TODO persistent intents must be reevaluated and the appropriate
-        //processing done here, current implementation is not functional
-        //and is for performance evaluation only
-        initiallyPersistent = persistenceEnabled;
+    public void activate() {
         KryoNamespace.Builder intentSerializer = KryoNamespace.newBuilder()
                 .register(KryoNamespaces.API)
                 .register(IntentData.class)
-                .register(VirtualNetworkIntent.class)
-                .register(NetworkId.class)
-                .register(MultiValuedTimestamp.class);
+                .register(MultiValuedTimestamp.class)
+                .register(WallClockTimestamp.class);
 
-        EventuallyConsistentMapBuilder currentECMapBuilder =
-                storageService.<Key, IntentData>eventuallyConsistentMapBuilder()
+        currentMap = storageService.<Key, IntentData>eventuallyConsistentMapBuilder()
                 .withName("intent-current")
                 .withSerializer(intentSerializer)
                 .withTimestampProvider((key, intentData) ->
-                        new MultiValuedTimestamp<>(intentData == null ?
-                            new WallClockTimestamp() : intentData.version(),
-                                                   sequenceNumber.getAndIncrement()))
-                .withPeerUpdateFunction((key, intentData) -> getPeerNodes(key, intentData));
+                                            new MultiValuedTimestamp<>(intentData.version(),
+                                                                       sequenceNumber.getAndIncrement()))
+                .withPeerUpdateFunction((key, intentData) -> getPeerNodes(key, intentData))
+                .build();
 
-        EventuallyConsistentMapBuilder pendingECMapBuilder =
-                storageService.<Key, IntentData>eventuallyConsistentMapBuilder()
+        pendingMap = storageService.<Key, IntentData>eventuallyConsistentMapBuilder()
                 .withName("intent-pending")
                 .withSerializer(intentSerializer)
-                .withTimestampProvider((key, intentData) ->
-                        /*
-                            We always want to accept new values in the pending map,
-                            so we should use a high performance logical clock.
-                        */
-                        /*
-                            TODO We use the wall clock for the time being, but
-                            this could result in issues if there is clock skew
-                            across instances.
-                         */
-                        new MultiValuedTimestamp<>(new WallClockTimestamp(), System.nanoTime()))
-                .withPeerUpdateFunction((key, intentData) -> getPeerNodes(key, intentData));
-        if (initiallyPersistent) {
-            currentECMapBuilder = currentECMapBuilder.withPersistence();
-            pendingECMapBuilder = pendingECMapBuilder.withPersistence();
-        }
-        currentMap = currentECMapBuilder.build();
-        pendingMap = pendingECMapBuilder.build();
+                .withTimestampProvider((key, intentData) -> new MultiValuedTimestamp<>(intentData.version(),
+                                                                                       System.nanoTime()))
+                .withPeerUpdateFunction((key, intentData) -> getPeerNodes(key, intentData))
+                .build();
 
-        currentMap.addListener(mapCurrentListener);
-        pendingMap.addListener(mapPendingListener);
+        currentMap.addListener(new InternalCurrentListener());
+        pendingMap.addListener(new InternalPendingListener());
 
         log.info("Started");
     }
 
     @Deactivate
     public void deactivate() {
-        if (initiallyPersistent && !persistenceEnabled) {
-            pendingMap.clear();
-            currentMap.clear();
-            log.debug("Persistent state has been purged");
-        }
-        currentMap.removeListener(mapCurrentListener);
-        pendingMap.removeListener(mapPendingListener);
         currentMap.destroy();
         pendingMap.destroy();
 
         log.info("Stopped");
-    }
-
-    @Modified
-    public void modified(ComponentContext context) {
-        Dictionary<?, ?> properties = context != null ? context.getProperties()
-                : new Properties();
-        try {
-            String s = get(properties, "persistenceEnabled");
-            persistenceEnabled =  isNullOrEmpty(s) ? PERSIST :
-                    Boolean.parseBoolean(s.trim());
-        } catch (Exception e) {
-            persistenceEnabled = initiallyPersistent;
-            log.error("Failed to retrieve the property value for persist," +
-                              "defaulting to the initial setting of \"{}\"" +
-                              "any persistent state will not be purged, if " +
-                              "this occurred at startup changes made in this" +
-                              "session will not be persisted to disk",
-                      initiallyPersistent);
-        }
-        if (persistenceEnabled) {
-            //FIXME persistence is an experimental feature, warnings can be removed
-            //when the feature is completed
-            log.warn("Persistence is an experimental feature, it is not fully " +
-                             "functional and is intended only for " +
-                             "performance evaluation");
-        }
-        if (!initiallyPersistent && !persistenceEnabled) {
-            log.info("Persistence is set to \"false\", this was the initial" +
-                             " setting so no state will be purged or " +
-                             "persisted");
-        } else if (!initiallyPersistent && persistenceEnabled) {
-            log.info("Persistence is set to \"true\", entries will be begin " +
-                             "to be persisted after restart");
-        } else if (initiallyPersistent && !persistenceEnabled) {
-            log.info("Persistence is set to \"false\", all persistent state " +
-                             "will be purged on next shutdown");
-        } else {
-            log.info("Persistence is set to \"true\", entries from this and" +
-                             " subsequent sessions will be persisted");
-        }
-
-
     }
 
     @Override
@@ -283,29 +178,18 @@ public class GossipIntentStore
             // Only the master is modifying the current state. Therefore assume
             // this always succeeds
             if (newData.state() == PURGE_REQ) {
-                if (currentData != null) {
-                    currentMap.remove(newData.key(), currentData);
-                } else {
-                    log.info("Gratuitous purge request for intent: {}", newData.key());
-                }
+                currentMap.remove(newData.key(), currentData);
             } else {
                 currentMap.put(newData.key(), new IntentData(newData));
             }
+
+            // if current.put succeeded
+            pendingMap.remove(newData.key(), newData);
         }
-        // Remove the intent data from the pending map if the newData is more
-        // recent or equal to the existing entry. No matter if it is an acceptable
-        // update or not
-        pendingMap.compute(newData.key(), (key, existingValue) -> {
-            if (existingValue == null || !existingValue.version().isNewerThan(newData.version())) {
-                return null;
-            } else {
-                return existingValue;
-            }
-        });
     }
 
     private Collection<NodeId> getPeerNodes(Key key, IntentData data) {
-        NodeId master = partitionService.getLeader(key, Key::hash);
+        NodeId master = partitionService.getLeader(key);
         NodeId origin = (data != null) ? data.origin() : null;
         if (data != null && (master == null || origin == null)) {
             log.debug("Intent {} missing master and/or origin; master = {}, origin = {}",
@@ -365,29 +249,19 @@ public class GossipIntentStore
     @Override
     public void addPending(IntentData data) {
         checkNotNull(data);
-        if (data.version() == null) {
-            // Copy IntentData including request state in this way we can
-            // avoid the creation of Intents with state == request, which can
-            // be problematic if the Intent state is different from *REQ
-            // {INSTALL_, WITHDRAW_ and PURGE_}.
-            pendingMap.put(data.key(), new IntentData(data.intent(), data.state(), data.request(),
-                                                      new WallClockTimestamp(), clusterService.getLocalNode().id()));
-        } else {
-            pendingMap.compute(data.key(), (key, existingValue) -> {
-                if (existingValue == null || existingValue.version().isOlderThan(data.version())) {
-                    return new IntentData(data.intent(), data.state(), data.request(),
-                                          data.version(), clusterService.getLocalNode().id());
-                } else {
-                    return existingValue;
-                }
-            });
-        }
 
+        if (data.version() == null) {
+            pendingMap.put(data.key(), new IntentData(data.intent(), data.state(),
+                    new WallClockTimestamp(), clusterService.getLocalNode().id()));
+        } else {
+            pendingMap.put(data.key(), new IntentData(data.intent(), data.state(),
+                    data.version(), clusterService.getLocalNode().id()));
+        }
     }
 
     @Override
     public boolean isMaster(Key intentKey) {
-        return partitionService.isMine(intentKey, Key::hash);
+        return partitionService.isMine(intentKey);
     }
 
     @Override
@@ -403,17 +277,12 @@ public class GossipIntentStore
     }
 
     @Override
-    public IntentData getPendingData(Key intentKey) {
-        return pendingMap.get(intentKey);
-    }
-
-    @Override
     public Iterable<IntentData> getPendingData(boolean localOnly, long olderThan) {
         long now = System.currentTimeMillis();
         final WallClockTimestamp time = new WallClockTimestamp(now - olderThan);
         return pendingMap.values().stream()
                 .filter(data -> data.version().isOlderThan(time) &&
-                        (!localOnly || isMaster(data.key())))
+                                (!localOnly || isMaster(data.key())))
                 .collect(Collectors.toList());
     }
 
@@ -422,6 +291,7 @@ public class GossipIntentStore
         @Override
         public void event(EventuallyConsistentMapEvent<Key, IntentData> event) {
             IntentData intentData = event.value();
+
             if (event.type() == EventuallyConsistentMapEvent.Type.PUT) {
                 // The current intents map has been updated. If we are master for
                 // this intent's partition, notify the Manager that it should

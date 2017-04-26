@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.List;
-import java.util.ArrayList;
 
 import org.onlab.packet.Ip4Address;
 import org.onlab.packet.IpAddress;
@@ -44,7 +42,7 @@ public class BgpConfig implements BgpCfg {
     private static final short DEFAULT_HOLD_TIMER = 120;
     private static final short DEFAULT_CONN_RETRY_TIME = 120;
     private static final short DEFAULT_CONN_RETRY_COUNT = 5;
-    private List<BgpConnectPeerImpl> peerList = new ArrayList();
+
     private State state = State.INIT;
     private int localAs;
     private int maxSession;
@@ -59,7 +57,6 @@ public class BgpConfig implements BgpCfg {
     private BgpConnectPeer connectPeer;
     private BgpPeerManagerImpl peerManager;
     private BgpController bgpController;
-    private boolean rpdCapability;
 
     /*
      * Constructor to initialize the values.
@@ -132,16 +129,6 @@ public class BgpConfig implements BgpCfg {
     }
 
     @Override
-    public boolean flowSpecRpdCapability() {
-        return this.rpdCapability;
-    }
-
-    @Override
-    public void setFlowSpecRpdCapability(boolean rpdCapability) {
-        this.rpdCapability = rpdCapability;
-    }
-
-    @Override
     public String getRouterId() {
         if (this.routerId != null) {
             return this.routerId.toString();
@@ -191,10 +178,10 @@ public class BgpConfig implements BgpCfg {
             }
 
             this.bgpPeerTree.put(routerid, lspeer);
-            log.debug("Added successfully");
+            log.debug("added successfully");
             return true;
         } else {
-            log.debug("Already exists");
+            log.debug("already exists");
             return false;
         }
     }
@@ -207,11 +194,9 @@ public class BgpConfig implements BgpCfg {
             lspeer.setSelfInnitConnection(true);
 
             if (lspeer.connectPeer() == null) {
-                connectPeer = new BgpConnectPeerImpl(bgpController, routerid, Controller.BGP_PORT_NUM);
+                connectPeer = new BgpConnectPeerImpl(bgpController, routerid, Controller.getBgpPortNum());
                 lspeer.setConnectPeer(connectPeer);
                 connectPeer.connectPeer();
-                peerList.add((BgpConnectPeerImpl) connectPeer);
-
             }
             return true;
         }

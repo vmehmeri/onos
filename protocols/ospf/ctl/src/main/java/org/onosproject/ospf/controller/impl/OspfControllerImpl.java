@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.onosproject.ospf.controller.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Sets;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
@@ -35,6 +34,7 @@ import org.onosproject.ospf.controller.OspfRouterListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -111,23 +111,27 @@ public class OspfControllerImpl implements OspfController {
     }
 
     @Override
-    public void updateConfig(JsonNode processesNode) {
-        try {
-            List<OspfProcess> ospfProcesses = OspfConfigUtil.processes(processesNode);
-            //if there is interface details then update configuration
-            if (!ospfProcesses.isEmpty() &&
-                    ospfProcesses.get(0).areas() != null && !ospfProcesses.get(0).areas().isEmpty() &&
-                    ospfProcesses.get(0).areas().get(0) != null &&
-                    !ospfProcesses.get(0).areas().get(0).ospfInterfaceList().isEmpty()) {
-                ctrl.updateConfig(ospfProcesses);
+    public void updateConfig(List processes) {
+        List<OspfProcess> ospfProcesses = new ArrayList<>();
+        if (processes != null) {
+            for (Object process : processes) {
+                ospfProcesses.add((OspfProcess) process);
             }
-        } catch (Exception e) {
-            log.debug("Error::updateConfig::{}", e.getMessage());
         }
+        log.debug("updateConfig::OspfList::processes::{}", ospfProcesses);
+        ctrl.updateConfig(ospfProcesses);
     }
 
     @Override
     public void deleteConfig(List<OspfProcess> processes, String attribute) {
+        List<OspfProcess> ospfProcesses = new ArrayList<>();
+        if (processes != null) {
+            for (Object process : processes) {
+                ospfProcesses.add((OspfProcess) process);
+            }
+        }
+        log.debug("deleteConfig::OspfList::processes::{}", ospfProcesses);
+        ctrl.deleteConfig(ospfProcesses, attribute);
     }
 
     /**
@@ -159,9 +163,9 @@ public class OspfControllerImpl implements OspfController {
         }
 
         @Override
-        public void deleteLink(OspfRouter ospfRouter, OspfLinkTed ospfLinkTed) {
+        public void deleteLink(OspfRouter ospfRouter) {
             for (OspfLinkListener l : linkListener()) {
-                l.deleteLink(ospfRouter, ospfLinkTed);
+                l.deleteLink(ospfRouter);
             }
         }
     }

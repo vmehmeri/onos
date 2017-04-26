@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,11 +52,14 @@ public final class DefaultTableStatisticsEntry implements TableStatisticsEntry {
 
     @Override
     public String toString() {
-        return "device: " + deviceId + ", " +
-                "tableId: " + this.tableId + ", " +
-                "activeEntries: " + this.activeFlowEntries + ", " +
-                "packetsLookedUp: " + this.packetsLookedupCount + ", " +
-                "packetsMatched: " + this.packetsMatchedCount;
+        StringBuilder sb = new StringBuilder("device: " + deviceId + ", ");
+
+        sb.append("tableId: " + this.tableId + ", ");
+        sb.append("activeEntries: " + this.activeFlowEntries + ", ");
+        sb.append("packetsLookedUp: " + this.packetsLookedupCount + ", ");
+        sb.append("packetsMatched: " + this.packetsMatchedCount);
+
+        return sb.toString();
     }
 
     @Override

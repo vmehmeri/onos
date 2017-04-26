@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.onlab.packet.Ip4Address;
 import org.onlab.util.Bandwidth;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -89,7 +90,7 @@ public class OspfLinkTedImplTest {
     @Test
     public void testIpv4RemRouterId() throws Exception {
         List list = new ArrayList();
-        list.add(Ip4Address.valueOf(1));
+        list.add(Ip4Address.valueOf(InetAddress.getLocalHost()));
         ospfLinkTed.setIpv4RemRouterId(list);
         assertThat(ospfLinkTed.ipv4RemRouterId().size(), is(1));
     }
@@ -100,7 +101,7 @@ public class OspfLinkTedImplTest {
     @Test
     public void testSetIpv4RemRouterId() throws Exception {
         List list = new ArrayList();
-        list.add(Ip4Address.valueOf(1));
+        list.add(Ip4Address.valueOf(InetAddress.getLocalHost()));
         ospfLinkTed.setIpv4RemRouterId(list);
         assertThat(ospfLinkTed.ipv4RemRouterId().size(), is(1));
     }
@@ -131,7 +132,7 @@ public class OspfLinkTedImplTest {
     @Test
     public void testIpv4LocRouterId() throws Exception {
         List list = new ArrayList();
-        list.add(Ip4Address.valueOf(1));
+        list.add(Ip4Address.valueOf(InetAddress.getLocalHost()));
         ospfLinkTed.setIpv4LocRouterId(list);
         assertThat(ospfLinkTed.ipv4LocRouterId().size(), is(1));
     }
@@ -142,7 +143,7 @@ public class OspfLinkTedImplTest {
     @Test
     public void testSetIpv4LocRouterId() throws Exception {
         List list = new ArrayList();
-        list.add(Ip4Address.valueOf(1));
+        list.add(Ip4Address.valueOf(InetAddress.getLocalHost()));
         ospfLinkTed.setIpv4LocRouterId(list);
         assertThat(ospfLinkTed.ipv4LocRouterId().size(), is(1));
     }

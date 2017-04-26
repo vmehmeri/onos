@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ import com.google.common.annotations.Beta;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import org.onosproject.core.ApplicationId;
-import org.onosproject.net.resource.ResourceConsumer;
-import org.onosproject.net.resource.ResourceConsumerId;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -30,7 +28,7 @@ import java.util.Objects;
  */
 // TODO maybe pull this up to utils
 @Beta
-public abstract class Key implements Comparable<Key>, ResourceConsumer {
+public abstract class Key implements Comparable<Key> {
 
     //TODO consider making this a HashCode object (worry about performance)
     private final long hash;
@@ -56,8 +54,6 @@ public abstract class Key implements Comparable<Key>, ResourceConsumer {
      * Creates a key based on the provided string.
      * <p>
      * Note: Two keys with equal value, but different appId, are not equal.
-     * Warning: it is caller responsibility to make sure the hashed value of
-     * {@code value} is unique.
      * </p>
      *
      * @param key the provided string
@@ -81,11 +77,6 @@ public abstract class Key implements Comparable<Key>, ResourceConsumer {
      */
     public static Key of(long key, ApplicationId appId) {
         return new LongKey(key, appId);
-    }
-
-    @Override
-    public ResourceConsumerId consumerId() {
-        return ResourceConsumerId.of(hash(), getClass());
     }
 
     private static final class StringKey extends Key {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import io.netty.handler.codec.ReplayingDecoder;
 
 import org.onlab.packet.IpAddress;
 import org.onlab.packet.IpAddress.Version;
-import org.onosproject.core.HybridLogicalTime;
 import org.onosproject.store.cluster.messaging.Endpoint;
 import org.onosproject.store.cluster.messaging.impl.InternalMessage.Status;
 import org.slf4j.Logger;
@@ -40,8 +39,7 @@ public class MessageDecoder extends ReplayingDecoder<DecoderState> {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
-    private long logicalTime;
-    private long logicalCounter;
+    private final int correctPreamble;
     private long messageId;
     private int preamble;
     private Version ipVersion;
@@ -52,8 +50,9 @@ public class MessageDecoder extends ReplayingDecoder<DecoderState> {
     private Status status;
     private int contentLength;
 
-    public MessageDecoder() {
+    public MessageDecoder(int correctPreamble) {
         super(DecoderState.READ_MESSAGE_PREAMBLE);
+        this.correctPreamble = correctPreamble;
     }
 
     @Override
@@ -66,12 +65,9 @@ public class MessageDecoder extends ReplayingDecoder<DecoderState> {
         switch (state()) {
         case READ_MESSAGE_PREAMBLE:
             preamble = buffer.readInt();
-            checkpoint(DecoderState.READ_LOGICAL_TIME);
-        case READ_LOGICAL_TIME:
-            logicalTime = buffer.readLong();
-            checkpoint(DecoderState.READ_LOGICAL_COUNTER);
-        case READ_LOGICAL_COUNTER:
-            logicalCounter = buffer.readLong();
+            if (preamble != correctPreamble) {
+                throw new IllegalStateException("This message had an incorrect preamble.");
+            }
             checkpoint(DecoderState.READ_MESSAGE_ID);
         case READ_MESSAGE_ID:
             messageId = buffer.readLong();
@@ -110,9 +106,7 @@ public class MessageDecoder extends ReplayingDecoder<DecoderState> {
             } else {
                 payload = new byte[0];
             }
-            InternalMessage message = new InternalMessage(preamble,
-                                                          new HybridLogicalTime(logicalTime, logicalCounter),
-                                                          messageId,
+            InternalMessage message = new InternalMessage(messageId,
                                                           new Endpoint(senderIp, senderPort),
                                                           messageType,
                                                           payload,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,13 +25,12 @@ import org.mapdb.DBMaker;
 import org.onosproject.persistence.PersistenceService;
 import org.onosproject.persistence.PersistentMapBuilder;
 import org.onosproject.persistence.PersistentSetBuilder;
-import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -49,7 +48,8 @@ import static org.slf4j.LoggerFactory.getLogger;
 @Service
 public class PersistenceManager implements PersistenceService {
 
-    private static final String DATABASE_PATH = "localDB";
+    private static final String DATABASE_PATH = "../data/localDB";
+    private static final String ENCLOSING_FOLDER = "../data";
 
     static final String MAP_PREFIX = "map:";
 
@@ -66,18 +66,15 @@ public class PersistenceManager implements PersistenceService {
     private final CommitTask commitTask = new CommitTask();
 
     @Activate
-    public void activate(ComponentContext context) {
+    public void activate() {
         timer = new Timer();
-        // bundle's persistent storage area directory
-        File dbFolderPath = context.getBundleContext().getDataFile("");
-        Path dbPath = dbFolderPath.toPath().resolve(DATABASE_PATH);
-        log.debug("dbPath: {}", dbPath);
-
+        Path dbPath = Paths.get(DATABASE_PATH);
+        Path dbFolderPath = Paths.get(ENCLOSING_FOLDER);
         //Make sure the directory exists, if it does not, make it.
-        if (!dbFolderPath.isDirectory()) {
+        if (!dbFolderPath.toFile().isDirectory()) {
             log.info("The specified folder location for the database did not exist and will be created.");
             try {
-                Files.createDirectories(dbFolderPath.toPath());
+                Files.createDirectories(dbFolderPath);
             } catch (IOException e) {
                 log.error("Could not create the required folder for the database.");
                 throw new PersistenceException("Database folder could not be created.");
@@ -126,13 +123,11 @@ public class PersistenceManager implements PersistenceService {
         log.info("Stopped");
     }
 
-    @Override
     public <K, V> PersistentMapBuilder<K, V> persistentMapBuilder() {
         checkPermission(PERSISTENCE_WRITE);
         return new DefaultPersistentMapBuilder<>(localDB);
     }
 
-    @Override
     public <E> PersistentSetBuilder<E> persistentSetBuilder() {
         checkPermission(PERSISTENCE_WRITE);
         return new DefaultPersistentSetBuilder<>(localDB);

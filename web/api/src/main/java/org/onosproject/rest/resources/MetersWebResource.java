@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.onosproject.net.DeviceId;
-import org.onosproject.net.device.DeviceService;
 import org.onosproject.net.meter.DefaultMeterRequest;
 import org.onosproject.net.meter.Meter;
 import org.onosproject.net.meter.MeterId;
@@ -35,13 +34,12 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import static org.onlab.util.Tools.nullIsNotFound;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -51,22 +49,18 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @Path("meters")
 public class MetersWebResource extends AbstractWebResource {
-
-    @Context
-    private UriInfo uriInfo;
-
     private final Logger log = getLogger(getClass());
-    private static final String DEVICE_INVALID = "Invalid deviceId in meter creation request";
-    private static final String METER_NOT_FOUND = "Meter is not found for ";
+    public static final String DEVICE_INVALID = "Invalid deviceId in meter creation request";
+    public static final String METER_NOT_FOUND = "Meter is not found for ";
 
-    private final MeterService meterService = get(MeterService.class);
-    private final ObjectNode root = mapper().createObjectNode();
-    private final ArrayNode metersNode = root.putArray("meters");
+    final MeterService meterService = get(MeterService.class);
+    final ObjectNode root = mapper().createObjectNode();
+    final ArrayNode metersNode = root.putArray("meters");
 
     /**
      * Returns all meters of all devices.
      *
-     * @return 200 OK with array of all the meters in the system
+     * @return array of all the meters in the system
      * @onos.rsModel Meters
      */
     @GET
@@ -83,7 +77,7 @@ public class MetersWebResource extends AbstractWebResource {
      * Returns a collection of meters by the device id.
      *
      * @param deviceId device identifier
-     * @return 200 OK with array of meters which belongs to specified device
+     * @return array of meters which belongs to specified device
      * @onos.rsModel Meters
      */
     @GET
@@ -103,7 +97,7 @@ public class MetersWebResource extends AbstractWebResource {
      *
      * @param deviceId device identifier
      * @param meterId meter identifier
-     * @return 200 OK with a meter, return 404 if no entry has been found
+     * @return a meter, return 404 if no entry has been found
      * @onos.rsModel Meter
      */
     @GET
@@ -122,7 +116,7 @@ public class MetersWebResource extends AbstractWebResource {
     }
 
     /**
-     * Creates new meter rule. Creates and installs a new meter rule for the
+     * Create new meter rule. Creates and installs a new meter rule for the
      * specified device.
      *
      * @param deviceId device identifier
@@ -137,33 +131,26 @@ public class MetersWebResource extends AbstractWebResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response createMeter(@PathParam("deviceId") String deviceId,
                                 InputStream stream) {
+        URI location;
         try {
             ObjectNode jsonTree = (ObjectNode) mapper().readTree(stream);
             JsonNode specifiedDeviceId = jsonTree.get("deviceId");
 
-            if ((specifiedDeviceId != null &&
-                    !specifiedDeviceId.asText().equals(deviceId)) ||
-                    get(DeviceService.class).getDevice(DeviceId.deviceId(deviceId))
-                            == null) {
+            if (specifiedDeviceId != null &&
+                    !specifiedDeviceId.asText().equals(deviceId)) {
                 throw new IllegalArgumentException(DEVICE_INVALID);
             }
-
             jsonTree.put("deviceId", deviceId);
-            final MeterRequest meterRequest = codec(MeterRequest.class)
-                    .decode(jsonTree, this);
-
+            final MeterRequest meterRequest = codec(MeterRequest.class).decode(jsonTree, this);
             final Meter meter = meterService.submit(meterRequest);
-
-            UriBuilder locationBuilder = uriInfo.getBaseUriBuilder()
-                    .path("meters")
-                    .path(deviceId)
-                    .path(Long.toString(meter.id().id()));
-            return Response
-                    .created(locationBuilder.build())
-                    .build();
-        } catch (IOException ex) {
+            location = new URI(Long.toString(meter.id().id()));
+        } catch (IOException | URISyntaxException ex) {
             throw new IllegalArgumentException(ex);
         }
+
+        return Response
+                .created(location)
+                .build();
     }
 
     /**
@@ -171,11 +158,11 @@ public class MetersWebResource extends AbstractWebResource {
      *
      * @param deviceId device identifier
      * @param meterId  meter identifier
-     * @return 204 NO CONTENT
      */
     @DELETE
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("{deviceId}/{meterId}")
-    public Response deleteMeterByDeviceIdAndMeterId(@PathParam("deviceId") String deviceId,
+    public void deleteMeterByDeviceIdAndMeterId(@PathParam("deviceId") String deviceId,
                                                 @PathParam("meterId") String meterId) {
         DeviceId did = DeviceId.deviceId(deviceId);
         MeterId mid = MeterId.meterId(Long.valueOf(meterId));
@@ -184,11 +171,10 @@ public class MetersWebResource extends AbstractWebResource {
             final MeterRequest meterRequest = meterToMeterRequest(tmpMeter, "REMOVE");
             meterService.withdraw(meterRequest, tmpMeter.id());
         }
-        return Response.noContent().build();
     }
 
     /**
-     * Converts a meter instance to meterRequest instance with a certain operation.
+     * Convert a meter instance to meterRequest instance with a certain operation.
      *
      * @param meter     meter instance
      * @param operation operation

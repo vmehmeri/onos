@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.onosproject.dhcp.rest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.Lists;
 import org.onlab.packet.Ip4Address;
 import org.onlab.packet.MacAddress;
 import org.onosproject.dhcp.DhcpService;
@@ -35,10 +36,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
 import java.util.Map;
-
-import static org.onosproject.dhcp.IpAssignment.AssignmentStatus.Option_Requested;
 
 /**
  * Manage DHCP address assignments.
@@ -122,15 +120,10 @@ public class DhcpWebResource extends AbstractWebResource {
             JsonNode macID = jsonTree.get("mac");
             JsonNode ip = jsonTree.get("ip");
             if (macID != null && ip != null) {
-                IpAssignment ipAssignment = IpAssignment.builder()
-                        .ipAddress(Ip4Address.valueOf(ip.asText()))
-                        .leasePeriod(service.getLeaseTime())
-                        .timestamp(new Date())
-                        .assignmentStatus(Option_Requested)
-                        .build();
 
                 if (!service.setStaticMapping(MacAddress.valueOf(macID.asText()),
-                                              ipAssignment)) {
+                                              Ip4Address.valueOf(ip.asText()),
+                                              false, Lists.newArrayList())) {
                     throw new IllegalArgumentException("Static Mapping Failed. " +
                                                                "The IP maybe unavailable.");
                 }

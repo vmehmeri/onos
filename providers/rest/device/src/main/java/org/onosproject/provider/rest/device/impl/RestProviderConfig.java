@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.onosproject.net.config.Config;
 import org.onosproject.protocol.rest.DefaultRestSBDevice;
 import org.onosproject.protocol.rest.RestSBDevice;
 
+
 import java.util.Set;
 
 /**
@@ -42,10 +43,6 @@ public class RestProviderConfig extends Config<ApplicationId> {
     private static final String PASSWORD = "password";
     private static final String PROTOCOL = "protocol";
     private static final String URL = "url";
-    private static final String TESTURL = "testUrl";
-    private static final String MANUFACTURER = "manufacturer";
-    private static final String HWVERSION = "hwVersion";
-    private static final String SWVERSION = "swVersion";
 
     public Set<RestSBDevice> getDevicesAddresses() throws ConfigException {
         Set<RestSBDevice> devicesAddresses = Sets.newHashSet();
@@ -59,15 +56,10 @@ public class RestProviderConfig extends Config<ApplicationId> {
                 String password = node.path(PASSWORD).asText();
                 String protocol = node.path(PROTOCOL).asText();
                 String url = node.path(URL).asText();
-                String testUrl = node.path(TESTURL).asText();
-                String manufacturer = node.path(MANUFACTURER).asText();
-                String hwVersion = node.path(HWVERSION).asText();
-                String swVersion = node.path(SWVERSION).asText();
-
                 devicesAddresses.add(new DefaultRestSBDevice(ipAddr, port, username,
                                                              password, protocol,
-                                                             url, false, testUrl, manufacturer,
-                                                             hwVersion, swVersion));
+                                                             url, false));
+
             }
         } catch (IllegalArgumentException e) {
             throw new ConfigException(CONFIG_VALUE_ERROR, e);

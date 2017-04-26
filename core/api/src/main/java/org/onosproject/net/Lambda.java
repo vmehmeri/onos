@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,19 @@ package org.onosproject.net;
  */
 public interface Lambda {
     /**
+     * Create an Lambda instance with the specified wavelength index number.
+     *
+     * @param lambda index number
+     * @return an instance
+     *
+     * @deprecated in Emu (1.4.0)
+     */
+    @Deprecated
+    static Lambda indexedLambda(long lambda) {
+        return new IndexedLambda(lambda);
+    }
+
+    /**
      * Creates a Lambda instance with the specified arguments.
      *
      * @param gridType          grid type
@@ -32,18 +45,4 @@ public interface Lambda {
                             int spacingMultiplier, int slotGranularity) {
         return new OchSignal(gridType, channelSpacing, spacingMultiplier, slotGranularity);
     }
-
-    /**
-     * Create an Lambda instance with the specified wavelength index number.
-     *
-     * @param lambda index number
-     * @return an instance
-     *
-     * deprecated in Emu (1.4.0)
-     */
-
-    static Lambda indexedLambda(long lambda) {
-        return new IndexedLambda(lambda);
-    }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import org.onosproject.net.driver.AbstractHandlerBehaviour;
 import org.onosproject.net.driver.DriverHandler;
 import org.onosproject.ovsdb.controller.OvsdbBridge;
 import org.onosproject.ovsdb.controller.OvsdbClientService;
-import org.onosproject.ovsdb.controller.OvsdbConstant;
 import org.onosproject.ovsdb.controller.OvsdbController;
 import org.onosproject.ovsdb.controller.OvsdbNodeId;
 
@@ -37,7 +36,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static org.onlab.util.Tools.delay;
 
@@ -81,10 +79,10 @@ public class OvsdbControllerConfig extends AbstractHandlerBehaviour implements C
         List<OvsdbNodeId> nodeIds = ovsController.getNodeIds().stream()
                 .filter(nodeId -> nodeId.getIpAddress().equals(targetIp))
                 .collect(Collectors.toList());
-        if (nodeIds.isEmpty()) {
+        if (nodeIds.size() == 0) {
             //TODO decide what port?
             ovsController.connect(IpAddress.valueOf(targetIp),
-                                  targetPort == null ? TpPort.tpPort(OvsdbConstant.OVSDBPORT) : targetPort);
+                                  targetPort == null ? TpPort.tpPort(6640) : targetPort);
             delay(1000); //FIXME... connect is async
         }
         List<OvsdbClientService> clientServices = ovsController.getNodeIds().stream()
@@ -92,15 +90,13 @@ public class OvsdbControllerConfig extends AbstractHandlerBehaviour implements C
                 .map(ovsController::getOvsdbClient)
                 .filter(cs -> cs.getBridges().stream().anyMatch(b -> dpidMatches(b, ofDeviceId)))
                 .collect(Collectors.toList());
-        checkState(!clientServices.isEmpty(), "No clientServices found");
+        checkState(clientServices.size() > 0, "No clientServices found");
         //FIXME add connection to management address if null --> done ?
-        return !clientServices.isEmpty() ? clientServices.get(0) : null;
+        return clientServices.size() > 0 ? clientServices.get(0) : null;
     }
 
     private static boolean dpidMatches(OvsdbBridge bridge, DeviceId deviceId) {
-        checkArgument(bridge.datapathId().isPresent());
-
-        String bridgeDpid = "of:" + bridge.datapathId().get();
+        String bridgeDpid = "of:" + bridge.datapathId().value();
         String ofDpid = deviceId.toString();
         return bridgeDpid.equals(ofDpid);
     }

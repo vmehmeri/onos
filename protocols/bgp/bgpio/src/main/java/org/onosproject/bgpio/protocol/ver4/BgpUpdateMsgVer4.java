@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -130,7 +130,7 @@ public class BgpUpdateMsgVer4 implements BgpUpdateMsg {
             LinkedList<IpPrefix> withDrwRoutes = new LinkedList<>();
             LinkedList<IpPrefix> nlri = new LinkedList<>();
             BgpPathAttributes bgpPathAttributes = new BgpPathAttributes();
-
+            // Reading Withdrawn Routes Length
             Short withDrwLen = cb.readShort();
 
             if (cb.readableBytes() < withDrwLen) {
@@ -138,15 +138,13 @@ public class BgpUpdateMsgVer4 implements BgpUpdateMsg {
                         BgpErrorType.MALFORMED_ATTRIBUTE_LIST,
                         cb.readableBytes());
             }
-            log.debug("Reading withdrawn routes length");
             ChannelBuffer tempCb = cb.readBytes(withDrwLen);
             if (withDrwLen != 0) {
                 // Parsing WithdrawnRoutes
                 withDrwRoutes = parseWithdrawnRoutes(tempCb);
-                log.debug("Withdrawn routes parsed");
             }
             if (cb.readableBytes() < MIN_LEN_AFTER_WITHDRW_ROUTES) {
-                log.debug("Bgp path attribute len field not present");
+                log.debug("Bgp Path Attribute len field not present");
                 throw new BgpParseException(BgpErrorType.UPDATE_MESSAGE_ERROR,
                         BgpErrorType.MALFORMED_ATTRIBUTE_LIST, null);
             }
@@ -158,7 +156,6 @@ public class BgpUpdateMsgVer4 implements BgpUpdateMsg {
                 throw new BgpParseException(BgpErrorType.UPDATE_MESSAGE_ERROR,
                         BgpErrorType.MALFORMED_ATTRIBUTE_LIST, null);
             }
-            log.debug("Total path attribute length read");
             if (totPathAttrLen != 0) {
                 // Parsing BGPPathAttributes
                 if (cb.readableBytes() < totPathAttrLen) {
@@ -244,11 +241,12 @@ public class BgpUpdateMsgVer4 implements BgpUpdateMsg {
                         afi = mpUnReach.afi();
                         safi = mpUnReach.safi();
                     }
-                }
 
-                if ((afi == Constants.AFI_FLOWSPEC_VALUE) || (afi == Constants.AFI_VALUE)) {
-                    //unfeasible route length
-                    cb.writeShort(0);
+                    if ((afi == Constants.AFI_FLOWSPEC_VALUE) && ((safi == Constants.SAFI_FLOWSPEC_VALUE)
+                            || (safi == Constants.VPN_SAFI_FLOWSPEC_VALUE))) {
+                        //unfeasible route length
+                        cb.writeShort(0);
+                    }
                 }
 
             }

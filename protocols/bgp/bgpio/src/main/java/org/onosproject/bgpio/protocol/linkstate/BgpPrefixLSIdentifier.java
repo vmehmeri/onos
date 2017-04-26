@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,6 @@ public class BgpPrefixLSIdentifier implements Comparable<Object> {
     public BgpPrefixLSIdentifier() {
         this.localNodeDescriptors = null;
         this.prefixDescriptor = null;
-        log.debug("Parameters are reset");
     }
 
     /**
@@ -75,11 +74,11 @@ public class BgpPrefixLSIdentifier implements Comparable<Object> {
      */
     public static BgpPrefixLSIdentifier parsePrefixIdendifier(ChannelBuffer cb, byte protocolId)
             throws BgpParseException {
-        log.debug("Parse local node descriptor");
+        //Parse Local Node descriptor
         NodeDescriptors localNodeDescriptors = new NodeDescriptors();
         localNodeDescriptors = parseLocalNodeDescriptors(cb, protocolId);
 
-        log.debug("MultiTopologyId TLV cannot repeat more than once");
+        //Parse Prefix descriptor
         List<BgpValueType> prefixDescriptor = new LinkedList<>();
         prefixDescriptor = parsePrefixDescriptors(cb);
         return new BgpPrefixLSIdentifier(localNodeDescriptors, prefixDescriptor);

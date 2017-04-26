@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
-
-import static org.onlab.util.Tools.groupedThreads;
-
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -58,7 +55,7 @@ public class OpenflowPipelineFactory
         super();
         this.controller = controller;
         this.pipelineExecutor = pipelineExecutor;
-        this.timer = new HashedWheelTimer(groupedThreads("OpenflowPipelineFactory", "timer-%d", log));
+        this.timer = new HashedWheelTimer();
         this.idleHandler = new IdleStateHandler(timer, 20, 25, 0);
         this.readTimeoutHandler = new ReadTimeoutHandler(timer, 30);
         this.sslContext = sslContext;
@@ -70,7 +67,7 @@ public class OpenflowPipelineFactory
 
         ChannelPipeline pipeline = Channels.pipeline();
         if (sslContext != null) {
-            log.debug("OpenFlow SSL enabled.");
+            log.info("OpenFlow SSL enabled.");
             SSLEngine sslEngine = sslContext.createSSLEngine();
 
             sslEngine.setNeedClientAuth(true);
@@ -82,7 +79,7 @@ public class OpenflowPipelineFactory
             SslHandler sslHandler = new SslHandler(sslEngine);
             pipeline.addLast("ssl", sslHandler);
         } else {
-            log.debug("OpenFlow SSL disabled.");
+            log.info("OpenFlow SSL disabled");
         }
         pipeline.addLast("ofmessagedecoder", new OFMessageDecoder());
         pipeline.addLast("ofmessageencoder", new OFMessageEncoder());

@@ -1,6 +1,5 @@
 {
   "id": 1,
-  "appId": "org.onosproject.sample",
   "type": "FAILOVER",
   "operation": "ADD",
   "treatments": [

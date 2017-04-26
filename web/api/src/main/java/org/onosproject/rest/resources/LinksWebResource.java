@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,7 @@ import org.onosproject.rest.AbstractWebResource;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import static org.onosproject.net.DeviceId.deviceId;
@@ -39,16 +37,15 @@ import static org.onosproject.net.PortNumber.portNumber;
 public class LinksWebResource extends AbstractWebResource {
 
     /**
-     * Gets infrastructure links.
+     * Get infrastructure links.
      * Returns array of all links, or links for the specified device or port.
      * @onos.rsModel LinksGet
      * @param deviceId  (optional) device identifier
      * @param port      (optional) port number
      * @param direction (optional) direction qualifier
-     * @return 200 OK with array of all links, or links for the specified device or port
+     * @return 200 OK
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
     public Response getLinks(@QueryParam("device") String deviceId,
                              @QueryParam("port") String port,
                              @QueryParam("direction") String direction) {

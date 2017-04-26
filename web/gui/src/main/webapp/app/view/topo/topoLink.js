@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
     'use strict';
 
     // injected refs
-    var $log, fs, sus, ts, flash, tss, tps, tov;
+    var $log, fs, sus, ts, flash, tss, tps;
 
     // internal state
     var api,
@@ -31,7 +31,7 @@
         network,
         showPorts = true,       // enable port highlighting by default
         enhancedLink = null,    // the link over which the mouse is hovering
-        selectedLinks = {};     // the links which are already selected
+        selectedLink = null;    // the link which is currently selected
 
     // SVG elements;
     var svg;
@@ -117,24 +117,20 @@
             minDist = proximity * 2;
 
             network.links.forEach(function (d) {
-                var line = d.position,
-                    point,
-                    hit,
-                    dist;
-
                 if (!api.showHosts() && d.type() === 'hostLink') {
                     return; // skip hidden host links
                 }
 
-                if (line) {
-                    point = pdrop(line, mouse);
-                    hit = lineHit(line, point, mouse);
-                    if (hit) {
-                        dist = mdist(point, mouse);
-                        if (dist < minDist) {
-                            minDist = dist;
-                            nearest = d;
-                        }
+                var line = d.position,
+                    point = pdrop(line, mouse),
+                    hit = lineHit(line, point, mouse),
+                    dist;
+
+                if (hit) {
+                    dist = mdist(point, mouse);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = d;
                     }
                 }
             });
@@ -214,32 +210,25 @@
 
     function selectLink(ldata) {
         // if the new link is same as old link, do nothing
-         if (d3.event.shiftKey && ldata.el.classed('selected')) {
-            unselLink(ldata);
-            return;
-         }
+        if (selectedLink && ldata && selectedLink.key === ldata.key) return;
 
-         if (d3.event.shiftKey && !ldata.el.classed('selected')) {
-            selLink(ldata);
-            return;
-         }
+        // make sure no nodes are selected
+        tss.deselectAll();
 
-         tss.deselectAll();
-
-         if (ldata) {
-            if (ldata.el.classed('selected')) {
-                unselLink(ldata);
-            } else {
-                selLink(ldata);
-            }
-         }
+        // first, unenhance the currently enhanced link
+        if (selectedLink) {
+            unselLink(selectedLink);
+        }
+        selectedLink = ldata;
+        if (selectedLink) {
+            selLink(selectedLink);
+        }
     }
 
     function unselLink(d) {
         // guard against link element not set
         if (d.el) {
             d.el.classed('selected', false);
-            delete selectedLinks[d.key];
         }
     }
 
@@ -248,9 +237,8 @@
         if (!d.el) return;
 
         d.el.classed('selected', true);
-        selectedLinks[d.key] = {key : d};
 
-        tps.displayLink(d, tov.hooks.modifyLinkData);
+        tps.displayLink(d);
         tps.displaySomething();
     }
 
@@ -264,9 +252,6 @@
 
     function mouseClickHandler() {
         var mp, link, node;
-        if (!d3.event.shiftKey) {
-            deselectAllLinks();
-        }
 
         if (!tss.clickConsumed()) {
             mp = getLogicalMousePosition(this);
@@ -277,7 +262,6 @@
             } else {
                 link = computeNearestLink(mp);
                 selectLink(link);
-                tss.selectObject(link);
             }
         }
     }
@@ -301,15 +285,13 @@
         return on;
     }
 
-    function deselectAllLinks() {
-
-        if (Object.keys(selectedLinks).length > 0) {
-            network.links.forEach(function (d) {
-                if (selectedLinks[d.key]) {
-                    unselLink(d);
-                }
-            });
+    function deselectLink() {
+        if (selectedLink) {
+            unselLink(selectedLink);
+            selectedLink = null;
+            return true;
         }
+        return false;
     }
 
     // ==========================
@@ -318,9 +300,9 @@
     angular.module('ovTopo')
         .factory('TopoLinkService',
         ['$log', 'FnService', 'SvgUtilService', 'ThemeService', 'FlashService',
-            'TopoSelectService', 'TopoPanelService', 'TopoOverlayService',
+            'TopoSelectService', 'TopoPanelService',
 
-        function (_$log_, _fs_, _sus_, _ts_, _flash_, _tss_, _tps_, _tov_) {
+        function (_$log_, _fs_, _sus_, _ts_, _flash_, _tss_, _tps_) {
             $log = _$log_;
             fs = _fs_;
             sus = _sus_;
@@ -328,7 +310,6 @@
             flash = _flash_;
             tss = _tss_;
             tps = _tps_;
-            tov = _tov_;
 
             function initLink(_api_, _td3_) {
                 api = _api_;
@@ -351,7 +332,7 @@
                 initLink: initLink,
                 destroyLink: destroyLink,
                 togglePorts: togglePorts,
-                deselectAllLinks: deselectAllLinks
+                deselectLink: deselectLink
             };
         }]);
 }());

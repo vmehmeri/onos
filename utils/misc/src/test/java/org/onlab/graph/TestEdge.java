@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,37 +18,24 @@ package org.onlab.graph;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.onlab.graph.GraphTest.W1;
 
 /**
  * Test edge.
  */
 public class TestEdge extends AbstractEdge<TestVertex> {
 
-    private final Weight weight;
+    private final double weight;
 
     /**
-     * Creates a new edge between the specified source and destination vertexes
-     * with the given weight.
+     * Creates a new edge between the specified source and destination vertexes.
      *
      * @param src    source vertex
      * @param dst    destination vertex
      * @param weight edge weight
      */
-    public TestEdge(TestVertex src, TestVertex dst, Weight weight) {
+    public TestEdge(TestVertex src, TestVertex dst, double weight) {
         super(src, dst);
         this.weight = weight;
-    }
-
-    /**
-     * Creates a new edge between the specified source and destination vertexes
-     * with the default weight.
-     *
-     * @param src source vertex
-     * @param dst destination vertext
-     */
-    public TestEdge(TestVertex src, TestVertex dst) {
-        this(src, dst, W1);
     }
 
     /**
@@ -56,7 +43,7 @@ public class TestEdge extends AbstractEdge<TestVertex> {
      *
      * @return edge weight
      */
-    public Weight weight() {
+    public double weight() {
         return weight;
     }
 

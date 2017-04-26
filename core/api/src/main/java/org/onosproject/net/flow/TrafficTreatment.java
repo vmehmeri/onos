@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -291,14 +291,6 @@ public interface TrafficTreatment {
         Builder pushVlan();
 
         /**
-         * Pushes a new VLAN tag using the supplied Ethernet type.
-         *
-         * @param ethType ethernet type
-         * @return a treatment builder
-         */
-        Builder pushVlan(EthType ethType);
-
-        /**
          * Any instructions preceded by this method call will be deferred.
          * @return a treatment builder
          */
@@ -403,14 +395,6 @@ public interface TrafficTreatment {
          * @return a treatment builder
          */
         Builder extension(ExtensionTreatment extension, DeviceId deviceId);
-
-        /**
-         * Add all instructions from another treatment.
-         *
-         * @param treatment another treatment
-         * @return a treatment builder
-         */
-        Builder addTreatment(TrafficTreatment treatment);
 
         /**
          * Builds an immutable traffic treatment descriptor.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,6 @@ public class PortPairGroupWebResource extends AbstractWebResource {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
     public Response getPortPairGroups() {
         Iterable<PortPairGroup> portPairGroups = get(PortPairGroupService.class).getPortPairGroups();
         ObjectNode result = mapper().createObjectNode();
@@ -86,7 +85,6 @@ public class PortPairGroupWebResource extends AbstractWebResource {
     @GET
     @Path("{group_id}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
     public Response getPortPairGroup(@PathParam("group_id") String id) {
         PortPairGroup portPairGroup = nullIsNotFound(get(PortPairGroupService.class)
                                                      .getPortPairGroup(PortPairGroupId.of(id)),
@@ -155,13 +153,10 @@ public class PortPairGroupWebResource extends AbstractWebResource {
      * Delete details of a specified port pair group id.
      *
      * @param id port pair group id
-     * @return 204 NO CONTENT
      */
     @Path("{group_id}")
     @DELETE
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response deletePortPairGroup(@PathParam("group_id") String id) {
+    public void deletePortPairGroup(@PathParam("group_id") String id) {
         log.debug("Deletes port pair group by identifier {}.", id);
         PortPairGroupId portPairGroupId = PortPairGroupId.of(id);
         Boolean issuccess = nullIsNotFound(get(PortPairGroupService.class).removePortPairGroup(portPairGroupId),
@@ -169,7 +164,5 @@ public class PortPairGroupWebResource extends AbstractWebResource {
         if (!issuccess) {
             log.debug("Port pair group identifier {} does not exist", id);
         }
-
-        return Response.noContent().build();
     }
 }

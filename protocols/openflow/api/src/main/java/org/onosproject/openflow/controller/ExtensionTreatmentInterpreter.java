@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package org.onosproject.openflow.controller;
 
 import com.google.common.annotations.Beta;
-import org.onosproject.codec.ExtensionTreatmentCodec;
+import org.onosproject.net.driver.HandlerBehaviour;
 import org.onosproject.net.flow.instructions.ExtensionTreatment;
 import org.onosproject.net.flow.instructions.ExtensionTreatmentType;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -27,7 +27,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
  * Interprets extension treatments and converts them to/from OpenFlow objects.
  */
 @Beta
-public interface ExtensionTreatmentInterpreter extends ExtensionTreatmentCodec {
+public interface ExtensionTreatmentInterpreter extends HandlerBehaviour {
 
     /**
      * Returns true if the given extension treatment is supported by this
@@ -52,7 +52,7 @@ public interface ExtensionTreatmentInterpreter extends ExtensionTreatmentCodec {
      *
      * @param action OpenFlow action
      * @return extension treatment
-     * @throws UnsupportedOperationException if driver does not support extension type
      */
-    ExtensionTreatment mapAction(OFAction action) throws UnsupportedOperationException;
+    ExtensionTreatment mapAction(OFAction action);
+
 }

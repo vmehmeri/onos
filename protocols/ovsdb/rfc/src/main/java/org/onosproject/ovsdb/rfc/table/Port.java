@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -237,24 +237,8 @@ public class Port extends AbstractOvsdbTableService {
      * Add a Column entity which column name is "qos" to the Row entity of
      * attributes.
      * @param qos the column data which column name is "qos"
-     * @deprecated in Junco (1.9.1), use version with Uuid instead
      */
-    @Deprecated
     public void setQos(Set<Uuid> qos) {
-        ColumnDescription columndesc = new ColumnDescription(
-                PortColumn.QOS
-                        .columnName(),
-                "setQos",
-                VersionNum.VERSION100);
-        super.setDataHandler(columndesc, qos);
-    }
-
-    /**
-     * Add a Column entity which column name is "qos" to the Row entity of
-     * attributes.
-     * @param qos the column data which column name is "qos"
-     */
-    public void setQos(Uuid qos) {
         ColumnDescription columndesc = new ColumnDescription(
                                                              PortColumn.QOS
                                                                      .columnName(),

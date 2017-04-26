@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014,2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -226,7 +226,7 @@
 
     // return the given string with the first character capitalized.
     function cap(s) {
-        return s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s;
+        return s ? s[0].toUpperCase() + s.slice(1) : s;
     }
 
     // return encoding structure for given parameters
@@ -386,57 +386,6 @@
     }
 
 
-    var hasOwn = {}.hasOwnProperty;
-
-    function classNames () {
-        var classes = [];
-
-        for (var i = 0; i < arguments.length; i++) {
-            var arg = arguments[i];
-            if (!arg) continue;
-
-            var argType = typeof arg;
-
-            if (argType === 'string' || argType === 'number') {
-                classes.push(arg);
-            } else if (Array.isArray(arg)) {
-                classes.push(classNames.apply(null, arg));
-            } else if (argType === 'object') {
-                for (var key in arg) {
-                    if (hasOwn.call(arg, key) && arg[key]) {
-                        classes.push(key);
-                    }
-                }
-            }
-        }
-
-        return classes.join(' ');
-    }
-
-    function extend(protoProps, staticProps) {
-
-        var parent = this,
-            child;
-
-        child = function () {
-        return parent.apply(this, arguments);
-        };
-
-        angular.extend(child, parent, staticProps);
-
-        // Set the prototype chain to inherit from `parent`, without calling
-        // `parent`'s constructor function and add the prototype properties.
-        child.prototype = angular.extend({}, parent.prototype, protoProps);
-        child.prototype.constructor = child;
-
-        // Set a convenience property in case the parent's prototype is needed
-        // later.
-        child.__super__ = parent.prototype;
-
-        return child;
-    }
-
-
     angular.module('onosUtil')
         .factory('FnService',
         ['$window', '$location', '$log', function (_$window_, $loc, _$log_) {
@@ -474,9 +423,7 @@
                 parseBitRate: parseBitRate,
                 addToTrie: addToTrie,
                 removeFromTrie: removeFromTrie,
-                trieLookup: trieLookup,
-                classNames: classNames,
-                extend: extend
+                trieLookup: trieLookup
             };
     }]);
 

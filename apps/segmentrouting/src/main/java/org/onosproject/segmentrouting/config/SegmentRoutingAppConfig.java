@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2016 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ import com.google.common.collect.ImmutableSet;
 import org.onlab.packet.MacAddress;
 import org.onosproject.core.ApplicationId;
 import org.onosproject.net.ConnectPoint;
+import org.onosproject.net.DeviceId;
 import org.onosproject.net.config.Config;
 
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -33,40 +35,15 @@ import static com.google.common.base.MoreObjects.toStringHelper;
  */
 public class SegmentRoutingAppConfig extends Config<ApplicationId> {
     private static final String VROUTER_MACS = "vRouterMacs";
+    private static final String VROUTER_ID = "vRouterId";
     private static final String SUPPRESS_SUBNET = "suppressSubnet";
-    private static final String SUPPRESS_HOST_BY_PORT = "suppressHostByPort";
-    // TODO We might want to move SUPPRESS_HOST_BY_PROVIDER to Component Config
-    private static final String SUPPRESS_HOST_BY_PROVIDER = "suppressHostByProvider";
-    private static final String MPLS_ECMP = "MPLS-ECMP";
+    private static final String SUPPRESS_HOST = "suppressHost";
 
     @Override
     public boolean isValid() {
-        return hasOnlyFields(VROUTER_MACS, SUPPRESS_SUBNET,
-                SUPPRESS_HOST_BY_PORT, SUPPRESS_HOST_BY_PROVIDER, MPLS_ECMP) &&
-                vRouterMacs() != null &&
-                suppressSubnet() != null && suppressHostByPort() != null &&
-                suppressHostByProvider() != null;
-    }
-
-    /**
-     * Gets MPLS-ECMP configuration from the config.
-     *
-     * @return the configuration of MPLS-ECMP. If it is not
-     *         specified, the default behavior is false.
-     */
-    public boolean mplsEcmp() {
-        return get(MPLS_ECMP, false);
-    }
-
-    /**
-     * Sets MPLS-ECMP to the config.
-     *
-     * @param mplsEcmp the MPLS-ECMP configuration
-     * @return this {@link SegmentRoutingAppConfig}
-     */
-    public SegmentRoutingAppConfig setMplsEcmp(boolean mplsEcmp) {
-        object.put(MPLS_ECMP, mplsEcmp);
-        return this;
+        return hasOnlyFields(VROUTER_MACS, VROUTER_ID, SUPPRESS_SUBNET, SUPPRESS_HOST) &&
+                vRouterMacs() != null && vRouterId() != null &&
+                suppressSubnet() != null && suppressHost() != null;
     }
 
     /**
@@ -122,6 +99,39 @@ public class SegmentRoutingAppConfig extends Config<ApplicationId> {
     }
 
     /**
+     * Gets vRouter device ID.
+     *
+     * @return Optional vRouter device ID,
+     *         empty is not specified or null if not valid
+     */
+    public Optional<DeviceId> vRouterId() {
+        if (!object.has(VROUTER_ID)) {
+            return Optional.empty();
+        }
+
+        try {
+            return Optional.of(DeviceId.deviceId(object.path(VROUTER_ID).asText()));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Sets vRouter device ID.
+     *
+     * @param vRouterId vRouter device ID
+     * @return this {@link SegmentRoutingAppConfig}
+     */
+    public SegmentRoutingAppConfig setVRouterId(DeviceId vRouterId) {
+        if (vRouterId == null) {
+            object.remove(VROUTER_ID);
+        } else {
+            object.put(VROUTER_ID, vRouterId.toString());
+        }
+        return this;
+    }
+
+    /**
      * Gets names of ports to which SegmentRouting does not push subnet rules.
      *
      * @return Set of port names, empty if not specified, or null
@@ -169,18 +179,18 @@ public class SegmentRoutingAppConfig extends Config<ApplicationId> {
     }
 
     /**
-     * Gets connect points to which SegmentRouting does not push host rules.
+     * Gets names of ports to which SegmentRouting does not push host rules.
      *
-     * @return Set of connect points, empty if not specified, or null
+     * @return Set of port names, empty if not specified, or null
      *         if not valid
      */
-    public Set<ConnectPoint> suppressHostByPort() {
-        if (!object.has(SUPPRESS_HOST_BY_PORT)) {
+    public Set<ConnectPoint> suppressHost() {
+        if (!object.has(SUPPRESS_HOST)) {
             return ImmutableSet.of();
         }
 
         ImmutableSet.Builder<ConnectPoint> builder = ImmutableSet.builder();
-        ArrayNode arrayNode = (ArrayNode) object.path(SUPPRESS_HOST_BY_PORT);
+        ArrayNode arrayNode = (ArrayNode) object.path(SUPPRESS_HOST);
         for (JsonNode jsonNode : arrayNode) {
             String portName = jsonNode.asText(null);
             if (portName == null) {
@@ -196,60 +206,21 @@ public class SegmentRoutingAppConfig extends Config<ApplicationId> {
     }
 
     /**
-     * Sets connect points to which SegmentRouting does not push host rules.
+     * Sets names of ports to which SegmentRouting does not push host rules.
      *
-     * @param connectPoints connect points to which SegmentRouting does not push
+     * @param suppressHost names of ports to which SegmentRouting does not push
      *                     host rules
      * @return this {@link SegmentRoutingAppConfig}
      */
-    public SegmentRoutingAppConfig setSuppressHostByPort(Set<ConnectPoint> connectPoints) {
-        if (connectPoints == null) {
-            object.remove(SUPPRESS_HOST_BY_PORT);
+    public SegmentRoutingAppConfig setSuppressHost(Set<ConnectPoint> suppressHost) {
+        if (suppressHost == null) {
+            object.remove(SUPPRESS_HOST);
         } else {
             ArrayNode arrayNode = mapper.createArrayNode();
-            connectPoints.forEach(connectPoint -> {
+            suppressHost.forEach(connectPoint -> {
                 arrayNode.add(connectPoint.deviceId() + "/" + connectPoint.port());
             });
-            object.set(SUPPRESS_HOST_BY_PORT, arrayNode);
-        }
-        return this;
-    }
-
-    /**
-     * Gets provider names from which SegmentRouting does not learn host info.
-     *
-     * @return array of provider names that need to be ignored
-     */
-    public Set<String> suppressHostByProvider() {
-        if (!object.has(SUPPRESS_HOST_BY_PROVIDER)) {
-            return ImmutableSet.of();
-        }
-
-        ImmutableSet.Builder<String> builder = ImmutableSet.builder();
-        ArrayNode arrayNode = (ArrayNode) object.path(SUPPRESS_HOST_BY_PROVIDER);
-        for (JsonNode jsonNode : arrayNode) {
-            String providerName = jsonNode.asText(null);
-            if (providerName == null) {
-                return null;
-            }
-            builder.add(providerName);
-        }
-        return builder.build();
-    }
-
-    /**
-     * Sets provider names from which SegmentRouting does not learn host info.
-     *
-     * @param providers set of provider names
-     * @return this {@link SegmentRoutingAppConfig}
-     */
-    public SegmentRoutingAppConfig setSuppressHostByProvider(Set<String> providers) {
-        if (providers == null) {
-            object.remove(SUPPRESS_HOST_BY_PROVIDER);
-        } else {
-            ArrayNode arrayNode = mapper.createArrayNode();
-            providers.forEach(arrayNode::add);
-            object.set(SUPPRESS_HOST_BY_PROVIDER, arrayNode);
+            object.set(SUPPRESS_HOST, arrayNode);
         }
         return this;
     }
@@ -258,10 +229,9 @@ public class SegmentRoutingAppConfig extends Config<ApplicationId> {
     public String toString() {
         return toStringHelper(this)
                 .add("vRouterMacs", vRouterMacs())
+                .add("vRouterId", vRouterId())
                 .add("suppressSubnet", suppressSubnet())
-                .add("suppressHostByPort", suppressHostByPort())
-                .add("suppressHostByProvider", suppressHostByProvider())
-                .add("mplsEcmp", mplsEcmp())
+                .add("suppressHost", suppressHost())
                 .toString();
     }
 }

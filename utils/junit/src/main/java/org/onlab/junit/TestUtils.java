@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,13 +40,7 @@ public final class TestUtils {
     public static <T, U> void setField(T subject, String fieldName, U value)
             throws TestUtilsException {
         @SuppressWarnings("unchecked")
-        Class clazz;
-        if (subject instanceof Class) {
-            // Class was given, assuming intention is to deal with static field
-            clazz = (Class) subject;
-        } else {
-            clazz = subject.getClass();
-        }
+        Class clazz = subject.getClass();
         try {
             while (clazz != null) {
                 try {
@@ -83,13 +77,7 @@ public final class TestUtils {
         try {
             NoSuchFieldException exception = null;
             @SuppressWarnings("unchecked")
-            Class clazz;
-            if (subject instanceof Class) {
-                // Class was given, assuming intention is to deal with static field
-                clazz = (Class) subject;
-            } else {
-                clazz = subject.getClass();
-            }
+            Class clazz = subject.getClass();
             while (clazz != null) {
                 try {
                     Field field = clazz.getDeclaredField(fieldName);

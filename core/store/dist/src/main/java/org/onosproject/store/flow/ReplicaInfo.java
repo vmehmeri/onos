@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,15 @@
  */
 package org.onosproject.store.flow;
 
-import com.google.common.base.Objects;
-import org.onosproject.cluster.NodeId;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import org.onosproject.cluster.NodeId;
+
+import com.google.common.base.Objects;
+import com.google.common.base.Optional;
 
 /**
  * Class to represent placement information about Master/Backup copy.
@@ -39,7 +40,7 @@ public final class ReplicaInfo {
      * @param backups list of NodeId, where backup copies should be placed
      */
     public ReplicaInfo(NodeId master, List<NodeId> backups) {
-        this.master = Optional.ofNullable(master);
+        this.master = Optional.fromNullable(master);
         this.backups = checkNotNull(backups);
     }
 
@@ -78,7 +79,7 @@ public final class ReplicaInfo {
 
     // for Serializer
     private ReplicaInfo() {
-        this.master = Optional.empty();
+        this.master = Optional.absent();
         this.backups = Collections.emptyList();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,10 +75,8 @@
         var hov = api.hovered();
 
         function hoverValid() {
-            return hoverMode === 'intents' && hov && (
-            hov.class === 'host' ||
-            hov.class === 'device' ||
-            hov.class === 'link');
+            return hoverMode === 'intents' &&
+                hov && (hov.class === 'host' || hov.class === 'device');
         }
 
         if (api.somethingSelected()) {
@@ -178,33 +176,6 @@
         flash.flash('Host-to-Host flow added');
     }
 
-    function removeIntent (d) {
-        $log.debug('Entering removeIntent');
-        wss.sendEvent('removeIntent', {
-            appId: d.appId,
-            appName: d.appName,
-            key: d.key,
-            purge: d.intentPurge
-        });
-        trafficMode = 'intents';
-        hoverMode = null;
-        var txt = d.intentPurge ? 'purged' : 'withdrawn';
-        flash.flash('Intent ' + txt);
-    }
-
-    function resubmitIntent (d) {
-        $log.debug('Entering resubmitIntent');
-        wss.sendEvent('resubmitIntent', {
-            appId: d.appId,
-            appName: d.appName,
-            key: d.key,
-            purge: d.intentPurge
-        });
-        trafficMode = 'intents';
-        hoverMode = null;
-        flash.flash('Intent resubmitted');
-    }
-
     function addMultiSourceIntent () {
         var so = api.selectOrder();
         wss.sendEvent('addMultiSourceIntent', {
@@ -215,14 +186,6 @@
         trafficMode = 'intents';
         hoverMode = null;
         flash.flash('Multi-Source flow added');
-    }
-
-    function removeIntents () {
-        $log.debug('Entering removeIntents');
-        wss.sendEvent('removeIntents', {});
-        trafficMode = 'intents';
-        hoverMode = null;
-        flash.flash('Intent are purged');
     }
 
 
@@ -260,10 +223,7 @@
                 // TODO: these should move to new UI demo app
                 // invoked from buttons on detail (multi-select) panel
                 addHostIntent: addHostIntent,
-                addMultiSourceIntent: addMultiSourceIntent,
-                removeIntent: removeIntent,
-                resubmitIntent: resubmitIntent,
-                removeIntents: removeIntents
+                addMultiSourceIntent: addMultiSourceIntent
             };
         }]);
 }());

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,17 @@
  */
 package org.onosproject.segmentrouting;
 
-import org.onlab.packet.IpPrefix;
-import org.onosproject.net.DeviceId;
-
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Segment Routing Service for REST API.
  */
 public interface SegmentRoutingService {
+    /**
+     * Highest flow priority.
+     */
+    int HIGHEST_PRIORITY = 0xffff;
+
     /**
      * VLAN cross-connect priority.
      */
@@ -103,17 +103,4 @@ public interface SegmentRoutingService {
      * SUCCESS if it is removed successfully
      */
     PolicyHandler.Result removePolicy(Policy policy);
-
-    /**
-     * Use current state of the network to repopulate forwarding rules.
-     *
-     */
-    void rerouteNetwork();
-
-    /**
-     * Returns device-subnet mapping.
-     *
-     * @return device-subnet mapping
-     */
-    Map<DeviceId, Set<IpPrefix>> getDeviceSubnetMap();
 }

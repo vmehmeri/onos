@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.onosproject.net.group.DefaultGroupBucket;
 import org.onosproject.net.group.Group;
 import org.onosproject.net.group.GroupBucket;
 import org.onosproject.net.group.GroupBuckets;
+import org.onosproject.net.group.GroupDescription;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,10 +44,8 @@ import static org.easymock.EasyMock.replay;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.equalTo;
 import static org.onosproject.codec.impl.GroupJsonMatcher.matchesGroup;
 import static org.onosproject.net.NetTestTools.APP_ID;
-import static org.onosproject.net.group.GroupDescription.Type.*;
 
 /**
  * Group codec unit tests.
@@ -81,27 +80,19 @@ public class GroupCodecTest {
         GroupBucket bucket2 = DefaultGroupBucket
                 .createIndirectGroupBucket(DefaultTrafficTreatment.emptyTreatment());
         GroupBuckets buckets = new GroupBuckets(ImmutableList.of(bucket1, bucket2));
-        GroupBuckets bucketsIndirect = new GroupBuckets(ImmutableList.of(bucket2));
+
 
         DefaultGroup group = new DefaultGroup(
                 new DefaultGroupId(1),
                 NetTestTools.did("d1"),
-                ALL,
+                GroupDescription.Type.INDIRECT,
                 buckets);
-        DefaultGroup group1 = new DefaultGroup(
-                new DefaultGroupId(2),
-                NetTestTools.did("d2"),
-                INDIRECT,
-                bucketsIndirect);
 
         MockCodecContext context = new MockCodecContext();
         GroupCodec codec = new GroupCodec();
         ObjectNode groupJson = codec.encode(group, context);
 
-        ObjectNode groupJsonIndirect = codec.encode(group1, context);
-
         assertThat(groupJson, matchesGroup(group));
-        assertThat(groupJsonIndirect, matchesGroup(group1));
     }
 
     @Test
@@ -116,12 +107,6 @@ public class GroupCodecTest {
         Instruction instruction1 = groupBucket.treatment().allInstructions().get(0);
         assertThat(instruction1.type(), is(Instruction.Type.OUTPUT));
         assertThat(((Instructions.OutputInstruction) instruction1).port(), is(PortNumber.portNumber(2)));
-
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void invalidGroupTest() throws IOException {
-        Group group = getGroup("invalid-group.json");
     }
 
     /**
@@ -133,11 +118,9 @@ public class GroupCodecTest {
         assertThat(group.appId(), is(APP_ID));
         assertThat(group.deviceId().toString(), is("of:0000000000000001"));
         assertThat(group.type().toString(), is("ALL"));
-        assertThat(group.appCookie().key(),
-                equalTo(new byte[]{(byte) 0x12, (byte) 0x34, (byte) 0xAB, (byte) 0xCD}));
+        assertThat(group.appCookie().key(), is("1".getBytes()));
         assertThat(group.id().id(), is(1));
     }
-
 
     /**
      * Reads in a group from the given resource and decodes it.

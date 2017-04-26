@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,7 @@ import java.nio.ByteBuffer;
 
 /**
  * State distribution mechanism for the proxy ARP service.
- *
- * @deprecated in Hummingbird release. This is no longer necessary as there are
- * other solutions for the problem this was solving.
  */
-@Deprecated
 public interface ProxyArpStore {
 
     /**

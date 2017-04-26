@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,9 @@ import org.jboss.netty.channel.Channel;
 import org.onosproject.bgpio.exceptions.BgpParseException;
 import org.onosproject.bgpio.protocol.BgpFactory;
 import org.onosproject.bgpio.protocol.BgpMessage;
-import org.onosproject.bgpio.protocol.flowspec.BgpFlowSpecNlri;
-import org.onosproject.bgpio.protocol.flowspec.BgpFlowSpecRouteKey;
+import org.onosproject.bgpio.protocol.flowspec.BgpFlowSpecDetails;
+import org.onosproject.bgpio.protocol.flowspec.BgpFlowSpecPrefix;
 import org.onosproject.bgpio.types.BgpValueType;
-import org.onosproject.bgpio.types.attr.WideCommunity;
 
 /**
  * Represents the peer side of an BGP peer.
@@ -125,6 +124,14 @@ public interface BgpPeer {
     void buildAdjRibIn(List<BgpValueType> pathAttr) throws BgpParseException;
 
     /**
+     * Update flow specification RIB for each peer.
+     *
+     * @param pathAttr list of Bgp path attributes
+     * @throws BgpParseException while building flow spec RIB
+     */
+    void buildFlowSpecRib(List<BgpValueType> pathAttr) throws BgpParseException;
+
+    /**
      * Return the BGP session info.
      *
      * @return sessionInfo bgp session info
@@ -135,10 +142,9 @@ public interface BgpPeer {
      * Updates flow specification rule.
      *
      * @param operType operation type add or delete or update
-     * @param routeKey flow route key  for the flow rule
+     * @param prefix prefix for the flow rule
      * @param flowSpec BGP flow specification components
-     * @param wideCommunity for route policy
      */
-    void updateFlowSpec(FlowSpecOperation operType, BgpFlowSpecRouteKey routeKey,
-                               BgpFlowSpecNlri flowSpec, WideCommunity wideCommunity);
+    void updateFlowSpec(FlowSpecOperation operType, BgpFlowSpecPrefix prefix,
+                               BgpFlowSpecDetails flowSpec);
 }

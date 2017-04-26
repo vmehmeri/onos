@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ public class TunnelWebResource extends AbstractWebResource {
      *
      * @param input JSON stream for tunnel to create
      * @return status of the request - OK if the tunnel is created,
+     * INTERNAL_SERVER_ERROR if the JSON is invalid or the tunnel cannot be created
      * @throws IOException if the JSON is invalid
      */
     @POST
@@ -82,7 +83,8 @@ public class TunnelWebResource extends AbstractWebResource {
      * Delete a segment routing tunnel.
      *
      * @param input JSON stream for tunnel to delete
-     * @return 204 NO CONTENT, if the tunnel is removed
+     * @return status of the request - OK if the tunnel is removed,
+     * INTERNAL_SERVER_ERROR otherwise
      * @throws IOException if JSON is invalid
      */
     @DELETE
@@ -94,7 +96,7 @@ public class TunnelWebResource extends AbstractWebResource {
         Tunnel tunnelInfo = TUNNEL_CODEC.decode(tunnelJson, this);
         srService.removeTunnel(tunnelInfo);
 
-        return Response.noContent().build();
+        return Response.ok().build();
     }
 
 }

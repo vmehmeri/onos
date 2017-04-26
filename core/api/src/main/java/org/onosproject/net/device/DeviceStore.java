@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import org.onosproject.store.Store;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Stream;
 
 /**
  * Manages inventory of infrastructure devices; not intended for direct use.
@@ -52,6 +51,8 @@ public interface DeviceStore extends Store<DeviceEvent, DeviceStoreDelegate> {
      */
     Iterable<Device> getAvailableDevices();
 
+
+
     /**
      * Returns the device with the specified identifier.
      *
@@ -72,7 +73,6 @@ public interface DeviceStore extends Store<DeviceEvent, DeviceStoreDelegate> {
     DeviceEvent createOrUpdateDevice(ProviderId providerId, DeviceId deviceId,
                                      DeviceDescription deviceDescription);
 
-
     // TODO: We may need to enforce that ancillary cannot interfere this state
     /**
      * Removes the specified infrastructure device.
@@ -81,14 +81,6 @@ public interface DeviceStore extends Store<DeviceEvent, DeviceStoreDelegate> {
      * @return ready to send event describing what occurred; null if no change
      */
     DeviceEvent markOffline(DeviceId deviceId);
-
-    /**
-     * Marks the device as available.
-     *
-     * @param deviceId device identifier
-     * @return true if availability change request was accepted and changed the state
-     */
-    boolean markOnline(DeviceId deviceId);
 
     /**
      * Updates the ports of the specified infrastructure device using the given
@@ -123,15 +115,6 @@ public interface DeviceStore extends Store<DeviceEvent, DeviceStoreDelegate> {
     List<Port> getPorts(DeviceId deviceId);
 
     /**
-     * Returns the stream of port descriptions that belong to the specified device.
-     *
-     * @param providerId  provider identifier
-     * @param deviceId    device identifier
-     * @return stream of device portdescriptions
-     */
-    Stream<PortDescription> getPortDescriptions(ProviderId providerId, DeviceId deviceId);
-
-    /**
      * Updates the port statistics of the specified device using the give port
      * statistics.
      *
@@ -152,34 +135,12 @@ public interface DeviceStore extends Store<DeviceEvent, DeviceStoreDelegate> {
     List<PortStatistics> getPortStatistics(DeviceId deviceId);
 
     /**
-     * Returns the port statistics of the specified device and port.
-     *
-     * @param deviceId device identifier
-     * @param portNumber port identifier
-     * @return  port statistics of specific port of the device
-     */
-    default PortStatistics getStatisticsForPort(DeviceId deviceId, PortNumber portNumber) {
-        return null;
-    }
-
-    /**
      * Returns the list of delta port statistics of the specified device.
      *
      * @param deviceId device identifier
      * @return list of delta port statistics of all ports of the device
      */
     List<PortStatistics> getPortDeltaStatistics(DeviceId deviceId);
-
-    /**
-     * Returns the port delta statistics of the specified device and port.
-     *
-     * @param deviceId device identifier
-     * @param portNumber port identifier
-     * @return port statistics of specific port of the device
-     */
-    default PortStatistics getDeltaStatisticsForPort(DeviceId deviceId, PortNumber portNumber) {
-        return null;
-    }
 
     /**
      * Returns the specified device port.
@@ -189,16 +150,6 @@ public interface DeviceStore extends Store<DeviceEvent, DeviceStoreDelegate> {
      * @return device port
      */
     Port getPort(DeviceId deviceId, PortNumber portNumber);
-
-    /**
-     * Returns the specified device port description.
-     *
-     * @param providerId provider identifier
-     * @param deviceId   device identifier
-     * @param portNumber port number
-     * @return device port description
-     */
-    PortDescription getPortDescription(ProviderId providerId, DeviceId deviceId, PortNumber portNumber);
 
     /**
      * Indicates whether the specified device is available/online.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@
  */
 package org.onosproject.incubator.rpc.grpc;
 
-import static org.onosproject.incubator.protobuf.net.ProtobufUtils.asMap;
+import static org.onosproject.incubator.rpc.grpc.GrpcDeviceUtils.asMap;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.onosproject.grpc.net.Link.LinkType;
-import org.onosproject.grpc.net.link.LinkProviderServiceRpcGrpc;
-import org.onosproject.grpc.net.link.LinkProviderServiceRpcGrpc.LinkProviderServiceRpcFutureStub;
-import org.onosproject.grpc.net.link.LinkService.LinkDetectedMsg;
-import org.onosproject.grpc.net.link.LinkService.LinkVanishedMsg;
-import org.onosproject.grpc.net.link.LinkService.Void;
+import org.onosproject.grpc.Link.LinkDetectedMsg;
+import org.onosproject.grpc.Link.LinkType;
+import org.onosproject.grpc.Link.LinkVanishedMsg;
+import org.onosproject.grpc.Link.Void;
+import org.onosproject.grpc.LinkProviderServiceRpcGrpc;
+import org.onosproject.grpc.LinkProviderServiceRpcGrpc.LinkProviderServiceRpcFutureStub;
 import org.onosproject.net.ConnectPoint;
 import org.onosproject.net.DeviceId;
 import org.onosproject.net.Link.Type;
@@ -38,7 +38,7 @@ import org.onosproject.net.provider.ProviderId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.Beta;
+import com.google.api.client.repackaged.com.google.common.annotations.Beta;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import io.grpc.Channel;
@@ -82,7 +82,10 @@ class LinkProviderServiceClientProxy
             log.error("linkDetected({}) failed", linkDescription, e);
             invalidate();
             Thread.currentThread().interrupt();
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (ExecutionException e) {
+            log.error("linkDetected({}) failed", linkDescription, e);
+            invalidate();
+        } catch (TimeoutException e) {
             log.error("linkDetected({}) failed", linkDescription, e);
             invalidate();
         }
@@ -102,7 +105,10 @@ class LinkProviderServiceClientProxy
             log.error("linkVanished({}) failed", linkDescription, e);
             invalidate();
             Thread.currentThread().interrupt();
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (ExecutionException e) {
+            log.error("linkVanished({}) failed", linkDescription, e);
+            invalidate();
+        } catch (TimeoutException e) {
             log.error("linkVanished({}) failed", linkDescription, e);
             invalidate();
         }
@@ -122,7 +128,10 @@ class LinkProviderServiceClientProxy
             log.error("linksVanished({}) failed", connectPoint, e);
             invalidate();
             Thread.currentThread().interrupt();
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (ExecutionException e) {
+            log.error("linksVanished({}) failed", connectPoint, e);
+            invalidate();
+        } catch (TimeoutException e) {
             log.error("linksVanished({}) failed", connectPoint, e);
             invalidate();
         }
@@ -142,7 +151,10 @@ class LinkProviderServiceClientProxy
             log.error("linksVanished({}) failed", deviceId, e);
             invalidate();
             Thread.currentThread().interrupt();
-        } catch (ExecutionException | TimeoutException e) {
+        } catch (ExecutionException e) {
+            log.error("linksVanished({}) failed", deviceId, e);
+            invalidate();
+        } catch (TimeoutException e) {
             log.error("linksVanished({}) failed", deviceId, e);
             invalidate();
         }
@@ -225,7 +237,7 @@ class LinkProviderServiceClientProxy
     /**
      * Translates ONOS object to gRPC message.
      *
-     * @param type {@link org.onosproject.net.Link.Type Link.Type}
+     * @param type {@link Link.Type}
      * @return gRPC LinkType
      */
     private LinkType translate(Type type) {
@@ -255,8 +267,8 @@ class LinkProviderServiceClientProxy
      * @param cp {@link ConnectPoint}
      * @return gRPC ConnectPoint
      */
-    private org.onosproject.grpc.net.Link.ConnectPoint translate(ConnectPoint cp) {
-        return org.onosproject.grpc.net.Link.ConnectPoint.newBuilder()
+    private org.onosproject.grpc.Link.ConnectPoint translate(ConnectPoint cp) {
+        return org.onosproject.grpc.Link.ConnectPoint.newBuilder()
                 .setDeviceId(cp.deviceId().toString())
                 .setPortNumber(cp.port().toString())
                 .build();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014,2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@
         lookup;
 
     function matchSeq(key) {
-        if (!matching && key === 'shift-shift') {
+        if (!matching && key === 'shift') {
             matching = true;
             return true;
         }
@@ -66,12 +66,16 @@
             case 9: return 'tab';
             case 13: return 'enter';
             case 16: return 'shift';
+            case 17: return 'ctrl';
+            case 18: return 'alt';
             case 27: return 'esc';
             case 32: return 'space';
             case 37: return 'leftArrow';
             case 38: return 'upArrow';
             case 39: return 'rightArrow';
             case 40: return 'downArrow';
+            case 91: return 'cmdLeft';
+            case 93: return 'cmdRight';
             case 186: return 'semicolon';
             case 187: return 'equals';
             case 188: return 'comma';
@@ -90,43 +94,15 @@
                 } else if (code >= 112 && code <= 123) {
                     return 'F' + (code - 111);
                 }
-                return null;
+                return '.';
         }
-    }
-
-    var textFieldDoesNotBlock = {
-        enter: 1,
-        esc: 1
-    };
-
-    function textFieldInput() {
-        var t = d3.event.target.tagName.toLowerCase();
-        return t === 'input' || t === 'textarea';
     }
 
     function keyIn() {
         var event = d3.event,
             keyCode = event.keyCode,
             key = whatKey(keyCode),
-            textBlockable = !textFieldDoesNotBlock[key],
-            modifiers = [];
-
-        event.metaKey && modifiers.push('cmd');
-        event.altKey && modifiers.push('alt');
-        event.shiftKey && modifiers.push('shift');
-
-        if (!key) {
-            return;
-        }
-
-        modifiers.push(key);
-        key = modifiers.join('-');
-
-        if (textBlockable && textFieldInput()) {
-            return;
-        }
-
-        var kh = keyHandler,
+            kh = keyHandler,
             gk = kh.globalKeys[key],
             gcb = fs.isF(gk) || (fs.isA(gk) && fs.isF(gk[0])),
             dk = kh.dialogKeys[key],
@@ -136,7 +112,7 @@
             vcb = fs.isF(vk) || (fs.isA(vk) && fs.isF(vk[0])) || fs.isF(kh.viewFn),
             token = 'keyev';    // indicate this was a key-pressed event
 
-        event.stopPropagation();
+        d3.event.stopPropagation();
 
         if (enabled) {
             if (matchSeq(key)) return;
@@ -175,9 +151,9 @@
             // Masked keys are global key handlers that always return true.
             // That is, the view will never see the event for that key.
             maskedKeys: {
-                slash: 1,
-                backSlash: 1,
-                T: 1
+                slash: true,
+                backSlash: true,
+                T: true
             }
         });
     }

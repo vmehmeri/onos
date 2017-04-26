@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,13 +26,14 @@ import org.onosproject.net.flow.instructions.Instructions.MeterInstruction;
 import org.onosproject.net.flow.instructions.Instructions.NoActionInstruction;
 import org.onosproject.net.flow.instructions.Instructions.OutputInstruction;
 import org.onosproject.net.flow.instructions.Instructions.SetQueueInstruction;
+import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModLambdaInstruction;
 import org.onosproject.net.flow.instructions.L0ModificationInstruction.ModOchSignalInstruction;
 import org.onosproject.net.flow.instructions.L1ModificationInstruction.ModOduSignalIdInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModEtherInstruction;
-import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModMplsHeaderInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModMplsLabelInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModVlanIdInstruction;
 import org.onosproject.net.flow.instructions.L2ModificationInstruction.ModVlanPcpInstruction;
+import org.onosproject.net.flow.instructions.L2ModificationInstruction.PushHeaderInstructions;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.ModIPInstruction;
 import org.onosproject.net.flow.instructions.L3ModificationInstruction.ModIPv6FlowLabelInstruction;
 
@@ -54,10 +55,10 @@ public final class InstructionJsonMatcher extends TypeSafeDiagnosingMatcher<Json
      * @param description Description object used for recording errors
      * @return true if contents match, false otherwise
      */
-    private boolean matchModMplsHeaderInstruction(JsonNode instructionJson,
-                                                  Description description) {
-        ModMplsHeaderInstruction instructionToMatch =
-                (ModMplsHeaderInstruction) instruction;
+    private boolean matchPushHeaderInstruction(JsonNode instructionJson,
+                                               Description description) {
+        PushHeaderInstructions instructionToMatch =
+                (PushHeaderInstructions) instruction;
         final String jsonSubtype = instructionJson.get("subtype").textValue();
         if (!instructionToMatch.subtype().name().equals(jsonSubtype)) {
             description.appendText("subtype was " + jsonSubtype);
@@ -83,8 +84,6 @@ public final class InstructionJsonMatcher extends TypeSafeDiagnosingMatcher<Json
 
         return true;
     }
-
-    // TODO: need to add matchModVlanHeaderInstruction
 
     /**
      * Matches the contents of an output instruction.
@@ -215,6 +214,38 @@ public final class InstructionJsonMatcher extends TypeSafeDiagnosingMatcher<Json
             description.appendText("Unmatching types ");
             description.appendText("instructionToMatch " + instructionToMatch.port().toString());
             description.appendText("jsonPort " + jsonPort);
+        }
+
+        return true;
+    }
+
+    /**
+     * Matches the contents of a mod lambda instruction.
+     *
+     * @param instructionJson JSON instruction to match
+     * @param description Description object used for recording errors
+     * @return true if contents match, false otherwise
+     */
+    private boolean matchModLambdaInstruction(JsonNode instructionJson,
+                                              Description description) {
+        ModLambdaInstruction instructionToMatch =
+                (ModLambdaInstruction) instruction;
+        final String jsonSubtype = instructionJson.get("subtype").textValue();
+        if (!instructionToMatch.subtype().name().equals(jsonSubtype)) {
+            description.appendText("subtype was " + jsonSubtype);
+            return false;
+        }
+
+        final String jsonType = instructionJson.get("type").textValue();
+        if (!instructionToMatch.type().name().equals(jsonType)) {
+            description.appendText("type was " + jsonType);
+            return false;
+        }
+
+        final long jsonLambda = instructionJson.get("lambda").shortValue();
+        if (instructionToMatch.lambda() != jsonLambda) {
+            description.appendText("lambda was " + jsonLambda);
+            return false;
         }
 
         return true;
@@ -515,8 +546,8 @@ public final class InstructionJsonMatcher extends TypeSafeDiagnosingMatcher<Json
                 return false;
         }
 
-        if (instruction instanceof ModMplsHeaderInstruction) {
-            return matchModMplsHeaderInstruction(jsonInstruction, description);
+        if (instruction instanceof PushHeaderInstructions) {
+            return matchPushHeaderInstruction(jsonInstruction, description);
         } else if (instruction instanceof OutputInstruction) {
             return matchOutputInstruction(jsonInstruction, description);
         } else if (instruction instanceof GroupInstruction) {
@@ -525,6 +556,8 @@ public final class InstructionJsonMatcher extends TypeSafeDiagnosingMatcher<Json
             return matchMeterInstruction(jsonInstruction, description);
         } else if (instruction instanceof SetQueueInstruction) {
             return matchSetQueueInstruction(jsonInstruction, description);
+        } else if (instruction instanceof ModLambdaInstruction) {
+            return matchModLambdaInstruction(jsonInstruction, description);
         } else if (instruction instanceof ModOchSignalInstruction) {
             return matchModOchSingalInstruction(jsonInstruction, description);
         } else if (instruction instanceof ModEtherInstruction) {

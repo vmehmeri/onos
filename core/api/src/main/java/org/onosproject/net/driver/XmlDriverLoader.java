@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,6 @@ public class XmlDriverLoader {
     private static final String IMPL = "[@impl]";
 
     private final ClassLoader classLoader;
-    private final BehaviourClassResolver resolver;
 
     private Map<String, Driver> drivers = Maps.newHashMap();
 
@@ -73,23 +72,9 @@ public class XmlDriverLoader {
      * class loader.
      *
      * @param classLoader class loader to use
-     * @deprecated since 1.7.0 (Hummingbird)
      */
-    @Deprecated
     public XmlDriverLoader(ClassLoader classLoader) {
-        this(classLoader, null);
-    }
-
-    /**
-     * Creates a new driver loader capable of loading drivers from the supplied
-     * class loader.
-     *
-     * @param classLoader class loader to use
-     * @param resolver    behaviour class resolver
-     */
-    public XmlDriverLoader(ClassLoader classLoader, BehaviourClassResolver resolver) {
         this.classLoader = classLoader;
-        this.resolver = resolver;
     }
 
     /**
@@ -197,13 +182,7 @@ public class XmlDriverLoader {
         try {
             return (Class<? extends Behaviour>) classLoader.loadClass(className);
         } catch (ClassNotFoundException e) {
-            if (resolver != null) {
-                Class<? extends Behaviour> cls = resolver.getBehaviourClass(className);
-                if (cls != null) {
-                    return cls;
-                }
-            }
-            throw new IllegalArgumentException("Unable to resolve class " + className, e);
+            throw new IllegalArgumentException("Unable to load class " + className, e);
         }
     }
 

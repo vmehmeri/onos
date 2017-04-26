@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Open Networking Laboratory
+ * Copyright 2014-2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,12 +111,7 @@ public interface FlowRuleStore extends Store<FlowRuleBatchEvent, FlowRuleStoreDe
      *
      * @param deviceId device id
      */
-    default void purgeFlowRule(DeviceId deviceId) {}
-
-    /**
-     * Removes all flow entries from store.
-     */
-    void purgeFlowRules();
+    void purgeFlowRule(DeviceId deviceId);
 
     /**
      * Updates the flow table statistics of the specified device using

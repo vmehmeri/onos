@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,13 @@ package org.onlab.util;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
-import static org.onlab.util.Tools.groupedThreads;
 
 /**
  * Maintains a sliding window of value counts. The sliding window counter is
@@ -63,7 +62,7 @@ public final class SlidingWindowCounter {
                 .map(AtomicLong::new)
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        background = newSingleThreadScheduledExecutor(groupedThreads("SlidingWindowCounter", "bg-%d"));
+        background = Executors.newSingleThreadScheduledExecutor();
         background.scheduleWithFixedDelay(this::advanceHead, 0,
                                           SLIDE_WINDOW_PERIOD_SECONDS, TimeUnit.SECONDS);
     }

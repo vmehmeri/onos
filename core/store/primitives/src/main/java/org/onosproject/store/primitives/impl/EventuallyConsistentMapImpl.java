@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Open Networking Laboratory
+ * Copyright 2015 Open Networking Laboratory
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,36 +15,16 @@
  */
 package org.onosproject.store.primitives.impl;
 
-import com.google.common.collect.Collections2;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import org.apache.commons.lang3.tuple.Pair;
-import org.onlab.util.AbstractAccumulator;
-import org.onlab.util.KryoNamespace;
-import org.onlab.util.SlidingWindowCounter;
-import org.onosproject.cluster.ClusterService;
-import org.onosproject.cluster.ControllerNode;
-import org.onosproject.cluster.NodeId;
-import org.onosproject.persistence.PersistenceService;
-import org.onosproject.store.LogicalTimestamp;
-import org.onosproject.store.Timestamp;
-import org.onosproject.store.cluster.messaging.ClusterCommunicationService;
-import org.onosproject.store.cluster.messaging.MessageSubject;
-import org.onosproject.store.serializers.KryoNamespaces;
-import org.onosproject.store.serializers.StoreSerializer;
-import org.onosproject.store.service.EventuallyConsistentMap;
-import org.onosproject.store.service.EventuallyConsistentMapEvent;
-import org.onosproject.store.service.EventuallyConsistentMapListener;
-import org.onosproject.store.service.WallClockTimestamp;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import static org.onlab.util.BoundedThreadPool.newFixedThreadPool;
+import static org.onlab.util.Tools.groupedThreads;
+import static org.onosproject.store.service.EventuallyConsistentMapEvent.Type.PUT;
+import static org.onosproject.store.service.EventuallyConsistentMapEvent.Type.REMOVE;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -61,13 +41,34 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
-import static org.onlab.util.BoundedThreadPool.newFixedThreadPool;
-import static org.onlab.util.Tools.groupedThreads;
-import static org.onosproject.store.service.EventuallyConsistentMapEvent.Type.PUT;
-import static org.onosproject.store.service.EventuallyConsistentMapEvent.Type.REMOVE;
+import org.apache.commons.lang3.tuple.Pair;
+import org.onlab.util.AbstractAccumulator;
+import org.onlab.util.KryoNamespace;
+import org.onlab.util.SlidingWindowCounter;
+import org.onosproject.cluster.ClusterService;
+import org.onosproject.cluster.ControllerNode;
+import org.onosproject.cluster.NodeId;
+import org.onosproject.persistence.PersistenceService;
+import org.onosproject.store.LogicalTimestamp;
+import org.onosproject.store.Timestamp;
+import org.onosproject.store.cluster.messaging.ClusterCommunicationService;
+import org.onosproject.store.cluster.messaging.MessageSubject;
+import org.onosproject.store.serializers.KryoNamespaces;
+import org.onosproject.store.serializers.KryoSerializer;
+import org.onosproject.store.service.EventuallyConsistentMap;
+import org.onosproject.store.service.EventuallyConsistentMapEvent;
+import org.onosproject.store.service.EventuallyConsistentMapListener;
+import org.onosproject.store.service.Serializer;
+import org.onosproject.store.service.WallClockTimestamp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Collections2;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Distributed Map implementation which uses optimistic replication and gossip
@@ -82,7 +83,7 @@ public class EventuallyConsistentMapImpl<K, V>
 
     private final ClusterService clusterService;
     private final ClusterCommunicationService clusterCommunicator;
-    private final StoreSerializer serializer;
+    private final KryoSerializer serializer;
     private final NodeId localNodeId;
     private final PersistenceService persistenceService;
 
@@ -90,7 +91,6 @@ public class EventuallyConsistentMapImpl<K, V>
 
     private final MessageSubject updateMessageSubject;
     private final MessageSubject antiEntropyAdvertisementSubject;
-    private final MessageSubject updateRequestSubject;
 
     private final Set<EventuallyConsistentMapListener<K, V>> listeners
             = Sets.newCopyOnWriteArraySet();
@@ -101,9 +101,6 @@ public class EventuallyConsistentMapImpl<K, V>
 
     private final ExecutorService communicationExecutor;
     private final Map<NodeId, EventAccumulator> senderPending;
-
-    private long previousTombstonePurgeTime;
-    private final Map<NodeId, Long> antiEntropyTimes = Maps.newConcurrentMap();
 
     private final String mapName;
 
@@ -119,11 +116,14 @@ public class EventuallyConsistentMapImpl<K, V>
     private final boolean tombstonesDisabled;
 
     private static final int WINDOW_SIZE = 5;
-    private static final int HIGH_LOAD_THRESHOLD = 2;
+    private static final int HIGH_LOAD_THRESHOLD = 0;
     private static final int LOAD_WINDOW = 2;
     private SlidingWindowCounter counter = new SlidingWindowCounter(WINDOW_SIZE);
 
     private final boolean persistent;
+
+    private static final String PERSISTENT_LOCAL_MAP_NAME = "itemsMap";
+
 
     /**
      * Creates a new eventually consistent map shared amongst multiple instances.
@@ -135,7 +135,7 @@ public class EventuallyConsistentMapImpl<K, V>
      * @param mapName               a String identifier for the map.
      * @param clusterService        the cluster service
      * @param clusterCommunicator   the cluster communications service
-     * @param ns                    a Kryo namespace that can serialize
+     * @param serializerBuilder     a Kryo namespace builder that can serialize
      *                              both K and V
      * @param timestampProvider     provider of timestamps for K and V
      * @param peerUpdateFunction    function that provides a set of nodes to immediately
@@ -156,7 +156,7 @@ public class EventuallyConsistentMapImpl<K, V>
     EventuallyConsistentMapImpl(String mapName,
                                 ClusterService clusterService,
                                 ClusterCommunicationService clusterCommunicator,
-                                KryoNamespace ns,
+                                KryoNamespace.Builder serializerBuilder,
                                 BiFunction<K, V, Timestamp> timestampProvider,
                                 BiFunction<K, V, Collection<NodeId>> peerUpdateFunction,
                                 ExecutorService eventExecutor,
@@ -169,14 +169,25 @@ public class EventuallyConsistentMapImpl<K, V>
                                 boolean persistent,
                                 PersistenceService persistenceService) {
         this.mapName = mapName;
-        this.serializer = createSerializer(ns);
+        this.serializer = createSerializer(serializerBuilder);
         this.persistenceService = persistenceService;
         this.persistent =
                 persistent;
         if (persistent) {
             items = this.persistenceService.<K, MapValue<V>>persistentMapBuilder()
-                    .withName(mapName)
-                    .withSerializer(this.serializer)
+                    .withName(PERSISTENT_LOCAL_MAP_NAME)
+                    .withSerializer(new Serializer() {
+
+                        @Override
+                        public <T> byte[] encode(T object) {
+                            return EventuallyConsistentMapImpl.this.serializer.encode(object);
+                        }
+
+                        @Override
+                        public <T> T decode(byte[] bytes) {
+                            return EventuallyConsistentMapImpl.this.serializer.decode(bytes);
+                        }
+                    })
                     .build();
         } else {
             items = Maps.newConcurrentMap();
@@ -204,7 +215,7 @@ public class EventuallyConsistentMapImpl<K, V>
         } else {
             // should be a normal executor; it's used for receiving messages
             this.executor =
-                    Executors.newFixedThreadPool(8, groupedThreads("onos/ecm", mapName + "-fg-%d", log));
+                    Executors.newFixedThreadPool(8, groupedThreads("onos/ecm", mapName + "-fg-%d"));
         }
 
         if (communicationExecutor != null) {
@@ -213,7 +224,7 @@ public class EventuallyConsistentMapImpl<K, V>
             // sending executor; should be capped
             //TODO this probably doesn't need to be bounded anymore
             this.communicationExecutor =
-                    newFixedThreadPool(8, groupedThreads("onos/ecm", mapName + "-publish-%d", log));
+                    newFixedThreadPool(8, groupedThreads("onos/ecm", mapName + "-publish-%d"));
         }
 
 
@@ -221,7 +232,7 @@ public class EventuallyConsistentMapImpl<K, V>
             this.backgroundExecutor = backgroundExecutor;
         } else {
             this.backgroundExecutor =
-                    newSingleThreadScheduledExecutor(groupedThreads("onos/ecm", mapName + "-bg-%d", log));
+                    newSingleThreadScheduledExecutor(groupedThreads("onos/ecm", mapName + "-bg-%d"));
         }
 
         // start anti-entropy thread
@@ -239,46 +250,29 @@ public class EventuallyConsistentMapImpl<K, V>
         clusterCommunicator.addSubscriber(antiEntropyAdvertisementSubject,
                                           serializer::decode,
                                           this::handleAntiEntropyAdvertisement,
-                                          serializer::encode,
                                           this.backgroundExecutor);
-
-        updateRequestSubject = new MessageSubject("ecm-" + mapName + "-update-request");
-        clusterCommunicator.addSubscriber(updateRequestSubject,
-                                          serializer::decode,
-                                          this::handleUpdateRequests,
-                                          this.backgroundExecutor);
-
-        if (!tombstonesDisabled) {
-            previousTombstonePurgeTime = 0;
-            this.backgroundExecutor.scheduleWithFixedDelay(this::purgeTombstones,
-                                                           initialDelaySec,
-                                                           antiEntropyPeriod,
-                                                           TimeUnit.SECONDS);
-        }
 
         this.tombstonesDisabled = tombstonesDisabled;
         this.lightweightAntiEntropy = !convergeFaster;
-
-        // Initiate first round of Gossip
-        this.bootstrap();
     }
 
-    private StoreSerializer createSerializer(KryoNamespace ns) {
-        return StoreSerializer.using(KryoNamespace.newBuilder()
-                         .register(ns)
-                         // not so robust way to avoid collision with other
-                         // user supplied registrations
-                         .nextId(KryoNamespaces.BEGIN_USER_CUSTOM_ID + 100)
-                         .register(KryoNamespaces.BASIC)
-                         .register(LogicalTimestamp.class)
-                         .register(WallClockTimestamp.class)
-                         .register(AntiEntropyAdvertisement.class)
-                         .register(AntiEntropyResponse.class)
-                         .register(UpdateEntry.class)
-                         .register(MapValue.class)
-                         .register(MapValue.Digest.class)
-                         .register(UpdateRequest.class)
-                         .build(name() + "-ecmap"));
+    private KryoSerializer createSerializer(KryoNamespace.Builder builder) {
+        return new KryoSerializer() {
+            @Override
+            protected void setupKryoPool() {
+                // Add the map's internal helper classes to the user-supplied serializer
+                serializerPool = builder
+                        .register(KryoNamespaces.BASIC)
+                        .nextId(KryoNamespaces.BEGIN_USER_CUSTOM_ID)
+                        .register(LogicalTimestamp.class)
+                        .register(WallClockTimestamp.class)
+                        .register(AntiEntropyAdvertisement.class)
+                        .register(UpdateEntry.class)
+                        .register(MapValue.class)
+                        .register(MapValue.Digest.class)
+                        .build();
+            }
+        };
     }
 
     @Override
@@ -410,19 +404,13 @@ public class EventuallyConsistentMapImpl<K, V>
 
         AtomicBoolean updated = new AtomicBoolean(false);
         AtomicReference<MapValue<V>> previousValue = new AtomicReference<>();
-        MapValue<V> computedValue = items.compute(serializer.copy(key), (k, mv) -> {
+        MapValue<V> computedValue = items.compute(key, (k, mv) -> {
             previousValue.set(mv);
             V newRawValue = recomputeFunction.apply(key, mv == null ? null : mv.get());
-            if (mv != null && Objects.equals(newRawValue, mv.get())) {
-                // value was not updated
-                return mv;
-            }
             MapValue<V> newValue = new MapValue<>(newRawValue, timestampProvider.apply(key, newRawValue));
             if (mv == null || newValue.isNewerThan(mv)) {
                 updated.set(true);
-                // We return a copy to ensure updates to peers can be serialized.
-                // This prevents replica divergence due to serialization failures.
-                return serializer.copy(newValue);
+                return newValue;
             } else {
                 return mv;
             }
@@ -525,7 +513,6 @@ public class EventuallyConsistentMapImpl<K, V>
         listeners.clear();
 
         clusterCommunicator.removeSubscriber(updateMessageSubject);
-        clusterCommunicator.removeSubscriber(updateRequestSubject);
         clusterCommunicator.removeSubscriber(antiEntropyAdvertisementSubject);
         return CompletableFuture.completedFuture(null);
     }
@@ -569,64 +556,51 @@ public class EventuallyConsistentMapImpl<K, V>
                 .stream()
                 .map(ControllerNode::id)
                 .filter(id -> !localNodeId.equals(id))
-                .filter(id -> clusterService.getState(id).isActive())
+                .filter(id -> clusterService.getState(id) == ControllerNode.State.ACTIVE)
                 .collect(Collectors.toList());
         Collections.shuffle(activePeers);
         return activePeers.isEmpty() ? Optional.empty() : Optional.of(activePeers.get(0));
     }
 
     private void sendAdvertisementToPeer(NodeId peer) {
-        long adCreationTime = System.currentTimeMillis();
-        AntiEntropyAdvertisement<K> ad = createAdvertisement();
-        clusterCommunicator.sendAndReceive(ad,
+        clusterCommunicator.unicast(createAdvertisement(),
                 antiEntropyAdvertisementSubject,
                 serializer::encode,
-                serializer::decode,
                 peer)
                 .whenComplete((result, error) -> {
                     if (error != null) {
-                        log.debug("Failed to send anti-entropy advertisement to {}: {}",
-                                peer, error.getMessage());
-                    } else if (result == AntiEntropyResponse.PROCESSED) {
-                        antiEntropyTimes.put(peer, adCreationTime);
-                    }
-                });
-    }
-
-    private void sendUpdateRequestToPeer(NodeId peer, Set<K> keys) {
-        UpdateRequest<K> request = new UpdateRequest<>(localNodeId, keys);
-        clusterCommunicator.unicast(request,
-                updateRequestSubject,
-                serializer::encode,
-                peer)
-                .whenComplete((result, error) -> {
-                    if (error != null) {
-                        log.debug("Failed to send update request to {}: {}",
-                                peer, error.getMessage());
+                        log.debug("Failed to send anti-entropy advertisement to {}", peer, error);
                     }
                 });
     }
 
     private AntiEntropyAdvertisement<K> createAdvertisement() {
-        return new AntiEntropyAdvertisement<>(localNodeId,
+        return new AntiEntropyAdvertisement<K>(localNodeId,
                 ImmutableMap.copyOf(Maps.transformValues(items, MapValue::digest)));
     }
 
-    private AntiEntropyResponse handleAntiEntropyAdvertisement(AntiEntropyAdvertisement<K> ad) {
+    private void handleAntiEntropyAdvertisement(AntiEntropyAdvertisement<K> ad) {
         if (destroyed || underHighLoad()) {
-            return AntiEntropyResponse.IGNORED;
+            return;
         }
         try {
             if (log.isTraceEnabled()) {
                 log.trace("Received anti-entropy advertisement from {} for {} with {} entries in it",
-                        ad.sender(), mapName, ad.digest().size());
+                        mapName, ad.sender(), ad.digest().size());
             }
             antiEntropyCheckLocalItems(ad).forEach(this::notifyListeners);
+
+            if (!lightweightAntiEntropy) {
+                // if remote ad has any entries that the local copy is missing, actively sync
+                // TODO: Missing keys is not the way local copy can be behind.
+                if (Sets.difference(ad.digest().keySet(), items.keySet()).size() > 0) {
+                    // TODO: Send ad for missing keys and for entries that are stale
+                    sendAdvertisementToPeer(ad.sender());
+                }
+            }
         } catch (Exception e) {
             log.warn("Error handling anti-entropy advertisement", e);
-            return AntiEntropyResponse.FAILED;
         }
-        return AntiEntropyResponse.PROCESSED;
     }
 
     /**
@@ -639,20 +613,15 @@ public class EventuallyConsistentMapImpl<K, V>
             AntiEntropyAdvertisement<K> ad) {
         final List<EventuallyConsistentMapEvent<K, V>> externalEvents = Lists.newLinkedList();
         final NodeId sender = ad.sender();
-        final List<NodeId> peers = ImmutableList.of(sender);
-        Set<K> staleOrMissing = new HashSet<>();
-        Set<K> locallyUnknown = new HashSet<>(ad.digest().keySet());
-
         items.forEach((key, localValue) -> {
-            locallyUnknown.remove(key);
             MapValue.Digest remoteValueDigest = ad.digest().get(key);
             if (remoteValueDigest == null || localValue.isNewerThan(remoteValueDigest.timestamp())) {
                 // local value is more recent, push to sender
-                queueUpdate(new UpdateEntry<>(key, localValue), peers);
-            } else if (remoteValueDigest != null
+                queueUpdate(new UpdateEntry<>(key, localValue), ImmutableList.of(sender));
+            }
+            if (remoteValueDigest != null
                     && remoteValueDigest.isNewerThan(localValue.digest())
                     && remoteValueDigest.isTombstone()) {
-                // remote value is more recent and a tombstone: update local value
                 MapValue<V> tombstone = MapValue.tombstone(remoteValueDigest.timestamp());
                 MapValue<V> previousValue = removeInternal(key,
                                                            Optional.empty(),
@@ -660,53 +629,9 @@ public class EventuallyConsistentMapImpl<K, V>
                 if (previousValue != null && previousValue.isAlive()) {
                     externalEvents.add(new EventuallyConsistentMapEvent<>(mapName, REMOVE, key, previousValue.get()));
                 }
-            } else if (remoteValueDigest.isNewerThan(localValue.digest())) {
-                // Not a tombstone and remote is newer
-                staleOrMissing.add(key);
             }
         });
-        // Keys missing in local map
-        staleOrMissing.addAll(locallyUnknown);
-        // Request updates that we missed out on
-        sendUpdateRequestToPeer(sender, staleOrMissing);
         return externalEvents;
-    }
-
-    private void handleUpdateRequests(UpdateRequest<K> request) {
-        final Set<K> keys = request.keys();
-        final NodeId sender = request.sender();
-        final List<NodeId> peers = ImmutableList.of(sender);
-
-        keys.forEach(key ->
-            queueUpdate(new UpdateEntry<>(key, items.get(key)), peers)
-        );
-    }
-
-    private void purgeTombstones() {
-        /*
-         * In order to mitigate the resource exhaustion that can ensue due to an ever-growing set
-         * of tombstones we employ the following heuristic to purge old tombstones periodically.
-         * First, we keep track of the time (local system time) when we were able to have a successful
-         * AE exchange with each peer. The smallest (or oldest) such time across *all* peers is regarded
-         * as the time before which all tombstones are considered safe to purge.
-         */
-        long currentSafeTombstonePurgeTime =  clusterService.getNodes()
-                                                            .stream()
-                                                            .map(ControllerNode::id)
-                                                            .filter(id -> !id.equals(localNodeId))
-                                                            .map(id -> antiEntropyTimes.getOrDefault(id, 0L))
-                                                            .reduce(Math::min)
-                                                            .orElse(0L);
-        if (currentSafeTombstonePurgeTime == previousTombstonePurgeTime) {
-            return;
-        }
-        List<Map.Entry<K, MapValue<V>>> tombStonesToDelete = items.entrySet()
-                                          .stream()
-                                          .filter(e -> e.getValue().isTombstone())
-                                          .filter(e -> e.getValue().creationTime() <= currentSafeTombstonePurgeTime)
-                                          .collect(Collectors.toList());
-        previousTombstonePurgeTime = currentSafeTombstonePurgeTime;
-        tombStonesToDelete.forEach(entry -> items.remove(entry.getKey(), entry.getValue()));
     }
 
     private void processUpdates(Collection<UpdateEntry<K, V>> updates) {
@@ -715,7 +640,7 @@ public class EventuallyConsistentMapImpl<K, V>
         }
         updates.forEach(update -> {
             final K key = update.key();
-            final MapValue<V> value = update.value() == null ? null : update.value().copy();
+            final MapValue<V> value = update.value();
             if (value == null || value.isTombstone()) {
                 MapValue<V> previousValue = removeInternal(key, Optional.empty(), Optional.ofNullable(value));
                 if (previousValue != null && previousValue.isAlive()) {
@@ -725,35 +650,6 @@ public class EventuallyConsistentMapImpl<K, V>
                 notifyListeners(new EventuallyConsistentMapEvent<>(mapName, PUT, key, value.get()));
             }
         });
-    }
-
-    private void bootstrap() {
-        /*
-         * Attempt to get in sync with the cluster when a map is created. This is to help avoid a new node
-         * writing to an ECM until it has a view of the map. Depending on how lightweight the map instance
-         * is, this will attempt to advertise to all or some of the peers.
-         */
-        int n = 0;
-        List<NodeId> activePeers = clusterService.getNodes()
-                .stream()
-                .map(ControllerNode::id)
-                .filter(id -> !localNodeId.equals(id))
-                .filter(id -> clusterService.getState(id).isActive())
-                .collect(Collectors.toList());
-
-        if (activePeers.isEmpty()) {
-            return;
-        }
-
-        if (lightweightAntiEntropy) {
-            n = activePeers.size() / 2;
-        } else {
-            n = activePeers.size();
-        }
-
-        for (int i = 0; i < n; i++) {
-            sendAdvertisementToPeer(activePeers.get(i));
-        }
     }
 
     // TODO pull this into the class if this gets pulled out...
@@ -776,7 +672,7 @@ public class EventuallyConsistentMapImpl<K, V>
             Map<K, UpdateEntry<K, V>> map = Maps.newHashMap();
             items.forEach(item -> map.compute(item.key(), (key, existing) ->
                     item.isNewerThan(existing) ? item : existing));
-            communicationExecutor.execute(() -> {
+            communicationExecutor.submit(() -> {
                 clusterCommunicator.unicast(ImmutableList.copyOf(map.values()),
                                             updateMessageSubject,
                                             serializer::encode,
