@@ -45,9 +45,11 @@ public class AppComponent {
         log.info(">>> Started");
         DeviceFailureListener devLstnr = new DeviceFailureListener();
         LinkFailureListener linkLstnr = new LinkFailureListener();
+
         log.info("Registering listeners...");
         deviceService.addListener(devLstnr);
         linkService.addListener(linkLstnr);
+
 
 
     }

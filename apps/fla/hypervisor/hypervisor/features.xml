@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  ~ Copyright 2015 Open Networking Laboratory
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<features xmlns="http://karaf.apache.org/xmlns/features/v1.2.0" name="${project.artifactId}-${project.version}">
+    <feature name="${project.artifactId}" version="${project.version}"
+             description="${project.description}">
+        <feature>onos-api</feature>
+        <bundle>wrap:mvn:org.apache.activemq/activemq-core/5.7.0$Bundle-SymbolicName=activemq-core&amp;Bundle-Version=5.7.0</bundle>
+        <bundle>wrap:mvn:org.apache.activemq/kahadb/5.7.0$Bundle-SymbolicName=kahadb&amp;Bundle-Version=5.7.0</bundle>
+        <!--<bundle>wrap:mvn:javax.jms/jms/1.1$Bundle-SymbolicName=jms&amp;Bundle-Version=1.1</bundle>-->
+        <bundle>wrap:mvn:org.apache.geronimo.specs/geronimo-jms_1-1_spec/1.1.1$Bundle-SymbolicName=jms&amp;Bundle-Version=1.1.1</bundle>
+        <bundle>wrap:mvn:org.apache.geronimo.specs/geronimo-j2ee-management_1-1_spec/1.0.1$Bundle-SymbolicName=j2ee-management&amp;Bundle-Version=1.0.1</bundle>
+        <bundle>mvn:${project.groupId}/${project.artifactId}/${project.version}</bundle>
+    </feature>
+</features>

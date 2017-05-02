@@ -17,14 +17,10 @@ package org.fla.app.hypervisor;
 
 import org.onlab.osgi.DefaultServiceDirectory;
 import org.onlab.osgi.ServiceDirectory;
-import org.onosproject.net.ConnectPoint;
-import org.onosproject.net.DefaultLink;
 import org.onosproject.net.Link;
 import org.onosproject.net.LinkKey;
 import org.onosproject.net.VnoId;
-import org.onosproject.net.config.Config;
 import org.onosproject.net.config.NetworkConfigService;
-import org.onosproject.net.config.SubjectFactory;
 import org.onosproject.net.config.basics.BasicLinkConfig;
 import org.onosproject.net.link.LinkEvent;
 import org.onosproject.net.link.LinkListener;
@@ -35,6 +31,11 @@ public class LinkFailureListener implements LinkListener {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     private ServiceDirectory services = new DefaultServiceDirectory();
+    private LinkFailureDispatcher linkFailureDispatcher;
+
+    public LinkFailureListener() {
+        linkFailureDispatcher = new LinkFailureDispatcher();
+    }
 
     /**
      * LinkEvent{time=2017-04-24T02:32:01.993, type=LINK_REMOVED,
@@ -51,6 +52,7 @@ public class LinkFailureListener implements LinkListener {
 
         NetworkConfigService netCfgservice = services.get(NetworkConfigService.class);
 
+
         if (netCfgservice == null) {
             log.error("NetworkConfigService is null!");
             return;
@@ -58,7 +60,7 @@ public class LinkFailureListener implements LinkListener {
 
         if (e.type().equals(LinkEvent.Type.LINK_REMOVED) || e.type().equals(LinkEvent.Type.LINK_UPDATED) ) {
 //            log.info("<-- LINK DOWN:");
-
+            linkFailureDispatcher.initialize(netCfgservice);
             Link affectedLink = e.subject();
             log.info(affectedLink.toString());
 
